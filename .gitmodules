@@ -1,0 +1,3 @@
+[submodule "lilypond-data"]
+	path = lilypond-data
+	url = https://github.com/neonscribe/lilypond-lead-sheets.git
