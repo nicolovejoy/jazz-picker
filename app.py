@@ -16,6 +16,10 @@ app = Flask(__name__)
 CATALOG_FILE = 'catalog.json'
 catalog_data = None
 WRAPPERS_DIR = 'lilypond-data/Wrappers'
+CACHE_DIR = Path('cache/pdfs')
+
+# Create cache directory on startup
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_catalog():
@@ -145,20 +149,26 @@ def serve_pdf(filename):
     if not variation:
         return jsonify({'error': 'Variation not found in catalog'}), 404
 
-    # PDF path is stored without .pdf extension, relative to Wrappers dir
-    # e.g., "../Standard/Bass/Song" means "go up from Wrappers, into Standard/Bass/"
-    # Since Wrappers is now in lilypond-data/Wrappers, we need to strip the leading "../"
-    # and resolve from root where the symlinks are
+    # Create cache key from filename (safe for filesystem)
+    cache_key = filename.replace('.ly', '.pdf')
+    cache_path = CACHE_DIR / cache_key
+
+    # Check cache first
+    if cache_path.exists():
+        return send_file(cache_path, mimetype='application/pdf')
+
+    # Try Dropbox symlinks (local development only)
     pdf_path_relative = variation['pdf_path']
     if pdf_path_relative.startswith('../'):
         pdf_path_relative = pdf_path_relative[3:]  # Remove "../"
 
-    pdf_path = Path(pdf_path_relative).resolve()
-    pdf_path = Path(str(pdf_path) + '.pdf')
-
-    # Check if PDF exists (could be via symlink)
-    if pdf_path.exists():
-        return send_file(pdf_path, mimetype='application/pdf')
+    dropbox_path = Path(pdf_path_relative + '.pdf')
+    if dropbox_path.exists():
+        # Copy to cache for future requests
+        import shutil
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(dropbox_path, cache_path)
+        return send_file(cache_path, mimetype='application/pdf')
 
     # If PDF doesn't exist, compile it
     try:
@@ -191,26 +201,23 @@ def serve_pdf(filename):
                 'hint': 'This usually means you need LilyPond 2.25 (development version). Check: lilypond --version'
             }), 500
 
-        # Move the generated PDF to the correct location
+        # Move the generated PDF to cache
         generated_pdf = Path(WRAPPERS_DIR) / filename.replace('.ly', '.pdf')
 
         if not generated_pdf.exists():
             return jsonify({'error': 'PDF not generated'}), 500
 
-        # Create output directory if needed
-        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        # Move to cache
+        import shutil
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(generated_pdf), str(cache_path))
 
-        # Move PDF to correct location
-        generated_pdf.rename(pdf_path)
-
-        # Move MIDI file if it exists
+        # Clean up MIDI file if it exists
         midi_file = Path(WRAPPERS_DIR) / filename.replace('.ly', '.midi')
         if midi_file.exists():
-            midi_dir = Path('Midi')
-            midi_dir.mkdir(exist_ok=True)
-            midi_file.rename(midi_dir / midi_file.name)
+            midi_file.unlink()  # Delete MIDI for now
 
-        return send_file(pdf_path, mimetype='application/pdf')
+        return send_file(cache_path, mimetype='application/pdf')
 
     except subprocess.TimeoutExpired:
         return jsonify({'error': 'Compilation timed out'}), 500

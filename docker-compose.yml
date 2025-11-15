@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  jazz-picker:
+    build: .
+    ports:
+      - "5001:5001"
+    volumes:
+      # Mount cache directory for persistence
+      - ./cache:/app/cache
+      # Mount lilypond-data for development (optional)
+      - ./lilypond-data:/app/lilypond-data
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    command: python3 app.py
