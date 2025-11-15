@@ -4,6 +4,9 @@ venv/
 __pycache__/
 *.pyc
 
+# Cache directory
+cache/
+
 # Python
 .Python
 *.so
