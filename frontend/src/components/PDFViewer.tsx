@@ -18,6 +18,12 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLandscape, setIsLandscape] = useState(
+    window.innerWidth > window.innerHeight
+  );
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // Fetch PDF URL when component mounts or variation changes
   useEffect(() => {
@@ -56,6 +62,21 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     };
   }, [variation.filename]);
 
+  // Detect orientation changes
+  useEffect(() => {
+    const handleResize = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setError(null);
@@ -69,6 +90,57 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
 
   const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
+
+  // Swipe gesture handling
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    const pagesPerView = isLandscape ? 2 : 1;
+    const canSwipe = isLandscape ? numPages > 2 : numPages > 1;
+
+    if (!canSwipe) return;
+
+    if (isLeftSwipe && currentPage + pagesPerView <= numPages) {
+      setCurrentPage((prev) => Math.min(prev + pagesPerView, numPages - pagesPerView + 1));
+    }
+
+    if (isRightSwipe && currentPage > 1) {
+      setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
+    }
+  };
+
+  // Navigation button handlers
+  const goToNextPage = () => {
+    const pagesPerView = isLandscape ? 2 : 1;
+    if (currentPage + pagesPerView <= numPages) {
+      setCurrentPage((prev) => prev + pagesPerView);
+    }
+  };
+
+  const goToPrevPage = () => {
+    const pagesPerView = isLandscape ? 2 : 1;
+    if (currentPage > 1) {
+      setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
+    }
+  };
+
+  const pagesPerView = isLandscape ? 2 : 1;
+  const canSwipe = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
     <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
@@ -115,7 +187,12 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
       </div>
 
       {/* PDF Content */}
-      <div className="flex-1 overflow-auto p-4 md:p-8 scrollbar-thin">
+      <div
+        className="flex-1 overflow-hidden p-4 md:p-8 relative"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         {error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md">
@@ -138,7 +215,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
             </div>
           </div>
         ) : (
-          <div className="max-w-5xl mx-auto">
+          <div className="h-full flex flex-col items-center justify-center">
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
@@ -152,17 +229,55 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
                 </div>
               }
             >
-              {Array.from(new Array(numPages), (_el, index) => (
+              <div className={`flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} items-center justify-center`}>
+                {/* First page (or only page in portrait) */}
                 <Page
-                  key={`page_${index + 1}`}
-                  pageNumber={index + 1}
+                  key={`page_${currentPage}`}
+                  pageNumber={currentPage}
                   scale={scale}
-                  className="mb-4 shadow-2xl mx-auto"
+                  className="shadow-2xl"
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
                 />
-              ))}
+
+                {/* Second page (landscape only, if exists) */}
+                {isLandscape && currentPage + 1 <= numPages && (
+                  <Page
+                    key={`page_${currentPage + 1}`}
+                    pageNumber={currentPage + 1}
+                    scale={scale}
+                    className="shadow-2xl"
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                )}
+              </div>
             </Document>
+
+            {/* Page indicator and navigation */}
+            {canSwipe && (
+              <div className="mt-4 flex items-center gap-4">
+                <button
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
+                >
+                  ←
+                </button>
+                <span className="text-white text-sm">
+                  {isLandscape && currentPage + 1 <= numPages
+                    ? `Pages ${currentPage}-${currentPage + 1} of ${numPages}`
+                    : `Page ${currentPage} of ${numPages}`}
+                </span>
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage + pagesPerView > numPages}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
+                >
+                  →
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
