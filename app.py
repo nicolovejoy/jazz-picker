@@ -9,6 +9,9 @@ import subprocess
 import os
 import socket
 from pathlib import Path
+from datetime import datetime, timedelta
+import boto3
+from botocore.exceptions import ClientError
 
 app = Flask(__name__)
 
@@ -17,6 +20,22 @@ CATALOG_FILE = 'catalog.json'
 catalog_data = None
 WRAPPERS_DIR = 'lilypond-data/Wrappers'
 CACHE_DIR = Path('cache/pdfs')
+
+# S3 Configuration
+S3_BUCKET = os.getenv('S3_BUCKET_NAME', 'jazz-picker-pdfs')
+S3_REGION = os.getenv('S3_REGION', 'us-east-1')
+USE_S3 = os.getenv('USE_S3', 'true').lower() == 'true'
+
+# Initialize S3 client if enabled
+s3_client = None
+if USE_S3:
+    try:
+        s3_client = boto3.client('s3', region_name=S3_REGION)
+        print(f"✅ S3 client initialized (bucket: {S3_BUCKET}, region: {S3_REGION})")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize S3 client: {e}")
+        print("   PDFs will be served from local cache/Dropbox only")
+        s3_client = None
 
 # Create cache directory on startup
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -127,16 +146,26 @@ def get_song(song_title):
         return jsonify({'error': 'Song not found'}), 404
 
 
+def catalog_path_to_s3_key(pdf_path: str) -> str:
+    """Convert catalog pdf_path to S3 key."""
+    # "../Alto Voice/Song - Key" → "Alto-Voice/Song - Key.pdf"
+    path = pdf_path.replace('../', '')
+    # Replace spaces with hyphens in folder names only (not filenames)
+    parts = path.split('/')
+    if len(parts) > 1:
+        # Replace spaces with hyphens in folder parts
+        parts[:-1] = [part.replace(' ', '-') for part in parts[:-1]]
+        path = '/'.join(parts)
+    return f"{path}.pdf"
+
+
 @app.route('/pdf/<path:filename>')
 def serve_pdf(filename):
-    """Serve a PDF file, compiling it if necessary."""
-    # The filename should match the wrapper filename
-    wrapper_file = Path(WRAPPERS_DIR) / filename
+    """Serve a PDF file via S3 presigned URL or local fallback."""
+    if catalog_data is None:
+        load_catalog()
 
-    if not wrapper_file.exists():
-        return jsonify({'error': 'Wrapper file not found'}), 404
-
-    # Determine the PDF path from catalog
+    # Find variation in catalog
     variation = None
     for song_data in catalog_data['songs'].values():
         for var in song_data['variations']:
@@ -149,15 +178,41 @@ def serve_pdf(filename):
     if not variation:
         return jsonify({'error': 'Variation not found in catalog'}), 404
 
-    # Create cache key from filename (safe for filesystem)
+    # Create cache key from filename
     cache_key = filename.replace('.ly', '.pdf')
     cache_path = CACHE_DIR / cache_key
 
-    # Check cache first
+    # Try S3 presigned URL first (production)
+    if s3_client:
+        try:
+            s3_key = catalog_path_to_s3_key(variation['pdf_path'])
+
+            # Generate presigned URL (15 min expiry)
+            url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': S3_BUCKET,
+                    'Key': s3_key
+                },
+                ExpiresIn=900  # 15 minutes
+            )
+
+            return jsonify({
+                'url': url,
+                'expires_at': (datetime.utcnow() + timedelta(minutes=15)).isoformat() + 'Z',
+                'source': 's3',
+                'size_bytes': None  # Could add HEAD request to get size
+            })
+        except ClientError as e:
+            # S3 object not found, fall through to local sources
+            print(f"⚠️  S3 error for {s3_key}: {e}")
+            pass
+
+    # Fallback 1: Check local cache
     if cache_path.exists():
         return send_file(cache_path, mimetype='application/pdf')
 
-    # Try Dropbox symlinks (local development only)
+    # Fallback 2: Try Dropbox symlinks (local development only)
     pdf_path_relative = variation['pdf_path']
     if pdf_path_relative.startswith('../'):
         pdf_path_relative = pdf_path_relative[3:]  # Remove "../"

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
+import { useState, useEffect } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { FiX, FiZoomIn, FiZoomOut } from 'react-icons/fi';
 import type { Variation } from '@/types/catalog';
 import { api } from '@/services/api';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up worker - use unpkg CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
   variation: Variation;
@@ -13,74 +13,32 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ variation, onClose }: PDFViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
-  const [numPages, setNumPages] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch PDF URL when component mounts or variation changes
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
     async function loadPDF() {
       try {
         setLoading(true);
         setError(null);
+        console.log('[PDFViewer] Fetching PDF for:', variation.filename);
 
-        // Fetch PDF blob from API
-        const blob = await api.getPDF(variation.filename);
-        const url = URL.createObjectURL(blob);
+        const url = await api.getPDF(variation.filename);
 
-        // Load PDF document
-        const loadingTask = pdfjsLib.getDocument(url);
-        const pdf = await loadingTask.promise;
-
-        if (!isMounted) {
-          URL.revokeObjectURL(url);
-          return;
+        if (mounted) {
+          console.log('[PDFViewer] PDF URL received:', url);
+          setPdfUrl(url);
+          setLoading(false);
         }
-
-        setNumPages(pdf.numPages);
-
-        // Clear container
-        if (containerRef.current) {
-          containerRef.current.innerHTML = '';
-        }
-
-        // Render all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-
-          const viewport = page.getViewport({ scale });
-
-          // Create canvas element
-          const canvas = document.createElement('canvas');
-          canvas.className = 'pdf-page-canvas mx-auto mb-4 shadow-2xl';
-          const context = canvas.getContext('2d');
-
-          if (!context) continue;
-
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-
-          // Render PDF page into canvas
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-          };
-
-          await page.render(renderContext as any).promise;
-
-          if (containerRef.current && isMounted) {
-            containerRef.current.appendChild(canvas);
-          }
-        }
-
-        setLoading(false);
-        URL.revokeObjectURL(url);
       } catch (err) {
-        console.error('Error loading PDF:', err);
-        if (isMounted) {
+        if (mounted) {
+          console.error('[PDFViewer] Failed to load PDF:', err);
           setError(err instanceof Error ? err.message : 'Failed to load PDF');
           setLoading(false);
         }
@@ -90,9 +48,24 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     loadPDF();
 
     return () => {
-      isMounted = false;
+      mounted = false;
+      // Clean up object URL if it was created
+      if (pdfUrl && pdfUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(pdfUrl);
+      }
     };
-  }, [variation.filename, scale]);
+  }, [variation.filename]);
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    setNumPages(numPages);
+    setError(null);
+    console.log('[PDFViewer] PDF loaded successfully, pages:', numPages);
+  }
+
+  function onDocumentLoadError(error: Error) {
+    console.error('[PDFViewer] Error loading PDF:', error);
+    setError(error.message);
+  }
 
   const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
@@ -143,17 +116,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
 
       {/* PDF Content */}
       <div className="flex-1 overflow-auto p-4 md:p-8 scrollbar-thin">
-        {loading && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-              <p className="text-gray-400 text-lg">Loading PDF...</p>
-              <p className="text-gray-500 text-sm mt-2">This may take 10-20 seconds</p>
-            </div>
-          </div>
-        )}
-
-        {error && (
+        {error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md">
               <p className="text-red-400 text-lg font-semibold mb-2">⚠️ Error</p>
@@ -166,10 +129,41 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
               </button>
             </div>
           </div>
-        )}
-
-        {!loading && !error && (
-          <div ref={containerRef} className="max-w-5xl mx-auto" />
+        ) : loading || !pdfUrl ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+              <p className="text-gray-400 text-lg">Loading PDF...</p>
+              <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-5xl mx-auto">
+            <Document
+              file={pdfUrl}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
+              loading={
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+                    <p className="text-gray-400 text-lg">Rendering PDF...</p>
+                  </div>
+                </div>
+              }
+            >
+              {Array.from(new Array(numPages), (_el, index) => (
+                <Page
+                  key={`page_${index + 1}`}
+                  pageNumber={index + 1}
+                  scale={scale}
+                  className="mb-4 shadow-2xl mx-auto"
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              ))}
+            </Document>
+          </div>
         )}
       </div>
     </div>

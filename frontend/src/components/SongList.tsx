@@ -24,18 +24,18 @@ export function SongList({ songs, instrument, singerRange, onSelectVariation }: 
         if (instrument !== 'All') {
           filteredVariations = filteredVariations.filter((v: Variation) => {
             if (instrument === 'C') {
-              return v.variation_type.includes('Standard (Concert)') ||
-                     v.variation_type.includes('Alto Voice') ||
-                     v.variation_type.includes('Baritone Voice');
+              return v.variation_type === 'Standard (Concert)' ||
+                     v.variation_type === 'Alto Voice' ||
+                     v.variation_type === 'Baritone Voice';
             }
             if (instrument === 'Bb') {
-              return v.variation_type.includes('Bb Instrument');
+              return v.variation_type === 'Bb Instrument';
             }
             if (instrument === 'Eb') {
-              return v.variation_type.includes('Eb Instrument');
+              return v.variation_type === 'Eb Instrument';
             }
             if (instrument === 'Bass') {
-              return v.variation_type.includes('Bass');
+              return v.variation_type === 'Bass';
             }
             return true;
           });
@@ -45,13 +45,13 @@ export function SongList({ songs, instrument, singerRange, onSelectVariation }: 
         if (singerRange !== 'All') {
           filteredVariations = filteredVariations.filter((v: Variation) => {
             if (singerRange === 'Alto/Mezzo/Soprano') {
-              return v.variation_type.includes('Alto Voice');
+              return v.variation_type === 'Alto Voice';
             }
             if (singerRange === 'Baritone/Tenor/Bass') {
-              return v.variation_type.includes('Baritone Voice');
+              return v.variation_type === 'Baritone Voice';
             }
             if (singerRange === 'Standard') {
-              return v.variation_type.includes('Standard');
+              return v.variation_type === 'Standard (Concert)';
             }
             return true;
           });
