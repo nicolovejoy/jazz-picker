@@ -14,9 +14,14 @@ Requires Flask backend on port 5001.
 ## Features
 
 - Two-filter system: Instrument (C/Bb/Eb/Bass) + Singer Range
-- Real-time search across 735 songs
-- PDF viewer (currently broken - PDF.js worker issues)
+- Real-time search across 735 songs (4000+ variations)
+- **PDF Viewer** with orientation-aware display:
+  - **Portrait mode:** Single page view, swipe to navigate
+  - **Landscape mode:** Side-by-side pages (perfect for music stands!)
+  - Touch gestures for page navigation (swipe left/right)
+  - Navigation buttons with page indicator
 - Color-coded filter dropdowns
+- S3-powered PDF delivery with presigned URLs
 
 ## Tech Stack
 
@@ -41,11 +46,20 @@ src/
 
 ## Current Status
 
-**✅ PDF Viewing Working!**
+**✅ Fully Functional!**
 
-- S3 storage configured with CORS
-- Presigned URLs for secure PDF access
-- Worker loading from unpkg CDN
+- S3 storage with CORS configured
+- Presigned URLs (15min expiry) for secure PDF access
+- PDF.js worker loading from unpkg CDN
+- Landscape/portrait mode auto-detection
+- Swipe gestures for navigation
+- Network access enabled for iPad
+
+**iPad Usage:**
+1. Connect iPad to same WiFi as dev machine
+2. Open: `http://YOUR_IP:5173` (shown in terminal)
+3. Rotate to landscape for side-by-side pages
+4. Swipe or tap arrows to navigate
 
 **For Eric's Workflow:**
 See `S3_SETUP.md` for syncing PDFs after compilation.

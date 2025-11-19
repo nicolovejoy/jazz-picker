@@ -27,19 +27,22 @@ docker-compose up --build  # See DOCKER_README.md
 
 ## Architecture
 
-**Backend (Flask):** (Claude, let's discuss this approach)
+**Backend (Flask):**
 
 - Catalog API: `/api/songs`, `/api/songs/search`
-- PDF serving: `/pdf/<filename>`
-- LilyPond compilation via Docker
-- 3-tier caching: cache dir → Dropbox → compile
+- S3 presigned URLs: `/pdf/<filename>` (15min expiry)
+- Graceful fallback: S3 → cache → Dropbox → compile
+- CORS configured for browser access
 
-**Frontend (React):** (Claude, let's discuss the API between the front end and the back end as well as the data models for the conversation between them)
+**Frontend (React):**
 
 - Two-filter system: Instrument + Singer Range
-- Search across 735 songs
-- PDF viewer (currently broken - worker issues)
-- Optimized for iPad
+- Search across 735 songs (4000+ variations)
+- PDF viewer with orientation detection
+  - **Portrait mode:** 1 page, swipe navigation
+  - **Landscape mode:** 2 pages side-by-side (music stand view)
+- Touch gestures for page navigation
+- Optimized for iPad music stand use
 
 ## Project Structure
 
@@ -66,11 +69,21 @@ docker-compose up --build  # See DOCKER_README.md
 - ✅ AWS S3 integration with CORS
 - 🔄 Docker setup (available but not required for S3 workflow)
 
+**Features:**
+
+- 🎵 Browse 735 jazz standards with 4000+ transposed variations
+- 🔍 Real-time search and filtering (instrument, singer range)
+- 📱 iPad-optimized PDF viewer
+  - Portrait: Single page with swipe navigation
+  - Landscape: Side-by-side pages (sheet music reading)
+- ☁️ S3 storage with instant presigned URL access
+- 🎹 Compiled by Eric using LilyPond
+
 **Next Steps:**
 
-- Refine API endpoints (see ARCHITECTURE.md)
-- Add setlist functionality
-- Implement user preferences
+- Add setlist functionality (save song collections)
+- Implement user preferences (remember filters)
 - PWA support for offline use
+- API refinements (see ARCHITECTURE.md)
 
 See `frontend/README.md` for frontend details.
