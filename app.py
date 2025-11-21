@@ -42,10 +42,30 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_catalog():
-    """Load the catalog from JSON file."""
+    """Load the catalog from JSON file or S3."""
     global catalog_data
-    with open(CATALOG_FILE, 'r', encoding='utf-8') as f:
-        catalog_data = json.load(f)
+    
+    # Try S3 first if enabled
+    if USE_S3 and s3_client:
+        try:
+            print(f"⬇️  Fetching catalog from S3 ({S3_BUCKET})...")
+            response = s3_client.get_object(Bucket=S3_BUCKET, Key=CATALOG_FILE)
+            catalog_data = json.loads(response['Body'].read().decode('utf-8'))
+            print(f"✅ Loaded catalog from S3 ({catalog_data['metadata']['total_songs']} songs)")
+            return catalog_data
+        except Exception as e:
+            print(f"⚠️  Could not load catalog from S3: {e}")
+            print("   Falling back to local file...")
+
+    # Fallback to local file
+    try:
+        with open(CATALOG_FILE, 'r', encoding='utf-8') as f:
+            catalog_data = json.load(f)
+        print(f"✅ Loaded catalog from local file ({catalog_data['metadata']['total_songs']} songs)")
+    except FileNotFoundError:
+        print("❌ Catalog not found locally or on S3.")
+        catalog_data = None
+        
     return catalog_data
 
 
@@ -69,16 +89,26 @@ def index():
     if catalog_data is None:
         load_catalog()
 
+    if catalog_data:
+        total_songs = catalog_data['metadata']['total_songs']
+        total_files = catalog_data['metadata']['total_files']
+    else:
+        total_songs = 0
+        total_files = 0
+
     return render_template('index.html',
-                         total_songs=catalog_data['metadata']['total_songs'],
-                         total_files=catalog_data['metadata']['total_files'])
+                         total_songs=total_songs,
+                         total_files=total_files)
 
 
 @app.route('/api/songs')
 def get_songs():
-    """API endpoint to get all songs."""
+    """API endpoint to get all songs (Legacy v1)."""
     if catalog_data is None:
         load_catalog()
+        
+    if not catalog_data:
+        return jsonify([])
 
     # Convert songs dict to sorted list
     songs_list = [
@@ -95,11 +125,115 @@ def get_songs():
     return jsonify(songs_list)
 
 
+@app.route('/api/v2/songs')
+def get_songs_v2():
+    """API v2: Get paginated, slim song list."""
+    if catalog_data is None:
+        load_catalog()
+        
+    if not catalog_data:
+        return jsonify({'songs': [], 'total': 0})
+
+    # Query parameters
+    limit = int(request.args.get('limit', 50))
+    offset = int(request.args.get('offset', 0))
+    query = request.args.get('q', '').lower()
+    instrument_filter = request.args.get('instrument', 'All')
+    range_filter = request.args.get('range', 'All')
+    
+    # Filter songs
+    filtered_songs = []
+    for title, data in catalog_data['songs'].items():
+        # 1. Filter by Search Query
+        if query and query not in title.lower():
+            continue
+            
+        # Calculate available instruments and ranges for this song
+        instruments = set()
+        ranges = set()
+        has_matching_variation = False
+
+        for var in data['variations']:
+            v_type = var['variation_type']
+            
+            # Determine Instrument Categories
+            if 'Standard' in v_type or 'Voice' in v_type:
+                instruments.add('C')
+            if 'Bb' in v_type:
+                instruments.add('Bb')
+            if 'Eb' in v_type:
+                instruments.add('Eb')
+            if 'Bass' in v_type:
+                instruments.add('Bass')
+            
+            # Determine Range Categories
+            if 'Alto' in v_type:
+                ranges.add('Alto/Mezzo/Soprano')
+            elif 'Baritone' in v_type:
+                ranges.add('Baritone/Tenor/Bass')
+            elif 'Standard' in v_type:
+                ranges.add('Standard')
+
+            # Check if this variation matches the requested filters
+            match_instrument = False
+            if instrument_filter == 'All':
+                match_instrument = True
+            elif instrument_filter == 'C' and ('Standard' in v_type or 'Voice' in v_type):
+                match_instrument = True
+            elif instrument_filter == 'Bb' and 'Bb' in v_type:
+                match_instrument = True
+            elif instrument_filter == 'Eb' and 'Eb' in v_type:
+                match_instrument = True
+            elif instrument_filter == 'Bass' and 'Bass' in v_type:
+                match_instrument = True
+                
+            match_range = False
+            if range_filter == 'All':
+                match_range = True
+            elif range_filter == 'Alto/Mezzo/Soprano' and 'Alto' in v_type:
+                match_range = True
+            elif range_filter == 'Baritone/Tenor/Bass' and 'Baritone' in v_type:
+                match_range = True
+            elif range_filter == 'Standard' and 'Standard' in v_type:
+                match_range = True
+                
+            if match_instrument and match_range:
+                has_matching_variation = True
+        
+        # Only include song if it has at least one variation matching the filters
+        if has_matching_variation:
+            filtered_songs.append({
+                'title': title,
+                'variation_count': len(data['variations']),
+                'available_instruments': sorted(list(instruments)),
+                'available_ranges': sorted(list(ranges))
+            })
+
+    # Sort alphabetically
+    filtered_songs.sort(key=lambda x: x['title'])
+    
+    # Paginate
+    total = len(filtered_songs)
+    paginated_songs = filtered_songs[offset : offset + limit]
+    
+    return jsonify({
+        'songs': paginated_songs,
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'instrument': instrument_filter,
+        'range': range_filter
+    })
+
+
 @app.route('/api/songs/search')
 def search_songs():
     """API endpoint to search songs by title."""
     if catalog_data is None:
         load_catalog()
+        
+    if not catalog_data:
+        return jsonify([])
 
     query = request.args.get('q', '').lower()
     variation_filter = request.args.get('variation', None)
@@ -133,14 +267,49 @@ def search_songs():
 
 @app.route('/api/song/<path:song_title>')
 def get_song(song_title):
-    """API endpoint to get a specific song's details."""
+    """API endpoint to get a specific song's details (Legacy v1)."""
     if catalog_data is None:
         load_catalog()
+        
+    if not catalog_data:
+        return jsonify({'error': 'Catalog not loaded'}), 500
 
     if song_title in catalog_data['songs']:
         return jsonify({
             'title': song_title,
             **catalog_data['songs'][song_title]
+        })
+    else:
+        return jsonify({'error': 'Song not found'}), 404
+
+
+@app.route('/api/v2/songs/<path:song_title>')
+def get_song_v2(song_title):
+    """API v2: Get specific song details."""
+    if catalog_data is None:
+        load_catalog()
+        
+    if not catalog_data:
+        return jsonify({'error': 'Catalog not loaded'}), 500
+
+    if song_title in catalog_data['songs']:
+        song_data = catalog_data['songs'][song_title]
+        
+        # Transform variations for v2
+        variations = []
+        for var in song_data['variations']:
+            variations.append({
+                'id': var.get('filename', '').replace('.ly', ''), # Use filename as ID
+                'display_name': var.get('display_name', ''),
+                'key': var.get('key', ''),
+                'instrument': var.get('instrument', ''),
+                'variation_type': var.get('variation_type', ''),
+                'filename': var.get('filename', '')
+            })
+            
+        return jsonify({
+            'title': song_title,
+            'variations': variations
         })
     else:
         return jsonify({'error': 'Song not found'}), 404

@@ -1,4 +1,4 @@
-import type { Song } from '@/types/catalog';
+import type { Song, SongListResponse, SongDetail } from '@/types/catalog';
 
 const API_BASE = '/api';
 
@@ -7,6 +7,33 @@ export const api = {
     const response = await fetch(`${API_BASE}/songs`);
     if (!response.ok) {
       throw new Error('Failed to fetch songs');
+    }
+    return response.json();
+  },
+
+  async getSongsV2(
+    limit = 50, 
+    offset = 0, 
+    query = '', 
+    instrument = 'All', 
+    singerRange = 'All'
+  ): Promise<SongListResponse> {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+      q: query,
+      instrument,
+      range: singerRange,
+    });
+    const response = await fetch(`${API_BASE}/v2/songs?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch songs');
+    return response.json();
+  },
+
+  async getSongV2(title: string): Promise<SongDetail> {
+    const response = await fetch(`${API_BASE}/v2/songs/${encodeURIComponent(title)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch song details');
     }
     return response.json();
   },
