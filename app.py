@@ -157,13 +157,14 @@ def get_songs_v2():
             v_type = var['variation_type']
             
             # Determine Instrument Categories
-            if 'Standard' in v_type or 'Voice' in v_type:
+            # Only "Standard (Concert)" is C instrument - Voice variations are filtered by range
+            if 'Standard' in v_type:
                 instruments.add('C')
-            if 'Bb' in v_type:
+            if 'Bb Instrument' in v_type:
                 instruments.add('Bb')
-            if 'Eb' in v_type:
+            if 'Eb Instrument' in v_type:
                 instruments.add('Eb')
-            if 'Bass' in v_type:
+            if v_type == 'Bass':
                 instruments.add('Bass')
             
             # Determine Range Categories
@@ -178,13 +179,13 @@ def get_songs_v2():
             match_instrument = False
             if instrument_filter == 'All':
                 match_instrument = True
-            elif instrument_filter == 'C' and ('Standard' in v_type or 'Voice' in v_type):
+            elif instrument_filter == 'C' and 'Standard' in v_type:
                 match_instrument = True
-            elif instrument_filter == 'Bb' and 'Bb' in v_type:
+            elif instrument_filter == 'Bb' and 'Bb Instrument' in v_type:
                 match_instrument = True
-            elif instrument_filter == 'Eb' and 'Eb' in v_type:
+            elif instrument_filter == 'Eb' and 'Eb Instrument' in v_type:
                 match_instrument = True
-            elif instrument_filter == 'Bass' and 'Bass' in v_type:
+            elif instrument_filter == 'Bass' and v_type == 'Bass':
                 match_instrument = True
                 
             match_range = False
