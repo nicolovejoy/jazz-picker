@@ -151,11 +151,11 @@ def get_songs_v2():
         # Calculate available instruments and ranges for this song
         instruments = set()
         ranges = set()
-        has_matching_variation = False
+        matching_variations = 0
 
         for var in data['variations']:
             v_type = var['variation_type']
-            
+
             # Determine Instrument Categories
             # Only "Standard (Concert)" is C instrument - Voice variations are filtered by range
             if 'Standard' in v_type:
@@ -166,7 +166,7 @@ def get_songs_v2():
                 instruments.add('Eb')
             if v_type == 'Bass':
                 instruments.add('Bass')
-            
+
             # Determine Range Categories
             if 'Alto' in v_type:
                 ranges.add('Alto/Mezzo/Soprano')
@@ -187,7 +187,7 @@ def get_songs_v2():
                 match_instrument = True
             elif instrument_filter == 'Bass' and v_type == 'Bass':
                 match_instrument = True
-                
+
             match_range = False
             if range_filter == 'All':
                 match_range = True
@@ -197,15 +197,15 @@ def get_songs_v2():
                 match_range = True
             elif range_filter == 'Standard' and 'Standard' in v_type:
                 match_range = True
-                
+
             if match_instrument and match_range:
-                has_matching_variation = True
-        
+                matching_variations += 1
+
         # Only include song if it has at least one variation matching the filters
-        if has_matching_variation:
+        if matching_variations > 0:
             filtered_songs.append({
                 'title': title,
-                'variation_count': len(data['variations']),
+                'variation_count': matching_variations,  # Only count matching variations
                 'available_instruments': sorted(list(instruments)),
                 'available_ranges': sorted(list(ranges))
             })
