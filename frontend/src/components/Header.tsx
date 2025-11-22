@@ -1,11 +1,14 @@
 import type { InstrumentType, SingerRangeType } from '@/types/catalog';
+import { FiSearch, FiX } from 'react-icons/fi';
 
 interface HeaderProps {
   totalSongs: number;
   instrument: InstrumentType;
   singerRange: SingerRangeType;
+  searchQuery: string;
   onInstrumentChange: (instrument: InstrumentType) => void;
   onSingerRangeChange: (range: SingerRangeType) => void;
+  onSearch: (query: string) => void;
 }
 
 const singerRangeColors: Record<SingerRangeType, string> = {
@@ -19,8 +22,10 @@ export function Header({
   totalSongs,
   instrument,
   singerRange,
+  searchQuery,
   onInstrumentChange,
   onSingerRangeChange,
+  onSearch,
 }: HeaderProps) {
   return (
     <header className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 md:p-8 mb-6">
@@ -30,6 +35,29 @@ export function Header({
         </h1>
         <p className="text-gray-400 text-lg">Browse Eric's Lead Sheet Collection</p>
         <p className="text-gray-500 text-sm mt-2">{totalSongs} songs</p>
+      </div>
+
+      {/* Search Box - Always visible at top */}
+      <div className="mb-6 max-w-2xl mx-auto">
+        <div className="relative">
+          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search for a song..."
+            className="w-full pl-12 pr-12 py-3 text-base md:text-lg bg-white/5 backdrop-blur-lg border-2 border-blue-400/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearch('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              aria-label="Clear search"
+            >
+              <FiX className="text-xl" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 max-w-2xl mx-auto">

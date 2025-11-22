@@ -1,19 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { useSongsV2 } from './hooks/useSongsV2';
-import type { InstrumentType, SingerRangeType, Variation } from '@/types/catalog';
+import { api } from './services/api';
+import type { InstrumentType, SingerRangeType, Variation, SongSummary } from '@/types/catalog';
 
 function App() {
   const [instrument, setInstrument] = useState<InstrumentType>('All');
   const [singerRange, setSingerRange] = useState<SingerRangeType>('All');
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
+  const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const LIMIT = 50;
 
-  const { data, isLoading, isError } = useSongsV2({
+  const queryClient = useQueryClient();
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading, isError, isFetching } = useSongsV2({
     limit: LIMIT,
     offset: page * LIMIT,
     query: searchQuery,
@@ -21,22 +28,79 @@ function App() {
     singerRange
   });
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    setPage(0); // Reset to first page on search
-  };
+  // Pre-fetch next page
+  useEffect(() => {
+    if (data && hasMore && !isFetching) {
+      const nextPage = page + 1;
+      const nextOffset = nextPage * LIMIT;
 
-  const handleInstrumentChange = (inst: InstrumentType) => {
+      // Only pre-fetch if there's potentially more data
+      if (nextOffset < data.total) {
+        queryClient.prefetchQuery({
+          queryKey: ['songs', LIMIT, nextOffset, searchQuery, instrument, singerRange],
+          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, instrument, singerRange),
+        });
+      }
+    }
+  }, [data, page, hasMore, isFetching, searchQuery, instrument, singerRange, queryClient]);
+
+  // Accumulate songs as pages load
+  useEffect(() => {
+    if (data?.songs) {
+      if (page === 0) {
+        // Reset on first page (new search/filter)
+        setAllSongs(data.songs);
+      } else {
+        // Append to existing songs
+        setAllSongs(prev => [...prev, ...data.songs]);
+      }
+
+      // Check if there are more pages
+      const loadedCount = (page + 1) * LIMIT;
+      setHasMore(loadedCount < data.total);
+    }
+  }, [data, page]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetching) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, isFetching]);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setPage(0);
+    setAllSongs([]);
+  }, []);
+
+  const handleInstrumentChange = useCallback((inst: InstrumentType) => {
     setInstrument(inst);
     setPage(0);
-  };
+    setAllSongs([]);
+  }, []);
 
-  const handleRangeChange = (range: SingerRangeType) => {
+  const handleRangeChange = useCallback((range: SingerRangeType) => {
     setSingerRange(range);
     setPage(0);
-  };
-
-  const totalPages = data ? Math.ceil(data.total / LIMIT) : 0;
+    setAllSongs([]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -44,8 +108,10 @@ function App() {
         totalSongs={data?.total || 0}
         instrument={instrument}
         singerRange={singerRange}
+        searchQuery={searchQuery}
         onInstrumentChange={handleInstrumentChange}
         onSingerRangeChange={handleRangeChange}
+        onSearch={handleSearch}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">
@@ -54,40 +120,33 @@ function App() {
             <p className="text-xl">Error loading songs</p>
             <p className="text-sm mt-2">Please try again later</p>
           </div>
-        ) : isLoading ? (
+        ) : isLoading && page === 0 ? (
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
           </div>
         ) : (
           <>
             <SongList
-              songs={data?.songs || []}
+              songs={allSongs}
               instrument={instrument}
               singerRange={singerRange}
+              searchQuery={searchQuery}
               onSelectVariation={setSelectedVariation}
-              onSearch={handleSearch}
             />
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-8">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-gray-400">
-                  Page {page + 1} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-                >
-                  Next
-                </button>
+            {/* Infinite Scroll Trigger */}
+            {hasMore && (
+              <div ref={observerTarget} className="flex justify-center py-8">
+                {isFetching && (
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+                )}
+              </div>
+            )}
+
+            {/* End of list message */}
+            {!hasMore && allSongs.length > 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>End of list ({allSongs.length} songs)</p>
               </div>
             )}
           </>
