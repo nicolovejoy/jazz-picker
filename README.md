@@ -63,27 +63,33 @@ docker-compose up --build  # See DOCKER_README.md
 
 **Working:**
 
-- ✅ Backend API with S3 presigned URLs
-- ✅ React UI with filtering/search
+- ✅ Backend API v2 with slim, paginated responses
+- ✅ Infinite scroll (replaces pagination)
+- ✅ Smart navigation (single-variation auto-open, Enter key shortcuts)
+- ✅ Improved search UX (sticky search bar, clear button, shows search term in "no results")
+- ✅ Fixed instrument filtering (accurate variation counts)
 - ✅ PDF viewing with S3 storage (2GB, 4367 files)
 - ✅ AWS S3 integration with CORS
-- 🔄 Docker setup (available but not required for S3 workflow)
 
 **Features:**
 
 - 🎵 Browse 735 jazz standards with 4000+ transposed variations
-- 🔍 Real-time search and filtering (instrument, singer range)
+- 🔍 Real-time search with infinite scroll
+- 🎹 Smart UX: Click single-variation songs → opens PDF directly
+- ⌨️ Press Enter in search (1 result) → opens PDF or shows variations
+- 🔧 Accurate filtering by instrument (C/Bb/Eb/Bass) and singer range
 - 📱 iPad-optimized PDF viewer
   - Portrait: Single page with swipe navigation
-  - Landscape: Side-by-side pages (sheet music reading)
-- ☁️ S3 storage with instant presigned URL access
-- 🎹 Compiled by Eric using LilyPond
+  - Landscape: Side-by-side pages (music stand view)
+  - Vertical AND horizontal swipe support
+- ☁️ S3 storage with presigned URLs
+- 🎼 Compiled by Eric using LilyPond
 
 **Next Steps:**
 
-- Add setlist functionality (save song collections)
-- Implement user preferences (remember filters)
+- Add PDF viewer enhancements (fullscreen button, swipe indicators)
 - PWA support for offline use
-- API refinements (see ARCHITECTURE.md)
+- Setlist functionality
+- Deploy to production (Fly.io + Cloudflare Pages)
 
 See `frontend/README.md` for frontend details.
