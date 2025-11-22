@@ -2,7 +2,9 @@
 
 Web app for browsing Eric's LilyPond jazz lead sheet collection. Flask backend will eventually compile PDFs via Docker (but for now stores copies locally and serves them), React frontend (in development) for iPad music stand use as well as for browsing on the web or eventually even small iOs devices.
 
-## Quick Start
+## Development Setup
+
+**See [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) for AI tool usage and branching strategy.**
 
 **Backend:**
 
