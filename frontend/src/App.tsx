@@ -15,6 +15,7 @@ function App() {
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [expandedSong, setExpandedSong] = useState<string | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -88,19 +89,44 @@ function App() {
     setSearchQuery(query);
     setPage(0);
     setAllSongs([]);
+    setExpandedSong(null);
   }, []);
 
   const handleInstrumentChange = useCallback((inst: InstrumentType) => {
     setInstrument(inst);
     setPage(0);
     setAllSongs([]);
+    setExpandedSong(null);
   }, []);
 
   const handleRangeChange = useCallback((range: SingerRangeType) => {
     setSingerRange(range);
     setPage(0);
     setAllSongs([]);
+    setExpandedSong(null);
   }, []);
+
+  const handleEnterPress = useCallback(async () => {
+    // Only handle if exactly 1 song in results
+    if (allSongs.length !== 1) return;
+
+    const song = allSongs[0];
+
+    // Fetch song details
+    try {
+      const songDetail = await api.getSongV2(song.title);
+
+      if (songDetail.variations.length === 1) {
+        // Single variation: open PDF directly
+        setSelectedVariation(songDetail.variations[0] as any);
+      } else if (songDetail.variations.length > 1) {
+        // Multiple variations: expand the card
+        setExpandedSong(song.title);
+      }
+    } catch (error) {
+      console.error('Failed to fetch song details:', error);
+    }
+  }, [allSongs]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -112,6 +138,7 @@ function App() {
         onInstrumentChange={handleInstrumentChange}
         onSingerRangeChange={handleRangeChange}
         onSearch={handleSearch}
+        onEnterPress={handleEnterPress}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">
@@ -131,6 +158,8 @@ function App() {
               instrument={instrument}
               singerRange={singerRange}
               searchQuery={searchQuery}
+              expandedSong={expandedSong}
+              onToggleExpand={(title) => setExpandedSong(expandedSong === title ? null : title)}
               onSelectVariation={setSelectedVariation}
             />
 

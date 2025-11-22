@@ -9,6 +9,7 @@ interface HeaderProps {
   onInstrumentChange: (instrument: InstrumentType) => void;
   onSingerRangeChange: (range: SingerRangeType) => void;
   onSearch: (query: string) => void;
+  onEnterPress: () => void;
 }
 
 const singerRangeColors: Record<SingerRangeType, string> = {
@@ -26,7 +27,13 @@ export function Header({
   onInstrumentChange,
   onSingerRangeChange,
   onSearch,
+  onEnterPress,
 }: HeaderProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onEnterPress();
+    }
+  };
   return (
     <header className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 md:p-8 mb-6">
       <div className="text-center mb-6">
@@ -45,6 +52,7 @@ export function Header({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search for a song..."
             className="w-full pl-12 pr-12 py-3 text-base md:text-lg bg-white/5 backdrop-blur-lg border-2 border-blue-400/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
           />

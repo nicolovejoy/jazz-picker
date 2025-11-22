@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { SongSummary, Variation, InstrumentType, SingerRangeType } from '@/types/catalog';
 import { SongListItem } from './SongListItem';
 
@@ -7,15 +6,12 @@ interface SongListProps {
   instrument: InstrumentType;
   singerRange: SingerRangeType;
   searchQuery: string;
+  expandedSong: string | null;
+  onToggleExpand: (title: string) => void;
   onSelectVariation: (variation: Variation) => void;
 }
 
-export function SongList({ songs, instrument, singerRange, searchQuery, onSelectVariation }: SongListProps) {
-  const [expandedSong, setExpandedSong] = useState<string | null>(null);
-
-  const toggleExpand = (songTitle: string) => {
-    setExpandedSong(expandedSong === songTitle ? null : songTitle);
-  };
+export function SongList({ songs, instrument, singerRange, searchQuery, expandedSong, onToggleExpand, onSelectVariation }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -43,7 +39,7 @@ export function SongList({ songs, instrument, singerRange, searchQuery, onSelect
             isExpanded={expandedSong === song.title}
             instrument={instrument}
             singerRange={singerRange}
-            onToggle={() => toggleExpand(song.title)}
+            onToggle={() => onToggleExpand(song.title)}
             onSelectVariation={onSelectVariation}
           />
         ))}

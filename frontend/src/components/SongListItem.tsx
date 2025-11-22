@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useSongDetail } from '@/hooks/useSongDetail';
 import type { SongSummary, Variation, InstrumentType, SingerRangeType } from '@/types/catalog';
 import { getInstrumentCategory, getSingerRangeCategory } from '@/types/catalog';
@@ -13,8 +14,32 @@ interface SongListItemProps {
 }
 
 export function SongListItem({ song, isExpanded, instrument, singerRange, onToggle, onSelectVariation }: SongListItemProps) {
-  // Fetch details only when expanded
-  const { data: songDetail, isLoading } = useSongDetail(isExpanded ? song.title : null);
+  const [shouldFetch, setShouldFetch] = useState(false);
+  const isSingleVariation = song.variation_count === 1;
+
+  // Fetch details when expanded OR when clicking single-variation song
+  const { data: songDetail, isLoading } = useSongDetail(isExpanded || shouldFetch ? song.title : null);
+
+  // Auto-select single variation when loaded
+  useEffect(() => {
+    if (shouldFetch && songDetail && !isLoading && isSingleVariation) {
+      const variations = songDetail.variations;
+      if (variations.length > 0) {
+        onSelectVariation(variations[0] as any);
+        setShouldFetch(false);
+      }
+    }
+  }, [shouldFetch, songDetail, isLoading, isSingleVariation, onSelectVariation]);
+
+  const handleClick = () => {
+    if (isSingleVariation) {
+      // For single-variation songs, fetch and auto-open
+      setShouldFetch(true);
+    } else {
+      // For multi-variation songs, toggle expand
+      onToggle();
+    }
+  };
 
   // Extract unique keys for badge display from summary
   const badges = [...song.available_instruments];
@@ -38,19 +63,24 @@ export function SongListItem({ song, isExpanded, instrument, singerRange, onTogg
 
   return (
     <div className="bg-white/8 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-blue-400/50 transition-all">
-      {/* Song Title - Click to expand */}
+      {/* Song Title - Click to expand or open PDF */}
       <button
-        onClick={onToggle}
+        onClick={handleClick}
         className="w-full text-left"
+        disabled={shouldFetch && isLoading}
       >
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-semibold text-white flex-1">
             {song.title}
           </h3>
-          {isExpanded ? (
-            <FiChevronUp className="text-blue-400 text-xl flex-shrink-0 mt-1" />
-          ) : (
-            <FiChevronDown className="text-gray-400 text-xl flex-shrink-0 mt-1" />
+          {shouldFetch && isLoading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400 flex-shrink-0 mt-1"></div>
+          ) : !isSingleVariation && (
+            isExpanded ? (
+              <FiChevronUp className="text-blue-400 text-xl flex-shrink-0 mt-1" />
+            ) : (
+              <FiChevronDown className="text-gray-400 text-xl flex-shrink-0 mt-1" />
+            )
           )}
         </div>
 
