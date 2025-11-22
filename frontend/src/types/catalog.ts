@@ -18,6 +18,35 @@ export interface Song {
   variations: Variation[];
 }
 
+// API v2 Types
+export interface SongSummary {
+  title: string;
+  variation_count: number;
+  available_instruments: string[];
+  available_ranges: string[];
+}
+
+export interface SongDetailVariation {
+  id: string;
+  display_name: string;
+  key: string;
+  instrument: string;
+  variation_type: string;
+  filename: string;
+}
+
+export interface SongDetail {
+  title: string;
+  variations: SongDetailVariation[];
+}
+
+export interface SongListResponse {
+  songs: SongSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface CatalogMetadata {
   total_files: number;
   total_songs: number;

@@ -1,4 +1,4 @@
-# S3 Setup Guide for Erik
+# S3 Setup Guide for Eric
 
 Quick guide to set up AWS S3 and sync PDFs.
 
