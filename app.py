@@ -85,20 +85,31 @@ def get_local_ip():
 
 @app.route('/')
 def index():
-    """Main page - song browser."""
+    """API root - provides information about available endpoints."""
     if catalog_data is None:
         load_catalog()
 
-    if catalog_data:
-        total_songs = catalog_data['metadata']['total_songs']
-        total_files = catalog_data['metadata']['total_files']
-    else:
-        total_songs = 0
-        total_files = 0
+    total_songs = catalog_data['metadata']['total_songs'] if catalog_data else 0
+    total_variations = catalog_data['metadata']['total_files'] if catalog_data else 0
 
-    return render_template('index.html',
-                         total_songs=total_songs,
-                         total_files=total_files)
+    return jsonify({
+        'name': 'Jazz Picker API',
+        'version': '2.0',
+        'description': 'Browse and search Eric\'s jazz lead sheet collection',
+        'catalog': {
+            'total_songs': total_songs,
+            'total_variations': total_variations,
+            'loaded': catalog_data is not None
+        },
+        'endpoints': {
+            'health': '/health',
+            'songs_v2': '/api/v2/songs?limit=20&offset=0&instrument=All&range=All',
+            'song_details': '/api/v2/songs/{title}',
+            'pdf': '/pdf/{filename}',
+            'search': '/api/songs/search?q={query}'
+        },
+        'frontend': 'https://jazz-picker.pages.dev (or your deployment URL)'
+    })
 
 
 @app.route('/health')
