@@ -18,7 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Copy application code
 COPY app.py .
-COPY catalog.json .
+
+# Note: catalog.json will be loaded from S3 on startup
+# No need to include it in the image
 
 # Create cache directory (for future local caching if needed)
 RUN mkdir -p /app/cache/pdfs
