@@ -101,6 +101,23 @@ def index():
                          total_files=total_files)
 
 
+@app.route('/health')
+def health():
+    """Health check endpoint for deployment platforms."""
+    health_status = {
+        'status': 'healthy',
+        'catalog_loaded': catalog_data is not None,
+        's3_enabled': USE_S3,
+        's3_configured': s3_client is not None
+    }
+
+    if catalog_data:
+        health_status['total_songs'] = catalog_data['metadata']['total_songs']
+        health_status['total_variations'] = catalog_data['metadata']['total_files']
+
+    return jsonify(health_status), 200
+
+
 @app.route('/api/songs')
 def get_songs():
     """API endpoint to get all songs (Legacy v1)."""
