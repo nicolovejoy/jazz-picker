@@ -31,10 +31,12 @@ docker-compose up --build  # See DOCKER_README.md
 
 **Backend (Flask):**
 
-- Catalog API: `/api/songs`, `/api/songs/search`
+- **Production:** https://jazz-picker.fly.dev (deployed on Fly.io)
+- Catalog API v2: `/api/v2/songs` (paginated, ~50KB responses)
 - S3 presigned URLs: `/pdf/<filename>` (15min expiry)
-- Graceful fallback: S3 → cache → Dropbox → compile
+- Optional basic authentication for API protection
 - CORS configured for browser access
+- Auto-scaling (0-1 machines, starts on-demand)
 
 **Frontend (React):**
 
@@ -66,12 +68,14 @@ docker-compose up --build  # See DOCKER_README.md
 **Working:**
 
 - ✅ Backend API v2 with slim, paginated responses
+- ✅ **Deployed to production:** https://jazz-picker.fly.dev
+- ✅ Optional basic authentication (disabled by default)
 - ✅ Infinite scroll (replaces pagination)
 - ✅ Smart navigation (single-variation auto-open, Enter key shortcuts)
 - ✅ Improved search UX (sticky search bar, clear button, shows search term in "no results")
 - ✅ Fixed instrument filtering (accurate variation counts)
 - ✅ PDF viewing with S3 storage (2GB, 4367 files)
-- ✅ AWS S3 integration with CORS
+- ✅ AWS S3 integration with CORS and secure IAM user
 
 **Features:**
 
@@ -89,9 +93,10 @@ docker-compose up --build  # See DOCKER_README.md
 
 **Next Steps:**
 
+- Deploy frontend to Cloudflare Pages/Vercel/Netlify
 - Add PDF viewer enhancements (fullscreen button, swipe indicators)
 - PWA support for offline use
 - Setlist functionality
-- Deploy to production (Fly.io + Cloudflare Pages)
+- Server-side LilyPond compilation (Phase 2)
 
 See `frontend/README.md` for frontend details.

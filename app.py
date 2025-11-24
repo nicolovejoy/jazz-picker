@@ -10,6 +10,7 @@ import os
 import socket
 from pathlib import Path
 from datetime import datetime, timedelta
+from functools import wraps
 import boto3
 from botocore.exceptions import ClientError
 
@@ -39,6 +40,36 @@ if USE_S3:
 
 # Create cache directory on startup
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Basic Auth Configuration
+BASIC_AUTH_USERNAME = os.getenv('BASIC_AUTH_USERNAME', 'admin')
+BASIC_AUTH_PASSWORD = os.getenv('BASIC_AUTH_PASSWORD', 'changeme')
+REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
+
+
+def check_auth(username, password):
+    """Check if username/password combination is valid."""
+    return username == BASIC_AUTH_USERNAME and password == BASIC_AUTH_PASSWORD
+
+
+def authenticate():
+    """Send 401 response that enables basic auth."""
+    return jsonify({'error': 'Authentication required'}), 401, {
+        'WWW-Authenticate': 'Basic realm="Jazz Picker API"'
+    }
+
+
+def requires_auth(f):
+    """Decorator to require basic auth for a route."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not REQUIRE_AUTH:
+            return f(*args, **kwargs)
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
 
 def load_catalog():
@@ -130,6 +161,7 @@ def health():
 
 
 @app.route('/api/songs')
+@requires_auth
 def get_songs():
     """API endpoint to get all songs (Legacy v1)."""
     if catalog_data is None:
@@ -154,6 +186,7 @@ def get_songs():
 
 
 @app.route('/api/v2/songs')
+@requires_auth
 def get_songs_v2():
     """API v2: Get paginated, slim song list."""
     if catalog_data is None:
@@ -256,6 +289,7 @@ def get_songs_v2():
 
 
 @app.route('/api/songs/search')
+@requires_auth
 def search_songs():
     """API endpoint to search songs by title."""
     if catalog_data is None:
@@ -295,6 +329,7 @@ def search_songs():
 
 
 @app.route('/api/song/<path:song_title>')
+@requires_auth
 def get_song(song_title):
     """API endpoint to get a specific song's details (Legacy v1)."""
     if catalog_data is None:
@@ -313,6 +348,7 @@ def get_song(song_title):
 
 
 @app.route('/api/v2/songs/<path:song_title>')
+@requires_auth
 def get_song_v2(song_title):
     """API v2: Get specific song details."""
     if catalog_data is None:
@@ -358,6 +394,7 @@ def catalog_path_to_s3_key(pdf_path: str) -> str:
 
 
 @app.route('/pdf/<path:filename>')
+@requires_auth
 def serve_pdf(filename):
     """Serve a PDF file via S3 presigned URL or local fallback."""
     if catalog_data is None:
@@ -479,6 +516,7 @@ def serve_pdf(filename):
 
 
 @app.route('/api/check-pdf/<path:filename>')
+@requires_auth
 def check_pdf(filename):
     """Check if a PDF exists without compiling."""
     variation = None

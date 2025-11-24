@@ -89,6 +89,42 @@ Set in `fly.toml` (public) or as secrets (private):
 ### Secrets (set with `fly secrets set`)
 - `AWS_ACCESS_KEY_ID`: Your AWS access key
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
+- `REQUIRE_AUTH`: Set to "true" to enable basic authentication (optional)
+- `BASIC_AUTH_USERNAME`: Username for API access (required if REQUIRE_AUTH=true)
+- `BASIC_AUTH_PASSWORD`: Password for API access (required if REQUIRE_AUTH=true)
+
+## Authentication (Optional)
+
+To protect your API with basic authentication:
+
+```bash
+# Enable authentication
+fly secrets set REQUIRE_AUTH=true
+
+# Set credentials (change these!)
+fly secrets set BASIC_AUTH_USERNAME=your-username
+fly secrets set BASIC_AUTH_PASSWORD=your-secure-password
+
+# Verify secrets are set
+fly secrets list
+```
+
+Once enabled, all API endpoints (except `/` and `/health`) will require HTTP Basic Authentication.
+
+**Frontend Integration:**
+Update your frontend to include credentials in API requests:
+
+```typescript
+const credentials = btoa(`${username}:${password}`);
+fetch(apiUrl, {
+  headers: { 'Authorization': `Basic ${credentials}` }
+})
+```
+
+**To disable authentication:**
+```bash
+fly secrets set REQUIRE_AUTH=false
+```
 
 ## Updating the App
 
