@@ -17,10 +17,8 @@ export function SongListItem({ song, isExpanded, instrument, singerRange, onTogg
   const [shouldFetch, setShouldFetch] = useState(false);
   const isSingleVariation = song.variation_count === 1;
 
-  // Fetch details when expanded OR when clicking single-variation song
   const { data: songDetail, isLoading } = useSongDetail(isExpanded || shouldFetch ? song.title : null);
 
-  // Auto-select single variation when loaded
   useEffect(() => {
     if (shouldFetch && songDetail && !isLoading && isSingleVariation) {
       const variations = songDetail.variations;
@@ -33,26 +31,20 @@ export function SongListItem({ song, isExpanded, instrument, singerRange, onTogg
 
   const handleClick = () => {
     if (isSingleVariation) {
-      // For single-variation songs, fetch and auto-open
       setShouldFetch(true);
     } else {
-      // For multi-variation songs, toggle expand
       onToggle();
     }
   };
 
-  // Extract unique keys for badge display from summary
   const badges = [...song.available_instruments];
 
-  // Filter variations based on selected filters
   const filteredVariations = songDetail?.variations.filter((v) => {
-    // Filter by instrument
     if (instrument !== 'All') {
       const category = getInstrumentCategory(v.variation_type);
       if (category !== instrument) return false;
     }
 
-    // Filter by singer range
     if (singerRange !== 'All') {
       const category = getSingerRangeCategory(v.variation_type);
       if (category !== singerRange) return false;
@@ -62,76 +54,83 @@ export function SongListItem({ song, isExpanded, instrument, singerRange, onTogg
   }) || [];
 
   return (
-    <div className="bg-white/8 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-blue-400/50 transition-all">
-      {/* Song Title - Click to expand or open PDF */}
+    <div className="bg-white/8 backdrop-blur-sm rounded-mcm p-5 border border-white/10 hover:border-blue-400/50 transition-all min-h-[70px]">
       <button
         onClick={handleClick}
         className="w-full text-left"
         disabled={shouldFetch && isLoading}
       >
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-white flex-1">
             {song.title}
           </h3>
-          {shouldFetch && isLoading ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400 flex-shrink-0 mt-1"></div>
-          ) : !isSingleVariation && (
-            isExpanded ? (
-              <FiChevronUp className="text-blue-400 text-xl flex-shrink-0 mt-1" />
-            ) : (
-              <FiChevronDown className="text-gray-400 text-xl flex-shrink-0 mt-1" />
-            )
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!isExpanded && (
+              <>
+                <div className="hidden sm:flex gap-1.5">
+                  {badges.slice(0, 3).map((badge) => (
+                    <span
+                      key={badge}
+                      className="px-2.5 py-0.5 text-xs rounded-mcm bg-blue-400/15 text-blue-300 border border-blue-400/25"
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                <span className="px-2.5 py-0.5 text-xs rounded-mcm bg-gray-700/40 text-gray-300 border border-gray-600/25">
+                  {song.variation_count} {song.variation_count === 1 ? 'var' : 'vars'}
+                </span>
+              </>
+            )}
+            {shouldFetch && isLoading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+            ) : !isSingleVariation && (
+              isExpanded ? (
+                <FiChevronUp className="text-blue-400 text-xl" />
+              ) : (
+                <FiChevronDown className="text-gray-400 text-xl" />
+              )
+            )}
+          </div>
         </div>
 
-        {/* Badges (Instruments) */}
-        {!isExpanded && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {badges.map((badge) => (
-              <span
-                key={badge}
-                className="px-3 py-1 text-sm rounded-full bg-blue-400/20 text-blue-300 border border-blue-400/30"
-              >
-                {badge}
-              </span>
-            ))}
-            <span className="px-3 py-1 text-sm rounded-full bg-gray-700/50 text-gray-300 border border-gray-600/30">
-              {song.variation_count} vars
-            </span>
-          </div>
+        {!isExpanded && isSingleVariation && (
+          <p className="text-xs text-gray-500 mt-1.5">Tap to view PDF</p>
         )}
       </button>
 
-      {/* Expanded Variations List */}
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+        <div className="mt-4 pt-4 border-t border-white/10">
           {isLoading ? (
-            <div className="text-center py-4 text-gray-400">
+            <div className="text-center py-6 text-gray-400">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto mb-2"></div>
-              Loading details...
+              Loading variations...
             </div>
           ) : filteredVariations.length > 0 ? (
-            filteredVariations.map((variation) => {
-              // Extract key name for display
-               const keyMatch = variation.key || variation.display_name.split(' - ')[1] || 'Unknown';
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              {filteredVariations.map((variation) => {
+                const keyMatch = variation.key || variation.display_name.split(' - ')[1] || 'Unknown';
 
-              return (
-                <button
-                  key={variation.id}
-                  onClick={() => onSelectVariation(variation as any)}
-                  className="w-full p-3 bg-black/20 hover:bg-blue-400/20 rounded-lg border border-transparent hover:border-blue-400 transition-all text-left"
-                >
-                  <div className="font-semibold text-blue-400">{keyMatch}</div>
-                  {variation.instrument && (
-                    <div className="text-sm text-gray-400 mt-1">
-                      {variation.instrument}
+                return (
+                  <button
+                    key={variation.id}
+                    onClick={() => onSelectVariation(variation as any)}
+                    className="p-3 bg-black/20 hover:bg-blue-400/20 rounded-mcm border border-white/10 hover:border-blue-400 transition-all text-center group"
+                  >
+                    <div className="font-semibold text-blue-400 group-hover:text-blue-300 text-sm">
+                      {keyMatch}
                     </div>
-                  )}
-                </button>
-              );
-            })
+                    {variation.instrument && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        {variation.instrument}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           ) : (
-            <div className="text-center py-2 text-gray-500 text-sm">
+            <div className="text-center py-4 text-gray-500 text-sm">
               No variations match current filters.
             </div>
           )}

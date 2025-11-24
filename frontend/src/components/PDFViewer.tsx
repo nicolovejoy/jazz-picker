@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiMenu } from 'react-icons/fi';
 import type { Variation } from '@/types/catalog';
 import { api } from '@/services/api';
+import { SettingsMenu } from './SettingsMenu';
 
 // Set up worker - use unpkg CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -24,6 +25,10 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
   );
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch PDF URL when component mounts or variation changes
   useEffect(() => {
@@ -55,7 +60,6 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
 
     return () => {
       mounted = false;
-      // Clean up object URL if it was created
       if (pdfUrl && pdfUrl.startsWith('blob:')) {
         URL.revokeObjectURL(pdfUrl);
       }
@@ -77,6 +81,64 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     };
   }, []);
 
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (isSettingsOpen) return;
+
+      const pagesPerView = isLandscape ? 2 : 1;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentPage > 1) {
+            setSwipeDirection('right');
+            setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
+            setTimeout(() => setSwipeDirection(null), 200);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentPage + pagesPerView <= numPages) {
+            setSwipeDirection('left');
+            setCurrentPage((prev) => Math.min(prev + pagesPerView, numPages - pagesPerView + 1));
+            setTimeout(() => setSwipeDirection(null), 200);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (isFullscreen) {
+            exitFullscreen();
+          } else {
+            onClose();
+          }
+          break;
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [currentPage, numPages, isLandscape, isFullscreen, onClose, isSettingsOpen]);
+
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setError(null);
@@ -90,6 +152,28 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
 
   const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        await containerRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  };
+
+  const exitFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Exit fullscreen error:', err);
+    }
+  };
 
   // Swipe gesture handling
   const minSwipeDistance = 50;
@@ -116,37 +200,32 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     if (!canSwipe) return;
 
     if (isLeftSwipe && currentPage + pagesPerView <= numPages) {
+      setSwipeDirection('left');
       setCurrentPage((prev) => Math.min(prev + pagesPerView, numPages - pagesPerView + 1));
+      setTimeout(() => setSwipeDirection(null), 200);
     }
 
     if (isRightSwipe && currentPage > 1) {
+      setSwipeDirection('right');
       setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
+      setTimeout(() => setSwipeDirection(null), 200);
     }
   };
 
-  // Navigation button handlers
-  const goToNextPage = () => {
-    const pagesPerView = isLandscape ? 2 : 1;
-    if (currentPage + pagesPerView <= numPages) {
-      setCurrentPage((prev) => prev + pagesPerView);
-    }
-  };
-
-  const goToPrevPage = () => {
-    const pagesPerView = isLandscape ? 2 : 1;
-    if (currentPage > 1) {
-      setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
-    }
+  // Slider change handler
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPage = parseInt(e.target.value);
+    setCurrentPage(newPage);
   };
 
   const pagesPerView = isLandscape ? 2 : 1;
-  const canSwipe = isLandscape ? numPages > 2 : numPages > 1;
+  const canNavigate = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+    <div ref={containerRef} className="fixed inset-0 bg-black/95 z-50 flex flex-col">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-lg px-4 py-3 flex items-center justify-between border-b border-white/10">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold text-white truncate">
             {variation.display_name}
           </h2>
@@ -155,35 +234,60 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
           )}
         </div>
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-2 mx-4">
+        {/* Controls */}
+        <div className="flex items-center gap-3 ml-4">
+          {/* Zoom Controls */}
+          <div className="hidden sm:flex items-center gap-2">
+            <button
+              onClick={handleZoomOut}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+              aria-label="Zoom out"
+            >
+              <FiZoomOut className="text-white text-lg" />
+            </button>
+            <span className="text-white text-sm min-w-[3.5rem] text-center">
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+              aria-label="Zoom in"
+            >
+              <FiZoomIn className="text-white text-lg" />
+            </button>
+          </div>
+
+          {/* Fullscreen Button */}
           <button
-            onClick={handleZoomOut}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            aria-label="Zoom out"
+            onClick={toggleFullscreen}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
-            <FiZoomOut className="text-white text-xl" />
+            {isFullscreen ? (
+              <FiMinimize className="text-white text-lg" />
+            ) : (
+              <FiMaximize className="text-white text-lg" />
+            )}
           </button>
-          <span className="text-white text-sm min-w-[4rem] text-center">
-            {Math.round(scale * 100)}%
-          </span>
+
+          {/* Settings Button */}
           <button
-            onClick={handleZoomIn}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            aria-label="Zoom in"
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            aria-label="Settings"
           >
-            <FiZoomIn className="text-white text-xl" />
+            <FiMenu className="text-white text-lg" />
+          </button>
+
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-mcm text-white font-medium transition-colors flex items-center gap-2"
+          >
+            <FiX className="text-lg" />
+            <span className="hidden sm:inline">Close</span>
           </button>
         </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-colors flex items-center gap-2"
-        >
-          <FiX className="text-xl" />
-          <span className="hidden sm:inline">Close</span>
-        </button>
       </div>
 
       {/* PDF Content */}
@@ -193,14 +297,14 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {error ? (
+        {error ?  (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md">
               <p className="text-red-400 text-lg font-semibold mb-2">⚠️ Error</p>
               <p className="text-gray-300">{error}</p>
               <button
                 onClick={onClose}
-                className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition-colors"
+                className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-mcm text-white transition-colors"
               >
                 Close
               </button>
@@ -215,72 +319,90 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center">
-            <Document
-              file={pdfUrl}
-              onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={onDocumentLoadError}
-              loading={
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-                    <p className="text-gray-400 text-lg">Rendering PDF...</p>
-                  </div>
-                </div>
-              }
-            >
-              <div className={`flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} items-center justify-center`}>
-                {/* First page (or only page in portrait) */}
-                <Page
-                  key={`page_${currentPage}`}
-                  pageNumber={currentPage}
-                  scale={scale}
-                  className="shadow-2xl"
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
+          <>
+            {/* Swipe Indicators */}
+            {canNavigate && currentPage > 1 && (
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                <FiChevronLeft className="text-white/40 text-4xl animate-pulse" />
+              </div>
+            )}
+            {canNavigate && currentPage + pagesPerView <= numPages && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                <FiChevronRight className="text-white/40 text-4xl animate-pulse" />
+              </div>
+            )}
 
-                {/* Second page (landscape only, if exists) */}
-                {isLandscape && currentPage + 1 <= numPages && (
+            <div className="h-full flex flex-col items-center justify-center">
+              <Document
+                file={pdfUrl}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={onDocumentLoadError}
+                loading={
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+                      <p className="text-gray-400 text-lg">Rendering PDF...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <div
+                  className={`flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} items-center justify-center transition-all duration-200 ${
+                    swipeDirection === 'left' ? 'animate-slide-left' : swipeDirection === 'right' ? 'animate-slide-right' : ''
+                  }`}
+                >
                   <Page
-                    key={`page_${currentPage + 1}`}
-                    pageNumber={currentPage + 1}
+                    key={`page_${currentPage}`}
+                    pageNumber={currentPage}
                     scale={scale}
                     className="shadow-2xl"
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                   />
-                )}
-              </div>
-            </Document>
 
-            {/* Page indicator and navigation */}
-            {canSwipe && (
-              <div className="mt-4 flex items-center gap-4">
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
-                >
-                  ←
-                </button>
-                <span className="text-white text-sm">
-                  {isLandscape && currentPage + 1 <= numPages
-                    ? `Pages ${currentPage}-${currentPage + 1} of ${numPages}`
-                    : `Page ${currentPage} of ${numPages}`}
-                </span>
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage + pagesPerView > numPages}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-white transition-colors"
-                >
-                  →
-                </button>
-              </div>
-            )}
-          </div>
+                  {isLandscape && currentPage + 1 <= numPages && (
+                    <Page
+                      key={`page_${currentPage + 1}`}
+                      pageNumber={currentPage + 1}
+                      scale={scale}
+                      className="shadow-2xl"
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                    />
+                  )}
+                </div>
+              </Document>
+
+              {/* Finger Slider + Page Indicator */}
+              {canNavigate && (
+                <div className="mt-6 w-full max-w-md px-4">
+                  <input
+                    type="range"
+                    min="1"
+                    max={numPages - pagesPerView + 1}
+                    value={currentPage}
+                    onChange={handleSliderChange}
+                    className="w-full h-2 bg-white/20 rounded-full appearance-none cursor-pointer slider-thumb"
+                    style={{
+                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((currentPage - 1) / (numPages - pagesPerView)) * 100}%, rgba(255,255,255,0.2) ${((currentPage - 1) / (numPages - pagesPerView)) * 100}%, rgba(255,255,255,0.2) 100%)`
+                    }}
+                  />
+                  <div className="text-center mt-3">
+                    <span className="text-white text-sm">
+                      {isLandscape && currentPage + 1 <= numPages
+                        ? `Pages ${currentPage}-${currentPage + 1} of ${numPages}`
+                        : `Page ${currentPage} of ${numPages}`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+
+      {/* Settings Menu */}
+      <SettingsMenu isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

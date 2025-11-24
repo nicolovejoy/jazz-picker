@@ -34,46 +34,47 @@ export function Header({
       onEnterPress();
     }
   };
+
   return (
-    <header className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 md:p-8 mb-6">
+    <header className="bg-white/5 backdrop-blur-lg rounded-mcm p-6 md:p-8 mb-6">
       <div className="text-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-blue-400 mb-2">
+        <h1 className="text-3xl md:text-4xl font-bold text-blue-400 mb-2">
           🎵 Jazz Picker
         </h1>
-        <p className="text-gray-400 text-lg">Browse Eric's Lead Sheet Collection</p>
-        <p className="text-gray-500 text-sm mt-2">{totalSongs} songs</p>
+        <p className="text-gray-400 text-base md:text-lg">Browse Eric's Lead Sheet Collection</p>
+        <p className="text-gray-500 text-sm mt-1">{totalSongs} songs</p>
       </div>
 
-      {/* Search Box - Always visible at top */}
-      <div className="mb-6 max-w-2xl mx-auto">
+      {/* Search Box */}
+      <div className="mb-5 max-w-2xl mx-auto">
         <div className="relative">
-          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl pointer-events-none" />
+          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search for a song..."
-            className="w-full pl-12 pr-12 py-3 text-base md:text-lg bg-white/5 backdrop-blur-lg border-2 border-blue-400/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            className="w-full pl-12 pr-12 py-2.5 text-base bg-white/5 backdrop-blur-lg border border-blue-400/50 rounded-mcm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-all"
           />
           {searchQuery && (
             <button
               onClick={() => onSearch('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
               aria-label="Clear search"
             >
-              <FiX className="text-xl" />
+              <FiX className="text-lg" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 max-w-2xl mx-auto">
-        {/* Instrument Filter */}
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-2xl mx-auto">
         <div className="flex-1">
           <label
             htmlFor="instrument"
-            className="block text-sm font-semibold text-gray-300 mb-2"
+            className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
           >
             Instrument
           </label>
@@ -81,7 +82,7 @@ export function Header({
             id="instrument"
             value={instrument}
             onChange={(e) => onInstrumentChange(e.target.value as InstrumentType)}
-            className="w-full px-4 py-3 text-base md:text-lg bg-black/30 border-2 border-blue-400 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent cursor-pointer transition-all"
+            className="w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border border-blue-400/50 rounded-mcm text-white focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 cursor-pointer transition-all"
           >
             <option value="C">C (Piano, Guitar, Vocals)</option>
             <option value="Bb">Bb (Trumpet, Tenor Sax, Clarinet)</option>
@@ -91,19 +92,18 @@ export function Header({
           </select>
         </div>
 
-        {/* Singer Range Filter */}
         <div className="flex-1">
           <label
             htmlFor="singerRange"
-            className="block text-sm font-semibold text-gray-300 mb-2"
+            className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
           >
-            Singer Range Preference
+            Singer Range
           </label>
           <select
             id="singerRange"
             value={singerRange}
             onChange={(e) => onSingerRangeChange(e.target.value as SingerRangeType)}
-            className={`w-full px-4 py-3 text-base md:text-lg bg-black/30 border-2 rounded-lg text-white focus:outline-none focus:ring-2 focus:border-transparent cursor-pointer transition-all ${singerRangeColors[singerRange]}`}
+            className={`w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border rounded-mcm text-white focus:outline-none focus:ring-1 focus:border-transparent cursor-pointer transition-all ${singerRangeColors[singerRange]}`}
           >
             <option value="Alto/Mezzo/Soprano">🟣 Alto/Mezzo/Soprano</option>
             <option value="Baritone/Tenor/Bass">🟢 Baritone/Tenor/Bass</option>
