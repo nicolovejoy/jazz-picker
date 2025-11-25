@@ -1,272 +1,239 @@
 # API Integration Guide
 
-This guide helps coordinate backend (Claude CLI) and frontend (Antigravity) development on Jazz Picker.
+Quick reference for frontend-backend integration.
 
-## Current API Endpoints
+## Base URL
+- **Production:** `https://jazz-picker.fly.dev`
+- **Local:** `http://localhost:5001`
 
-### Public Endpoints
-- `GET /` - API documentation and status
-- `GET /health` - Health check for deployment monitoring
+---
 
-### Protected Endpoints (Basic Auth)
-All data endpoints require authentication when `REQUIRE_AUTH=true`:
+## Current Endpoints
 
-- `GET /api/v2/songs` - Paginated song list (recommended)
-- `GET /api/v2/songs/{title}` - Specific song details
-- `GET /api/songs` - Legacy v1 song list (full catalog, 5.4MB)
-- `GET /api/song/{title}` - Legacy v1 song details
-- `GET /api/songs/search?q={query}` - Search songs by title
-- `GET /pdf/{filename}` - Serve PDF via S3 presigned URL
-- `GET /api/check-pdf/{filename}` - Check PDF availability
+### Songs API
 
-## API v2 Format
+**GET `/api/v2/songs`** - List songs (paginated, filtered)
 
-### GET /api/v2/songs
+**Query Params:**
+- `limit` (default: 50) - Results per page
+- `offset` (default: 0) - Starting position  
+- `q` (optional) - Search query
+- `instrument` (optional) - C, Bb, Eb, Bass, All
+- `range` (optional) - Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard, All
 
-**Query Parameters:**
-- `limit` (int, default: 50) - Results per page
-- `offset` (int, default: 0) - Starting position
-- `instrument` (string, default: "All") - Filter by instrument (C, Bb, Eb, Bass, All)
-- `range` (string, default: "All") - Filter by vocal range (High, Medium, Low, All)
-
-**Response Format:**
+**Response:**
 ```json
 {
   "songs": [
     {
-      "title": "Autumn Leaves",
-      "first_letter": "A",
-      "has_lyrics": true,
+      "title": "All of Me",
       "variation_count": 3,
-      "variations": [
-        {
-          "filename": "Autumn Leaves - C.pdf",
-          "instrument": "C",
-          "vocal_range": "Medium"
-        }
-      ]
+      "available_instruments": ["C", "Bb", "Eb"],
+      "available_ranges": ["Standard"]
     }
   ],
   "total": 735,
   "limit": 50,
-  "offset": 0,
-  "instrument": "All",
-  "range": "All"
+  "offset": 0
 }
 ```
 
-**Response Size:** ~50KB (vs 5.4MB for v1)
+**GET `/api/v2/songs/:title`** - Get song details with all variations
 
-### GET /api/v2/songs/{title}
-
-**Response Format:**
+**Response:**
 ```json
 {
-  "title": "Autumn Leaves",
-  "first_letter": "A",
-  "has_lyrics": true,
+  "title": "All of Me",
   "variations": [
     {
-      "filename": "Autumn Leaves - C.pdf",
-      "instrument": "C",
-      "vocal_range": "Medium"
+      "id": "All of Me - Ly - C Standard",
+      "display_name": "All of Me Standard Key",
+      "key": "c",
+      "instrument": "Treble",
+      "variation_type": "Standard (Concert)",
+      "filename": "All of Me - Ly - C Standard.ly"
     }
   ]
 }
 ```
 
+### PDF Access
+
+**GET `/pdf/:filename`** - Get PDF presigned URL
+
+**Response:**
+```json
+{
+  "url": "https://s3.amazonaws.com/...",
+  "expires_at": "2025-11-24T18:30:00Z",
+  "source": "s3"
+}
+```
+
+**URL expires in 15 minutes** - frontend should request new URL if expired.
+
+---
+
+## Setlists API (To Be Implemented)
+
+### Data Model
+```json
+{
+  "id": "uuid",
+  "name": "Monday Night Gig",
+  "created_at": "2025-11-24T...",
+  "updated_at": "2025-11-24T...",
+  "songs": [
+    {
+      "position": 1,
+      "song_title": "All of Me",
+      "variation_filename": "All of Me - Ly - C Standard.ly",
+      "notes": "Intro vamp 2x"
+    }
+  ]
+}
+```
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **GET** | `/api/setlists` | List all setlists |
+| **POST** | `/api/setlists` | Create setlist |
+| **GET** | `/api/setlists/:id` | Get setlist details |
+| **PUT** | `/api/setlists/:id` | Update setlist (name, songs) |
+| **DELETE** | `/api/setlists/:id` | Delete setlist |
+| **PUT** | `/api/setlists/:id/songs/:position` | Update song at position |
+| **DELETE** | `/api/setlists/:id/songs/:position` | Remove song from setlist |
+
+---
+
 ## Authentication
 
-### Enabling Basic Auth
+### Basic Auth (Current)
 
-Set these environment variables:
-
+Set environment variables to enable:
 ```bash
-# Enable authentication
-export REQUIRE_AUTH=true
-
-# Set credentials (change these!)
-export BASIC_AUTH_USERNAME=your-username
-export BASIC_AUTH_PASSWORD=your-secure-password
+REQUIRE_AUTH=true
+BASIC_AUTH_USERNAME=eric
+BASIC_AUTH_PASSWORD=<secure-password>
 ```
 
 ### Frontend Integration
 
-When auth is enabled, frontend must include credentials:
-
 ```typescript
-// Example fetch with basic auth
-const username = 'your-username';
-const password = 'your-password';
-const credentials = btoa(`${username}:${password}`);
+// Store credentials (consider using sessionStorage)
+const auth = btoa(`${username}:${password}`);
 
-fetch('https://jazz-picker.fly.dev/api/v2/songs?limit=20', {
+// Include in all API requests
+fetch(url, {
   headers: {
-    'Authorization': `Basic ${credentials}`
+    'Authorization': `Basic ${auth}`
   }
-})
+});
 ```
 
-### Auth Behavior
-- **REQUIRE_AUTH=false (default)**: All endpoints are public
-- **REQUIRE_AUTH=true**: Data endpoints return 401 without valid credentials
-- **Health endpoint**: Always public (needed for deployment monitoring)
-- **Root endpoint**: Always public (provides API documentation)
+### Auth Flow
+1. Frontend tries API request
+2. If 401 response → show login form
+3. Store credentials securely (sessionStorage/localStorage)
+4. Retry request with auth header
+5. On 401 again → clear credentials, show login
 
-## PDF Access
+---
 
-### S3 Presigned URLs
+## Data Model Issues & Fixes
 
-PDFs are served via time-limited S3 presigned URLs (15 minutes):
+### Current Problems
+1. **Sorting:** Songs not consistently alphabetically sorted
+2. **Voice Filtering:** Voice variations incorrectly appear in instrument filters
+3. **Variation Order:** No consistent ordering of variations
 
-```json
-{
-  "pdf_url": "https://jazz-picker-pdfs.s3.amazonaws.com/Autumn%20Leaves%20-%20C.pdf?X-Amz-Algorithm=...",
-  "expires_in": 900
+### Proposed Fixes
+
+**Backend (app.py):**
+```python
+# 1. Always sort songs alphabetically
+songs_list.sort(key=lambda x: x['title'].lower())
+
+# 2. Exclude voice variations from instrument categories
+if 'Standard' in variation_type and 'Voice' not in variation_type:
+    instruments.add('C')
+
+# 3. Order variations by priority
+priority = {
+    'Standard (Concert)': 1,
+    'Bb Instrument': 2,
+    'Eb Instrument': 3,
+    'Alto Voice': 4,
+    'Baritone Voice': 5,
+    'Bass': 6
 }
+variations.sort(key=lambda v: priority.get(v['variation_type'], 99))
 ```
 
-**Important:** Frontend should:
-1. Request PDF URL from `/pdf/{filename}`
-2. Display PDF immediately (URL expires in 15 minutes)
-3. Request new URL if user returns after expiry
+---
 
-## Coordination Strategy
+## Testing
 
-### Branch Separation
+### Quick Tests
 
-**Backend work (Claude CLI):**
-- Use branches: `backend/*`
-- Examples: `backend/add-basic-auth`, `backend/fix-api-bug`
-- Changes: `app.py`, `requirements.txt`, `Dockerfile.*`, deployment configs
-
-**Frontend work (Antigravity):**
-- Use branches: `frontend/*`
-- Examples: `frontend/ux-redesign-pdf-enhancements`
-- Changes: `frontend/src/*`, `frontend/package.json`
-
-**Why:** Prevents merge conflicts when both agents work simultaneously
-
-### Communication Protocol
-
-When making API changes that affect the frontend:
-
-1. **Backend changes:**
-   - Update this `API_INTEGRATION.md` document
-   - Commit changes to backend branch
-   - Document endpoint changes, new parameters, response format changes
-
-2. **Frontend implementation:**
-   - Read this `API_INTEGRATION.md` for latest API spec
-   - Update frontend code to match new API format
-   - Test against deployed backend at `https://jazz-picker.fly.dev`
-
-3. **Integration testing:**
-   - Backend: Test with curl or Postman
-   - Frontend: Test against live deployment URL
-   - Both: Update integration tests
-
-### Example Workflow
-
-**Scenario:** Adding a new filter parameter to `/api/v2/songs`
-
-**Backend (Claude CLI):**
+**Health check:**
 ```bash
-git checkout -b backend/add-composer-filter
-# Modify app.py to add composer parameter
-# Test locally
-# Update API_INTEGRATION.md with new parameter docs
-git commit -m "Add composer filter to API v2"
-fly deploy  # Deploy to production
+curl https://jazz-picker.fly.dev/health
 ```
 
-**Frontend (Antigravity):**
+**Get songs:**
 ```bash
-git checkout -b frontend/add-composer-filter-ui
-# Read API_INTEGRATION.md for parameter spec
-# Add UI control for composer filter
-# Update API calls to include composer parameter
-# Test against https://jazz-picker.fly.dev/api/v2/songs?composer=Monk
-git commit -m "Add composer filter UI"
+curl https://jazz-picker.fly.dev/api/v2/songs?limit=5
 ```
 
-## Current Deployment
+**With auth:**
+```bash
+curl -u username:password https://jazz-picker.fly.dev/api/v2/songs
+```
 
-**Backend:** https://jazz-picker.fly.dev
-- Deployed via Fly.io
-- Auto-scales (0-1 machines)
-- S3-backed PDF storage
-- HTTPS by default
+### Frontend Checklist
+- [ ] Songs load and display correctly
+- [ ] Filters work (instrument, range, search)
+- [ ] Pagination/infinite scroll works
+- [ ] PDF viewer displays PDFs from S3
+- [ ] Auth prompt appears when backend requires it
+- [ ] Credentials stored securely
 
-**Frontend:** (To be deployed)
-- Recommended: Cloudflare Pages, Vercel, or Netlify
-- Should point to `https://jazz-picker.fly.dev/api` for backend
+---
 
-## Testing Checklist
+## Deployment Quick Reference
 
-Before merging changes:
+### Backend (Fly.io)
+```bash
+# Deploy
+cd /path/to/jazz-picker
+fly deploy
 
-**Backend:**
-- [ ] `/health` returns 200
-- [ ] `/api/v2/songs` returns expected format
-- [ ] Pagination works (`limit`, `offset`)
-- [ ] Filters work (`instrument`, `range`)
-- [ ] S3 presigned URLs are valid
-- [ ] Auth works when enabled
+# Enable auth
+fly secrets set REQUIRE_AUTH=true
+fly secrets set BASIC_AUTH_USERNAME=<user>
+fly secrets set BASIC_AUTH_PASSWORD=<pass>
 
-**Frontend:**
-- [ ] Can fetch and display song list
-- [ ] Infinite scroll loads more songs
-- [ ] Filters update results correctly
-- [ ] PDFs display when clicked
-- [ ] Auth credentials stored securely (if enabled)
+# View logs
+fly logs
+```
+
+### Frontend (Cloudflare Pages)
+1. Connect GitHub repo
+2. Build: `cd frontend && npm run build`
+3. Output: `frontend/dist`  
+4. Env var: `VITE_API_URL=https://jazz-picker.fly.dev`
+
+---
 
 ## Common Issues
 
-### CORS errors
-If frontend sees CORS errors, backend needs to add CORS headers:
-```python
-from flask_cors import CORS
-CORS(app, origins=['https://your-frontend-domain.com'])
-```
+**CORS:** If frontend gets CORS errors, backend has CORS configured for all origins in development. In production, may need to whitelist frontend domain.
 
-### 401 Unauthorized
-- Check `REQUIRE_AUTH` environment variable
-- Verify credentials are set correctly
-- Ensure frontend includes `Authorization` header
+**401 Errors:** Check auth is enabled on backend and frontend is sending correct credentials.
 
-### PDFs not loading
-- Check S3 presigned URL hasn't expired (15min limit)
-- Verify S3 bucket permissions
-- Check AWS credentials in deployment
+**PDF Not Loading:** URL may be expired (15min). Request new URL from `/pdf/:filename`.
 
-### Stale data
-- Frontend may be caching responses
-- Backend catalog reloads from S3 on each request
-- Check browser DevTools Network tab for cached responses
-
-## Future Enhancements
-
-Planned features that will require coordination:
-
-1. **Server-side LilyPond compilation**
-   - New endpoint: `POST /api/compile` with custom parameters
-   - Frontend sends compilation options
-   - Backend compiles PDF on-demand
-
-2. **User preferences**
-   - Store favorite songs, default instrument, etc.
-   - May require database (SQLite/Postgres)
-   - API endpoints for CRUD operations
-
-3. **Search improvements**
-   - Full-text search in lyrics
-   - Fuzzy matching
-   - Search by composer, year, style
-
-## Getting Help
-
-- **Claude CLI docs:** Use `claude-code-guide` agent to look up features
-- **Antigravity docs:** (Consult Antigravity documentation)
-- **API questions:** Check this file or deployed `/` endpoint
-- **Deployment issues:** See `DEPLOYMENT.md`
+**Stale Data:** Catalog loads from S3 on backend startup. To refresh, redeploy backend or restart the Fly.io machine.
