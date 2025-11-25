@@ -14,6 +14,28 @@
     @apply text-gray-100 min-h-screen;
     @apply antialiased;
   }
+
+  /* iOS PWA: Hide status bar and use full viewport */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      /* Use viewport height that accounts for safe areas */
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    html {
+      height: -webkit-fill-available;
+    }
+  }
+  
+  /* Standalone PWA mode adjustments */
+  @media all and (display-mode: standalone) {
+    :root {
+      /* Account for notch/status bar on iOS */
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+  }
 }
 
 /* Custom scrollbar for webkit browsers */

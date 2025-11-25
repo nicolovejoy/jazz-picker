@@ -84,18 +84,23 @@ docker-compose up --build  # See DOCKER_README.md
 - 🎹 Smart UX: Click single-variation songs → opens PDF directly
 - ⌨️ Press Enter in search (1 result) → opens PDF or shows variations
 - 🔧 Accurate filtering by instrument (C/Bb/Eb/Bass) and singer range
-- 📱 iPad-optimized PDF viewer
-  - Portrait: Single page with swipe navigation
-  - Landscape: Side-by-side pages (music stand view)
-  - Vertical AND horizontal swipe support
+- 📱 **iPad-Optimized PDF Viewer**
+  - **Clean Mode**: Auto-hide navigation after 2 seconds for immersive viewing
+  - **Portrait**: Single page with swipe navigation
+  - **Landscape**: Side-by-side pages (music stand view)
+  - **Pinch Zoom**: 2-finger zoom for viewing fine details
+  - **Keyboard Shortcuts**: Arrow keys, F for fullscreen, Escape to close
+  - **Dynamic Scaling**: Automatically fills screen based on orientation
+- 🌐 **PWA Support**: Add to iPad home screen for full-screen, app-like experience
+- ⚙️ **Settings Menu**: Global preferences accessible from home page
 - ☁️ S3 storage with presigned URLs
 - 🎼 Compiled by Eric using LilyPond
 
 **Next Steps:**
 
 - Deploy frontend to Cloudflare Pages/Vercel/Netlify
-- Add PDF viewer enhancements (fullscreen button, swipe indicators)
-- PWA support for offline use
+- Test on various iPad models and orientations
+- Add user preferences (remember zoom levels, filters)
 - Setlist functionality
 - Server-side LilyPond compilation (Phase 2)
 

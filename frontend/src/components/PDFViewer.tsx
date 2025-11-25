@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiMenu } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import type { Variation } from '@/types/catalog';
 import { api } from '@/services/api';
-import { SettingsMenu } from './SettingsMenu';
 
 // Set up worker - use unpkg CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -27,8 +26,12 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showNav, setShowNav] = useState(true); // Nav visibility state
+  const [headerTouchStart, setHeaderTouchStart] = useState<number | null>(null);
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
+  
   const containerRef = useRef<HTMLDivElement>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch PDF URL when component mounts or variation changes
   useEffect(() => {
@@ -66,10 +69,45 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     };
   }, [variation.filename]);
 
-  // Detect orientation changes
+  // Calculate optimal scale based on viewport height and width
+  const calculateOptimalScale = () => {
+    const isLandscapeNow = window.innerWidth > window.innerHeight;
+    
+    // Standard letter size PDF page: 8.5" x 11" at 72 DPI = 612 x 792 pixels
+    const standardPageWidth = 612;
+    const standardPageHeight = 792;
+    
+    // Account for header and padding
+    const availableHeight = window.innerHeight - 140;
+    const availableWidth = window.innerWidth; // Use full width, no padding
+    
+    // Calculate scale based on height
+    const heightScale = availableHeight / standardPageHeight;
+    
+    // In landscape mode, consider width for 2 pages side-by-side
+    if (isLandscapeNow) {
+      const widthScale = availableWidth / (standardPageWidth * 2 + 4); // 2 pages + small gap
+      // Use the smaller of the two scales, with slight boost to fill screen
+      return Math.min(Math.max(Math.min(heightScale, widthScale) * 1.05, 0.8), 3.0);
+    } else {
+      // Portrait mode: just use height scale
+      return Math.min(Math.max(heightScale * 1.05, 0.8), 3.0);
+    }
+  };
+
+  // Update scale on orientation change
   useEffect(() => {
     const handleResize = () => {
-      setIsLandscape(window.innerWidth > window.innerHeight);
+      const wasLandscape = isLandscape;
+      const nowLandscape = window.innerWidth > window.innerHeight;
+      setIsLandscape(nowLandscape);
+      
+      // Recalculate scale when orientation changes
+      if (wasLandscape !== nowLandscape) {
+        const newScale = calculateOptimalScale();
+        setScale(newScale);
+        console.log('[PDFViewer] Orientation changed, new scale:', newScale);
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -79,7 +117,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
-  }, []);
+  }, [isLandscape]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -93,11 +131,49 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     };
   }, []);
 
+  // Auto-hide navigation after 2 seconds of inactivity
+  const resetInactivityTimer = () => {
+    // Show nav on any interaction
+    setShowNav(true);
+
+    // Clear existing timer
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    // Set new timer to hide after 2 seconds
+    inactivityTimerRef.current = setTimeout(() => {
+      setShowNav(false);
+    }, 2000);
+  };
+
+  // Track user interaction to show/hide nav
+  useEffect(() => {
+    const handleInteraction = () => {
+      resetInactivityTimer();
+    };
+
+    // Listen for mouse movement, touch, and clicks
+    window.addEventListener('mousemove', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    window.addEventListener('click', handleInteraction);
+
+    // Start the initial timer
+    resetInactivityTimer();
+
+    return () => {
+      window.removeEventListener('mousemove', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('click', handleInteraction);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (isSettingsOpen) return;
-
       const pagesPerView = isLandscape ? 2 : 1;
 
       switch (e.key) {
@@ -108,6 +184,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
             setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
             setTimeout(() => setSwipeDirection(null), 200);
           }
+          resetInactivityTimer(); // Show nav briefly when using keyboard
           break;
         case 'ArrowRight':
           e.preventDefault();
@@ -116,6 +193,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
             setCurrentPage((prev) => Math.min(prev + pagesPerView, numPages - pagesPerView + 1));
             setTimeout(() => setSwipeDirection(null), 200);
           }
+          resetInactivityTimer(); // Show nav briefly when using keyboard
           break;
         case 'Escape':
           e.preventDefault();
@@ -137,12 +215,17 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [currentPage, numPages, isLandscape, isFullscreen, onClose, isSettingsOpen]);
+  }, [currentPage, numPages, isLandscape, isFullscreen, onClose]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setError(null);
-    console.log('[PDFViewer] PDF loaded successfully, pages:', numPages);
+    
+    // Calculate and set optimal scale when PDF loads
+    const optimalScale = calculateOptimalScale();
+    setScale(optimalScale);
+    
+    console.log('[PDFViewer] PDF loaded successfully, pages:', numPages, 'scale:', optimalScale);
   }
 
   function onDocumentLoadError(error: Error) {
@@ -175,19 +258,57 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     }
   };
 
-  // Swipe gesture handling
+  // Helper function to get distance between two touch points
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Swipe gesture handling with pinch zoom detection
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    if (e.touches.length === 2) {
+      // Pinch zoom start
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      setLastPinchDistance(distance);
+    } else if (e.touches.length === 1) {
+      // Single touch for swipe
+      setTouchEnd(null);
+      setTouchStart(e.targetTouches[0].clientX);
+    }
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    if (e.touches.length === 2) {
+      // Continuous pinch zoom
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      if (lastPinchDistance) {
+        const rawScaleChange = distance / lastPinchDistance;
+        // Amplify the scale change for better sensitivity
+        const amplifiedChange = 1 + (rawScaleChange - 1) * 2.5;
+        
+        // Update the actual scale directly for continuous zoom
+        setScale(prev => {
+          const newScale = prev * amplifiedChange;
+          // Limit zoom between 0.3x and 5x for wider range
+          return Math.min(Math.max(newScale, 0.3), 5.0);
+        });
+      }
+      // Always update last distance for continuous tracking
+      setLastPinchDistance(distance);
+    } else if (e.touches.length === 1) {
+      // Single touch for swipe
+      setTouchEnd(e.targetTouches[0].clientX);
+    }
   };
 
   const onTouchEnd = () => {
+    // Reset pinch tracking
+    setLastPinchDistance(null);
+    
+    // Handle swipe if it was a single touch
     if (!touchStart || !touchEnd) return;
 
     const distance = touchStart - touchEnd;
@@ -212,6 +333,28 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     }
   };
 
+  // Handle swipe-up gesture on header to hide nav
+  const onHeaderTouchStart = (e: React.TouchEvent) => {
+    setHeaderTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const onHeaderTouchEnd = (e: React.TouchEvent) => {
+    if (!headerTouchStart) return;
+
+    const touchEndY = e.changedTouches[0].clientY;
+    const distance = headerTouchStart - touchEndY;
+
+    // Swipe up (distance > 0) to hide nav
+    if (distance > 30) {
+      setShowNav(false);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    }
+
+    setHeaderTouchStart(null);
+  };
+
   // Slider change handler
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newPage = parseInt(e.target.value);
@@ -222,15 +365,21 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
   const canNavigate = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black/95 z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white/10 backdrop-blur-lg px-4 py-3 flex items-center justify-between border-b border-white/10">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-white truncate">
+    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
+      {/* Header - slides down when showNav is true */}
+      <div
+        className={`bg-white/10 backdrop-blur-lg px-2 py-2 flex items-center justify-between border-b border-white/10 transition-transform duration-300 ${
+          showNav ? 'translate-y-0' : '-translate-y-full'
+        }`}
+        onTouchStart={onHeaderTouchStart}
+        onTouchEnd={onHeaderTouchEnd}
+      >
+        <div className="flex-1 min-w-0 mr-2">
+          <h2 className="text-base font-semibold text-white leading-tight">
             {variation.display_name}
           </h2>
           {numPages > 0 && (
-            <p className="text-sm text-gray-400">{numPages} page{numPages !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400">{numPages} page{numPages !== 1 ? 's' : ''}</p>
           )}
         </div>
 
@@ -270,15 +419,6 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
             )}
           </button>
 
-          {/* Settings Button */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
-            aria-label="Settings"
-          >
-            <FiMenu className="text-white text-lg" />
-          </button>
-
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -292,7 +432,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
 
       {/* PDF Content */}
       <div
-        className="flex-1 overflow-hidden p-4 md:p-8 relative"
+        className="flex-1 overflow-hidden flex items-center justify-center"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -347,7 +487,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
                 }
               >
                 <div
-                  className={`flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} items-center justify-center transition-all duration-200 ${
+                  className={`flex ${isLandscape ? 'flex-row gap-1' : 'flex-col'} items-center justify-center transition-all duration-200 ${
                     swipeDirection === 'left' ? 'animate-slide-left' : swipeDirection === 'right' ? 'animate-slide-right' : ''
                   }`}
                 >
@@ -400,9 +540,6 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
           </>
         )}
       </div>
-
-      {/* Settings Menu */}
-      <SettingsMenu isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

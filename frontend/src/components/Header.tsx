@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { InstrumentType, SingerRangeType } from '@/types/catalog';
-import { FiSearch, FiX } from 'react-icons/fi';
+import { FiSearch, FiX, FiMenu } from 'react-icons/fi';
+import { SettingsMenu } from './SettingsMenu';
 
 interface HeaderProps {
   totalSongs: number;
@@ -29,6 +31,8 @@ export function Header({
   onSearch,
   onEnterPress,
 }: HeaderProps) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onEnterPress();
@@ -36,14 +40,26 @@ export function Header({
   };
 
   return (
-    <header className="bg-white/5 backdrop-blur-lg rounded-mcm p-6 md:p-8 mb-6">
-      <div className="text-center mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-blue-400 mb-2">
-          🎵 Jazz Picker
-        </h1>
-        <p className="text-gray-400 text-base md:text-lg">Browse Eric's Lead Sheet Collection</p>
-        <p className="text-gray-500 text-sm mt-1">{totalSongs} songs</p>
-      </div>
+    <>
+      <header className="bg-white/5 backdrop-blur-lg rounded-mcm p-6 md:p-8 mb-6">
+        {/* Settings Button - Top Right */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            aria-label="Settings"
+          >
+            <FiMenu className="text-white text-xl" />
+          </button>
+        </div>
+
+        <div className="text-center mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold text-blue-400 mb-2">
+            🎵 Jazz Picker
+          </h1>
+          <p className="text-gray-400 text-base md:text-lg">Browse Eric's Lead Sheet Collection</p>
+          <p className="text-gray-500 text-sm mt-1">{totalSongs} songs</p>
+        </div>
 
       {/* Search Box */}
       <div className="mb-5 max-w-2xl mx-auto">
@@ -113,5 +129,9 @@ export function Header({
         </div>
       </div>
     </header>
+
+    {/* Settings Menu */}
+    <SettingsMenu isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+    </>
   );
 }

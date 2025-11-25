@@ -14,12 +14,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'https://jazz-picker.fly.dev',
         changeOrigin: true,
+        secure: true,
       },
       '/pdf': {
-        target: 'http://localhost:5001',
+        target: 'https://jazz-picker.fly.dev',
         changeOrigin: true,
+        secure: true,
       },
     },
   },
