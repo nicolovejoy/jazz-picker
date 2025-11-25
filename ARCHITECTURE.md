@@ -5,28 +5,51 @@
 ```
 ┌──────────────────────┐      ┌─────────────────────┐      ┌──────────────────────┐
 │  Eric's Repo         │      │  AWS S3             │      │  Flask Backend       │
-│  (lilypond sheets)   │─────►│  • PDFs             │◄─────┤  (Fly.io)            │
+│  (lilypond sheets)   │─────►│  • PDFs (2GB)       │◄─────┤  (Fly.io)            │
 │                      │      │  • catalog.json     │      │  • API v2            │
-└──────────────────────┘      └─────────────────────┘      │  • Auth              │
-                                                            │  • Setlists          │
+└──────────────────────┘      └─────────────────────┘      │  • Optional Auth     │
                                                             └──────────┬───────────┘
                                                                        │
                                                             ┌──────────▼───────────┐
                                                             │  React Frontend      │
-                                                            │  (Cloudflare/Vercel) │
+                                                            │  (Local/TBD Deploy)  │
                                                             │  • PWA               │
                                                             │  • Song browser      │
                                                             │  • PDF viewer        │
-                                                            │  • Setlist UI        │
                                                             └──────────────────────┘
 ```
 
 ---
 
+## Current State (Nov 25, 2025)
+
+### Backend (Flask)
+- **Production:** https://jazz-picker.fly.dev (Fly.io)
+- **API v2:** Paginated, slim responses (~50KB)
+- **S3 Integration:** 2GB PDFs with 15min presigned URLs
+- **Auth:** Optional basic auth (disabled by default)
+- **Deployment:** Auto-scaling (0-1 machines), API-only (no templates)
+
+### Frontend (React + TypeScript)
+- **Branch:** `frontend/mcm-redesign` (latest)
+- **Features:**
+  - Two-filter system (Instrument + Singer Range)
+  - Infinite scroll with smart pre-fetching
+  - Smart navigation (auto-open single variations, Enter key shortcuts)
+  - **iPad-optimized PDF viewer:**
+    - Clean mode with auto-hide navigation (2s timeout)
+    - Portrait: single page | Landscape: side-by-side
+    - Pinch zoom (0.3x-5x), swipe gestures
+    - Keyboard shortcuts (arrows, F for fullscreen, Esc)
+  - PWA support (add to home screen)
+  - Settings menu for global preferences
+- **Tech Stack:** React 19, TypeScript, Tailwind CSS, React Query, react-pdf, Vite
+
+---
+
 ## Data Model
 
-### Current Structure (catalog.json)
-
+### Catalog Structure (catalog.json)
 ```json
 {
   "metadata": {
@@ -37,7 +60,9 @@
   "songs": {
     "All of Me": {
       "title": "All of Me",
-      "core_files": ["All of Me.ily"],
+      "core_files": ["All of Me.ily"],  // Usually 1 file (729/735 songs)
+                                         // 6 songs have 2: alternative keys,
+                                         // guitar solos, or bass lines
       "variations": [
         {
           "filename": "All of Me - Ly - C Standard.ly",
@@ -46,13 +71,6 @@
           "instrument": "Treble",
           "variation_type": "Standard (Concert)",
           "pdf_path": "../Standard/All of Me - Ly - C Standard"
-        },
-        {
-          "filename": "All of Me - Ly - Eb for Bb for Standard.ly",
-          "display_name": "All of Me Bb Instrument Key",
-          "key": "ef",
-          "variation_type": "Bb Instrument",
-          "pdf_path": "../Standard/Bb/All of Me - Ly - Eb for Bb for Standard"
         }
       ]
     }
@@ -60,171 +78,164 @@
 }
 ```
 
-### Issues to Fix
-
-1. **Sorting:** Songs should be alphabetically sorted by default
-2. **Filtering Logic:** Voice variations should NOT appear in instrument filters
-3. **Variation Display:** Show most relevant variation first (Standard Concert > Bb > Eb > Voice)
-
----
-
-## Setlists API Design
-
-### Data Model
-
-```python
-# Backend: Store in SQLite or JSON file
-{
-  "id": "uuid-123",
-  "name": "Monday Night Gig",
-  "created_at": "2025-11-24T...",
-  "updated_at": "2025-11-24T...",
-  "songs": [
-    {
-      "position": 1,
-      "song_title": "All of Me",
-      "variation_filename": "All of Me - Ly - C Standard.ly",
-      "notes": "Intro vamp 2x"
-    },
-    {
-      "position": 2,
-      "song_title": "Autumn Leaves",
-      "variation_filename": "Autumn Leaves - Ly - G Standard.ly"
-    }
-  ]
-}
-```
-
-### API Endpoints
-
-```
-POST   /api/setlists                    - Create setlist
-GET    /api/setlists                    - List all setlists
-GET    /api/setlists/:id                - Get setlist details
-PUT    /api/setlists/:id                - Update setlist
-DELETE /api/setlists/:id                - Delete setlist
-PUT    /api/setlists/:id/reorder        - Reorder songs
-```
-
-### Storage Options
-
-**Option A: SQLite** (Recommended)
-- Simple, no external DB needed
-- File-based (`setlists.db`)
-- Easy queries and relationships
-
-**Option B: JSON File**
-- Ultra-simple for MVP
-- File-based (`setlists.json`)
-- Load entire file on startup
+### Filtering Logic
+- **Instruments:** C (Standard Concert), Bb, Eb, Bass
+- **Voice Ranges:** Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard
+- Voice variations excluded from instrument filters (fixed Nov 22)
+- Accurate variation counts per filter
 
 ---
 
-## Authentication Strategy
+## API Endpoints
 
-### Current (Basic Auth)
-```python
-# In app.py - already implemented
-BASIC_AUTH_USERNAME = os.getenv('BASIC_AUTH_USERNAME', 'admin')
-BASIC_AUTH_PASSWORD = os.getenv('BASIC_AUTH_PASSWORD', 'changeme')
-REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
-```
+### Songs
+- `GET /api/v2/songs` - Paginated song list (limit, offset, q, instrument, range)
+- `GET /api/v2/songs/:title` - Song details with all variations
 
-### Deployment Plan
+### PDFs
+- `GET /pdf/:filename` - S3 presigned URL (15min expiry)
 
-**Production:** Enable basic auth via env vars
+### Health
+- `GET /health` - Health check for deployment platforms
+
+---
+
+## Deployment
+
+### Backend (Fly.io)
 ```bash
-# On Fly.io
-fly secrets set REQUIRE_AUTH=true
-fly secrets set BASIC_AUTH_USERNAME=eric
-fly secrets set BASIC_AUTH_PASSWORD=<secure-password>
+fly deploy                           # Deploy latest
+fly secrets set REQUIRE_AUTH=true   # Enable auth (optional)
+fly logs                             # View logs
 ```
 
-**Frontend:** Handle 401 responses, prompt for credentials
+**Environment:**
+- `USE_S3=true`
+- `S3_BUCKET_NAME=jazz-picker-pdfs`
+- `S3_REGION=us-east-1`
+- `AWS_ACCESS_KEY_ID` (secret)
+- `AWS_SECRET_ACCESS_KEY` (secret)
 
-### Future: Better Auth
-- JWT tokens for stateless auth
-- OAuth (Google login)
-- User accounts with individual setlists
+### Frontend (Not Yet Deployed)
+**Options:**
+- Cloudflare Pages (recommended)
+- Vercel
+- Netlify
 
----
-
-## Deployment Strategy
-
-### Backend (Flask → Fly.io)
-**Already deployed:** `https://jazz-picker.fly.dev`
-
-**Enable auth:**
+**Build:**
 ```bash
-fly secrets set REQUIRE_AUTH=true
-fly secrets set BASIC_AUTH_USERNAME=<username>
-fly secrets set BASIC_AUTH_PASSWORD=<password>
+cd frontend && npm run build
+# Output: frontend/dist
+# Env: VITE_API_URL=https://jazz-picker.fly.dev
 ```
 
-### Frontend (React → Cloudflare Pages or Vercel)
+---
 
-**Cloudflare Pages** (Recommended)
-- Free tier generous
-- Global CDN
-- Automatic builds from GitHub
-- Custom domains
+## Development Workflow
 
-**Setup:**
-1. Connect GitHub repo
-2. Build command: `cd frontend && npm run build`
-3. Output directory: `frontend/dist`
-4. Environment variables: `VITE_API_URL=https://jazz-picker.fly.dev`
+### Local Development
 
-**Vercel** (Alternative)
-- Similar features
-- Slightly easier setup
-- Good free tier
+**Frontend (default setup):**
+```bash
+cd frontend && npm run dev  # Port 5173
+# Uses deployed backend via Vite proxy (jazz-picker.fly.dev)
+```
+
+**Backend Development (optional):**
+```bash
+# 1. Run backend locally
+python3 app.py              # Port 5001
+
+# 2. Update vite.config.ts proxy target to 'http://localhost:5001'
+# 3. Run frontend
+cd frontend && npm run dev
+```
+
+### Git Workflow
+```bash
+git checkout main
+git pull
+git checkout -b feature/name
+# ... make changes ...
+git push
+# Merge when ready
+```
+
+### Syncing PDFs to S3 (Eric's workflow)
+```bash
+python3 build_catalog.py    # Update catalog
+./sync_pdfs_to_s3.sh        # Sync to S3
+```
 
 ---
 
-## Immediate Priorities
+## Next Steps
 
-### 1. Fix Data Model & Filtering (1-2 hours)
-- [ ] Ensure songs are alphabetically sorted in API response
-- [ ] Fix variation ordering (Standard first, then Bb, Eb, Voice)
-- [ ] Verify instrument filter excludes voice variations
-- [ ] Add sorting options to API (alphabetical, recently added, most used)
+> 💡 **See [Unified Roadmap](file:///Users/nico/.gemini/antigravity/brain/bbeab143-d7b7-47ef-ad5c-9dad8a3aae4f/unified_roadmap.md) for complete 3-month plan with dependencies and agent assignments**
 
-### 2. Implement Setlists Backend (4-6 hours)
-- [ ] Choose storage (SQLite recommended)
-- [ ] Create database schema
-- [ ] Implement CRUD endpoints
-- [ ] Add setlist validation
-- [ ] Test with sample data
+### This Week: Production Deploy (9 hours)
 
-### 3. Implement Setlists Frontend (6-8 hours)
-- [ ] Create setlist UI components
-- [ ] Add drag-and-drop reordering
-- [ ] Integrate with backend API
-- [ ] Add setlist navigation in PDF viewer
-- [ ] Keyboard shortcuts for setlist navigation
+**Backend Improvements** (Backend Agent)
+- Error handling & validation (30 min)
+- API response caching with ETags (30 min)
 
-### 4. Enable Authentication (1-2 hours)
-- [ ] Set production env vars on Fly.io
-- [ ] Update frontend to handle 401 responses
-- [ ] Add login form/modal
-- [ ] Store credentials securely (browser)
-- [ ] Test end-to-end
+**Frontend Deployment** (DevOps Agent)  
+- Deploy to Cloudflare Pages (4 hours)
+- Add monitoring: Sentry, Fly.io alerts, UptimeRobot (4 hours)
 
-### 5. Deploy Frontend (2-3 hours)
-- [ ] Choose platform (Cloudflare Pages vs Vercel)
-- [ ] Configure build settings
-- [ ] Set environment variables
-- [ ] Test deployed version
-- [ ] Configure custom domain (optional)
+**Outcome:** Live production app at custom domain
+
+### Weeks 2-3: Core Features (4-5 days)
+
+**iPad Optimization** (Frontend Agent)
+- Increase touch targets for better tap accuracy
+- Landscape-optimized layouts
+- Gesture refinements and palm rejection
+
+**Setlist Feature** (Setlist Agent)
+- LocalStorage-based setlists (10 hours)
+- Create/edit/delete setlists
+- Add songs to setlists
+- Play through setlist in PDF viewer
+
+### Month 2: Performance & PWA
+
+**Service Worker** (Frontend Agent)
+- Offline PDF caching
+- Runtime caching strategy
+- Precaching of static assets
+
+**React Query Optimization** (Frontend Agent)
+- Search debouncing
+- Virtual scrolling for large lists
+- Optimized prefetching
+
+### Month 3: Database (Optional)
+
+**Only if users request multi-user/sync features:**
+- Fly Postgres setup (DevOps Agent)
+- Data model enhancements with stable IDs (Backend Agent)
+- Flask-Login authentication (Backend Agent)
+- Migrate setlists from LocalStorage to DB (Setlist Agent)
 
 ---
 
-## Future Enhancements
+## Strategic Decisions
 
-- **User Accounts:** Individual setlists per user
-- **Collaboration:** Share setlists with band members
-- **Offline Mode:** Service worker for offline PDFs
-- **Print:** Print entire setlist as one PDF
-- **Analytics:** Track most-viewed songs
+**Setlists:** Start with LocalStorage (fast, no backend changes), migrate to DB only if users demand cross-device sync
 
+**Service Worker:** Hybrid caching (last 50 PDFs + "pin to offline" feature)
+
+**Deployment:** Cloudflare Pages (free, fast CDN, auto-deploys from Git)
+
+**Database:** SQLite on Fly volume ($0) or Postgres ($15/mo) - decide based on scale needs
+
+---
+
+## Cost Estimation
+
+**Fly.io Backend:** $0-5/month (within free tier)
+**S3 Storage:** ~$0.05/month (2GB)
+**Frontend:** $0 (static hosting free tier)
+
+**Total: ~$1-5/month**
