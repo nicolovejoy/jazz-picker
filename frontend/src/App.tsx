@@ -45,6 +45,13 @@ function App() {
     }
   }, [data, page, hasMore, isFetching, searchQuery, instrument, singerRange, queryClient]);
 
+  // Reset songs when filters change
+  useEffect(() => {
+    setPage(0);
+    setAllSongs([]);
+    setExpandedSong(null);
+  }, [searchQuery, instrument, singerRange]);
+
   // Accumulate songs as pages load
   useEffect(() => {
     if (data?.songs) {
@@ -87,23 +94,14 @@ function App() {
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    setPage(0);
-    setAllSongs([]);
-    setExpandedSong(null);
   }, []);
 
   const handleInstrumentChange = useCallback((inst: InstrumentType) => {
     setInstrument(inst);
-    setPage(0);
-    setAllSongs([]);
-    setExpandedSong(null);
   }, []);
 
   const handleRangeChange = useCallback((range: SingerRangeType) => {
     setSingerRange(range);
-    setPage(0);
-    setAllSongs([]);
-    setExpandedSong(null);
   }, []);
 
   const handleEnterPress = useCallback(async () => {

@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useSongDetail } from '@/hooks/useSongDetail';
 import type { SongSummary, Variation, InstrumentType, SingerRangeType } from '@/types/catalog';
 import { getInstrumentCategory, getSingerRangeCategory } from '@/types/catalog';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 interface SongListItemProps {
   song: SongSummary;
@@ -14,30 +12,10 @@ interface SongListItemProps {
 }
 
 export function SongListItem({ song, isExpanded, instrument, singerRange, onToggle, onSelectVariation }: SongListItemProps) {
-  const [shouldFetch, setShouldFetch] = useState(false);
   const isSingleVariation = song.variation_count === 1;
 
-  const { data: songDetail, isLoading } = useSongDetail(isExpanded || shouldFetch ? song.title : null);
-
-  useEffect(() => {
-    if (shouldFetch && songDetail && !isLoading && isSingleVariation) {
-      const variations = songDetail.variations;
-      if (variations.length > 0) {
-        onSelectVariation(variations[0] as any);
-        setShouldFetch(false);
-      }
-    }
-  }, [shouldFetch, songDetail, isLoading, isSingleVariation, onSelectVariation]);
-
-  const handleClick = () => {
-    if (isSingleVariation) {
-      setShouldFetch(true);
-    } else {
-      onToggle();
-    }
-  };
-
-  const badges = [...song.available_instruments];
+  // Always fetch song details to show variations inline
+  const { data: songDetail, isLoading } = useSongDetail(song.title);
 
   const filteredVariations = songDetail?.variations.filter((v) => {
     if (instrument !== 'All') {
@@ -53,87 +31,59 @@ export function SongListItem({ song, isExpanded, instrument, singerRange, onTogg
     return true;
   }) || [];
 
-  return (
-    <div className="bg-white/8 backdrop-blur-sm rounded-mcm p-5 border border-white/10 hover:border-blue-400/50 transition-all min-h-[70px]">
+  // Single variation: whole card opens PDF
+  if (isSingleVariation && filteredVariations.length === 1) {
+    return (
       <button
-        onClick={handleClick}
-        className="w-full text-left"
-        disabled={shouldFetch && isLoading}
+        onClick={() => onSelectVariation(filteredVariations[0] as any)}
+        disabled={isLoading}
+        className="w-full bg-white/8 backdrop-blur-sm rounded-mcm p-4 border border-white/10 hover:border-blue-400 hover:bg-white/10 transition-all text-left group"
       >
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-white flex-1">
-            {song.title}
-          </h3>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {!isExpanded && (
-              <>
-                <div className="hidden sm:flex gap-1.5">
-                  {badges.slice(0, 3).map((badge) => (
-                    <span
-                      key={badge}
-                      className="px-2.5 py-0.5 text-xs rounded-mcm bg-blue-400/15 text-blue-300 border border-blue-400/25"
-                    >
-                      {badge}
-                    </span>
-                  ))}
-                </div>
-                <span className="px-2.5 py-0.5 text-xs rounded-mcm bg-gray-700/40 text-gray-300 border border-gray-600/25">
-                  {song.variation_count} {song.variation_count === 1 ? 'var' : 'vars'}
-                </span>
-              </>
-            )}
-            {shouldFetch && isLoading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
-            ) : !isSingleVariation && (
-              isExpanded ? (
-                <FiChevronUp className="text-blue-400 text-xl" />
-              ) : (
-                <FiChevronDown className="text-gray-400 text-xl" />
-              )
-            )}
+        <h3 className="text-base font-medium text-white group-hover:text-blue-300 transition-colors">
+          {song.title}
+        </h3>
+        {isLoading && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+            <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-400"></div>
+            Loading...
           </div>
-        </div>
-
-        {!isExpanded && isSingleVariation && (
-          <p className="text-xs text-gray-500 mt-1.5">Tap to view PDF</p>
         )}
       </button>
+    );
+  }
 
-      {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          {isLoading ? (
-            <div className="text-center py-6 text-gray-400">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto mb-2"></div>
-              Loading variations...
-            </div>
-          ) : filteredVariations.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-              {filteredVariations.map((variation) => {
-                const keyMatch = variation.key || variation.display_name.split(' - ')[1] || 'Unknown';
+  // Multiple variations: show inline buttons
+  return (
+    <div className="bg-white/8 backdrop-blur-sm rounded-mcm p-4 border border-white/10 hover:border-white/20 transition-all">
+      <h3 className="text-base font-medium text-white mb-3">
+        {song.title}
+      </h3>
 
-                return (
-                  <button
-                    key={variation.id}
-                    onClick={() => onSelectVariation(variation as any)}
-                    className="p-3 bg-black/20 hover:bg-blue-400/20 rounded-mcm border border-white/10 hover:border-blue-400 transition-all text-center group"
-                  >
-                    <div className="font-semibold text-blue-400 group-hover:text-blue-300 text-sm">
-                      {keyMatch}
-                    </div>
-                    {variation.instrument && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        {variation.instrument}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500 text-sm">
-              No variations match current filters.
-            </div>
-          )}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-400"></div>
+          Loading variations...
+        </div>
+      ) : filteredVariations.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {filteredVariations.map((variation) => {
+            // Extract key from variation
+            const keyMatch = variation.key || variation.display_name.split(' - ')[1] || variation.variation_type;
+
+            return (
+              <button
+                key={variation.id}
+                onClick={() => onSelectVariation(variation as any)}
+                className="px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-blue-300 hover:text-blue-200 rounded-mcm border border-blue-400/30 hover:border-blue-400 transition-all"
+              >
+                {keyMatch}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-xs text-gray-500">
+          No variations available
         </div>
       )}
     </div>

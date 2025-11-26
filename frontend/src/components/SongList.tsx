@@ -27,14 +27,19 @@ export function SongList({ songs, instrument, singerRange, searchQuery, expanded
     );
   }
 
+  // Deduplicate songs by title (just in case)
+  const uniqueSongs = Array.from(
+    new Map(songs.map(song => [song.title, song])).values()
+  );
+
   return (
     <div>
 
       {/* Songs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {songs.map((song) => (
+        {uniqueSongs.map((song, index) => (
           <SongListItem
-            key={song.title}
+            key={`${song.title}-${index}`}
             song={song}
             isExpanded={expandedSong === song.title}
             instrument={instrument}
