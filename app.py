@@ -4,6 +4,7 @@ Jazz Picker - A web interface for browsing Eric's lilypond lead sheets.
 """
 
 from flask import Flask, render_template, jsonify, request, send_file, send_from_directory, make_response
+from flask_cors import CORS
 import json
 import subprocess
 import os
@@ -17,6 +18,14 @@ import sys
 import hashlib
 
 app = Flask(__name__)
+
+# Enable CORS for frontend domains
+CORS(app, origins=[
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://*.vercel.app",
+    "https://jazz-picker.vercel.app",
+])
 
 # Constants for validation
 MAX_LIMIT = 200
