@@ -1,0 +1,330 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
+- **Backend**: Flask API (Python) deployed on Fly.io
+- **Frontend**: React + TypeScript + Vite application (local development, Cloudflare Pages planned)
+- **Storage**: AWS S3 for PDFs (2GB), catalog metadata in JSON/SQLite
+
+The project serves ~735 songs with multiple variations per song (different keys, instruments, voice ranges) from Eric's lilypond lead sheets repository.
+
+## Development Commands
+
+### Backend Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run local development server
+python3 app.py
+# Runs on http://localhost:5001
+
+# Build/update catalog from lilypond files
+python3 build_catalog.py
+# Outputs: catalog.json (5.7MB) and catalog.db (SQLite)
+
+# Sync PDFs to S3 (Eric's workflow only)
+./sync_pdfs_to_s3.sh         # Production sync
+./sync_pdfs_to_s3.sh --dryrun  # Test without uploading
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run development server (uses deployed backend via proxy)
+npm run dev
+# Runs on http://localhost:5173
+
+# Build for production
+npm run build
+# Output: frontend/dist
+
+# Lint code
+npm run lint
+
+# Preview production build
+npm preview
+```
+
+### Deployment
+
+```bash
+# Deploy backend to Fly.io
+fly deploy
+
+# View backend logs
+fly logs
+
+# Set environment variables
+fly secrets set REQUIRE_AUTH=true
+fly secrets set AWS_ACCESS_KEY_ID=xxx
+fly secrets set AWS_SECRET_ACCESS_KEY=xxx
+```
+
+### Local Backend Development (Optional)
+
+By default, the frontend uses the deployed backend (https://jazz-picker.fly.dev) via Vite proxy. To develop against a local backend:
+
+1. Run backend: `python3 app.py` (port 5001)
+2. Update `frontend/vite.config.ts` proxy target to `http://localhost:5001`
+3. Run frontend: `cd frontend && npm run dev`
+
+## Architecture
+
+### High-Level Structure
+
+```
+Frontend (React) → Backend API (Flask) → S3 PDFs
+                                      ↓
+                              catalog.json (metadata)
+```
+
+### Backend (`app.py`)
+
+**Key Responsibilities:**
+- Serve paginated song lists with filtering (API v2)
+- Provide song detail with all variations
+- Generate S3 presigned URLs for PDFs (15min expiration)
+- Optional basic auth
+
+**API Endpoints:**
+- `GET /api/v2/songs?limit=50&offset=0&q=search&instrument=C&range=Alto/Mezzo/Soprano` - Paginated song list
+- `GET /api/v2/songs/:title` - Song detail with variations
+- `GET /pdf/:filename` - Returns S3 presigned URL as JSON `{"url": "...", "expires_at": "..."}`
+- `GET /health` - Health check
+
+**Environment Variables:**
+- `USE_S3=true` - Enable S3 integration
+- `S3_BUCKET_NAME=jazz-picker-pdfs`
+- `S3_REGION=us-east-1`
+- `REQUIRE_AUTH=false` - Enable/disable basic auth
+- `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` - Auth credentials
+
+**Data Loading:**
+1. Attempts to load `catalog.json` from S3
+2. Falls back to local file if S3 unavailable
+3. Catalog contains ~735 songs with metadata for ~4366 files
+
+### Frontend (`frontend/src/`)
+
+**Architecture Pattern:**
+- Component-based React with TypeScript
+- React Query for server state management
+- Tailwind CSS for styling
+- Custom hooks for data fetching
+
+**Key Components:**
+- `App.tsx` - Main application orchestrator with infinite scroll, filters, search
+- `Header.tsx` - Navigation with filters (Instrument + Singer Range)
+- `SongList.tsx` - Renders list of songs
+- `SongListItem.tsx` - Individual song item with smart navigation (auto-open single variations, Enter key)
+- `PDFViewer.tsx` - iPad-optimized PDF viewer with:
+  - Clean mode with auto-hide nav (2s timeout)
+  - Portrait: single page | Landscape: side-by-side
+  - Pinch zoom (0.3x-5x), swipe gestures
+  - Keyboard shortcuts (arrows, F for fullscreen, Esc)
+- `SettingsMenu.tsx` - Global user preferences
+
+**State Management:**
+- React Query for server data (songs, song details, PDF URLs)
+- React `useState` for UI state (filters, search, selected variation)
+- LocalStorage for user preferences
+- Smart prefetching: next page of songs loaded ahead of user scroll
+
+**API Service (`services/api.ts`):**
+- Centralized API client
+- Handles both JSON responses and S3 presigned URLs
+- Error handling with user-friendly messages
+
+**Types (`types/catalog.ts`):**
+- `Song`, `Variation`, `SongSummary`, `SongDetail` - Data models
+- `InstrumentType`: 'C' | 'Bb' | 'Eb' | 'Bass' | 'All'
+- `SingerRangeType`: 'Alto/Mezzo/Soprano' | 'Baritone/Tenor/Bass' | 'Standard' | 'All'
+
+### Catalog Generation (`build_catalog.py`)
+
+Scans `lilypond-data/Wrappers/*.ly` files and extracts:
+- Song title, key, instrument, clef
+- Variation type (Standard, Alto Voice, Baritone Voice, Bass, Bb, Eb)
+- Core file reference
+- Expected PDF output path
+
+Outputs:
+- `catalog.json` - Full catalog (5.7MB, backwards compatible)
+- `catalog.db` - SQLite database (1.3MB, for future use)
+
+**Important Logic:**
+- 729/735 songs have 1 core file
+- 6 songs have 2 core files (alternative keys, guitar solos, bass lines)
+- PDF paths constructed based on variation type to correct S3 category folder
+
+### Data Flow
+
+**Song Browsing:**
+1. User applies filters/search in Header
+2. App resets to page 0, fetches first 50 songs via API v2
+3. React Query prefetches next page as user scrolls
+4. Intersection Observer triggers page increment when scroll reaches bottom
+5. Songs accumulate in `allSongs` state array
+
+**PDF Viewing:**
+1. User selects variation from SongListItem
+2. Frontend calls `/pdf/:filename` endpoint
+3. Backend generates S3 presigned URL (15min TTL)
+4. Backend returns JSON `{"url": "https://s3...", "expires_at": "..."}`
+5. PDFViewer fetches PDF from presigned URL using react-pdf
+6. Auto-hide navigation activates after 2s of inactivity
+
+## Important Implementation Details
+
+### Frontend Infinite Scroll
+- Uses `IntersectionObserver` to detect scroll position
+- Prefetches next page when user approaches bottom (threshold: 0.1)
+- Accumulates songs across pages in state array
+- Resets on filter/search change
+
+### Smart Navigation in Song List
+- If song has exactly 1 variation: auto-opens PDF viewer
+- If song has multiple variations: shows variation list
+- Enter key navigates into song/variation
+- Escape key navigates back
+
+### PDF Viewer Modes
+- **Portrait**: Single-page view, swipe vertical
+- **Landscape**: Side-by-side two pages, swipe horizontal
+- **Clean Mode**: Auto-hides navigation after 2s of no interaction
+- **Keyboard**: Arrow keys (next/prev page), F (fullscreen), Esc (exit)
+- **Touch**: Pinch zoom, swipe gestures, tap top 20% to toggle nav
+
+### Filter Logic (Critical)
+- **Instrument Filter**: Filters variations by instrument type (C, Bb, Eb, Bass)
+- **Singer Range Filter**: Filters by voice range (Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard)
+- Voice variations are EXCLUDED from instrument filters (fixed Nov 22)
+- Both filters can be active simultaneously
+- Accurate variation counts displayed per filter
+
+### S3 Integration
+- PDFs stored in folders: `Standard/`, `Alto-Voice/`, `Baritone-Voice/`, etc.
+- Presigned URLs expire after 15 minutes
+- Backend handles URL generation transparently
+- Frontend receives presigned URL as JSON response
+
+### Authentication
+- Optional basic auth (disabled by default)
+- Controlled via `REQUIRE_AUTH` environment variable
+- Uses standard HTTP Basic Authentication
+- Currently no frontend login UI (API-level only)
+
+## Git Workflow
+
+- **Main branch**: `main`
+- **Current feature branch**: `frontend/mcm-redesign` (latest frontend features)
+- Feature branches off `main`
+- Backend deployed from latest commit on deploy
+
+## Known Issues & Context
+
+1. **Database Migration in Progress**: Project is transitioning from `catalog.json` to SQLite (`catalog.db`) for better query performance. `build_catalog.py` already generates both formats. Backend still reads from JSON.
+
+2. **No Tests**: Project currently has no test suite for either frontend or backend.
+
+3. **Symlinks**: Root directory contains symlinks to Dropbox folders (`Alto Voice`, `Baritone Voice`, `Standard`, `Midi`, `Others`) - these point to Eric's local Dropbox. Don't modify these.
+
+4. **Frontend Deployment**: Not yet deployed. Planned for Cloudflare Pages with env var `VITE_API_URL=https://jazz-picker.fly.dev`.
+
+5. **Setlist Feature**: Roadmap includes LocalStorage-based setlist feature (no backend changes required initially).
+
+6. **Voice Range Filtering**: Implemented Nov 22 to fix issue where voice variations appeared in instrument filters. Voice variations are now separate filter.
+
+## Common Patterns
+
+### Adding a New API Endpoint
+
+1. Add endpoint handler in `app.py`:
+```python
+@app.route('/api/v2/endpoint', methods=['GET'])
+@requires_auth
+def endpoint_handler():
+    # implementation
+    return jsonify(response_data)
+```
+
+2. Add TypeScript types in `frontend/src/types/catalog.ts`
+
+3. Add API method in `frontend/src/services/api.ts`:
+```typescript
+async getEndpoint(): Promise<ResponseType> {
+  const response = await fetch(`${API_BASE}/v2/endpoint`);
+  if (!response.ok) throw new Error('Failed to fetch');
+  return response.json();
+}
+```
+
+4. Create React Query hook in `frontend/src/hooks/`:
+```typescript
+export function useEndpoint() {
+  return useQuery({
+    queryKey: ['endpoint'],
+    queryFn: () => api.getEndpoint(),
+  });
+}
+```
+
+### Adding a New Component
+
+1. Create component file: `frontend/src/components/ComponentName.tsx`
+2. Use TypeScript with proper prop types
+3. Use Tailwind CSS for styling (no custom CSS files)
+4. Import types from `@/types/catalog`
+5. Use React Query hooks for data fetching
+
+### Modifying Catalog Structure
+
+1. Update parsing logic in `build_catalog.py`
+2. Run `python3 build_catalog.py` to regenerate catalog files
+3. Update TypeScript types in `frontend/src/types/catalog.ts`
+4. Update API response formatting in `app.py` if needed
+5. Test with both local and S3 modes
+
+## File Structure Reference
+
+```
+jazz-picker/
+├── app.py                    # Flask backend (main entry point)
+├── build_catalog.py          # Catalog generation script
+├── sync_pdfs_to_s3.sh       # S3 sync script
+├── catalog.json             # Song metadata (5.7MB)
+├── catalog.db               # SQLite version (1.3MB, future)
+├── requirements.txt         # Python dependencies
+├── fly.toml                 # Fly.io deployment config
+├── Dockerfile.prod          # Production Docker image
+├── ARCHITECTURE.md          # Detailed architecture docs
+├── ROADMAP.md              # Development roadmap
+└── frontend/
+    ├── package.json         # Node dependencies
+    ├── vite.config.ts       # Vite configuration + proxy
+    ├── tsconfig.json        # TypeScript configuration
+    └── src/
+        ├── App.tsx          # Main application
+        ├── main.tsx         # React entry point
+        ├── components/      # React components
+        ├── hooks/           # Custom React hooks
+        ├── services/        # API client
+        └── types/           # TypeScript types
+```
+
+## Documentation
+
+- `ARCHITECTURE.md` - System design, API reference, deployment guide
+- `ROADMAP.md` - 3-month development plan with priorities
+- `README.md` - Quick start guide
+- This file - Development reference for Claude Code
