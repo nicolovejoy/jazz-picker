@@ -20,12 +20,7 @@ import hashlib
 app = Flask(__name__)
 
 # Enable CORS for frontend domains
-CORS(app, origins=[
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://*.vercel.app",
-    "https://jazz-picker.vercel.app",
-])
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Constants for validation
 MAX_LIMIT = 200
