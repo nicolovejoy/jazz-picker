@@ -4,14 +4,12 @@ import { getInstrumentCategory, getSingerRangeCategory } from '@/types/catalog';
 
 interface SongListItemProps {
   song: SongSummary;
-  isExpanded: boolean;
   instrument: InstrumentType;
   singerRange: SingerRangeType;
-  onToggle: () => void;
   onSelectVariation: (variation: Variation) => void;
 }
 
-export function SongListItem({ song, isExpanded, instrument, singerRange, onToggle, onSelectVariation }: SongListItemProps) {
+export function SongListItem({ song, instrument, singerRange, onSelectVariation }: SongListItemProps) {
   const isSingleVariation = song.variation_count === 1;
 
   // Always fetch song details to show variations inline

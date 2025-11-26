@@ -12,6 +12,7 @@ interface HeaderProps {
   onSingerRangeChange: (range: SingerRangeType) => void;
   onSearch: (query: string) => void;
   onEnterPress: () => void;
+  onResetInstrument?: () => void;
 }
 
 const singerRangeColors: Record<SingerRangeType, string> = {
@@ -30,6 +31,7 @@ export function Header({
   onSingerRangeChange,
   onSearch,
   onEnterPress,
+  onResetInstrument,
 }: HeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -131,7 +133,11 @@ export function Header({
     </header>
 
     {/* Settings Menu */}
-    <SettingsMenu isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+    <SettingsMenu
+      isOpen={isSettingsOpen}
+      onClose={() => setIsSettingsOpen(false)}
+      onResetInstrument={onResetInstrument}
+    />
     </>
   );
 }

@@ -2,41 +2,46 @@
 
 ## ✅ Completed This Session
 
-**Backend (Deployed to https://jazz-picker.fly.dev):**
-- Error handling & input validation
-- HTTP caching (ETags, 304 responses)
-- Fixed badge filtering bug
+**Frontend UX Improvements:**
 
-**Frontend (Local Dev):**
-- Redesigned cards: minimal inline variations
-- Single variation → 1-click to PDF
-- Multiple variations → inline key buttons
-- Fixed duplicate keys & filter reset bugs
+- Added Welcome Screen with instrument picker (required before browsing)
+- LocalStorage persistence for instrument selection
+- "Change my instrument" option in Settings menu
+- Cleaned up unused expand/collapse props
 
-**Docs:**
-- Created CLAUDE.md
-- Updated SESSION_SUMMARY.md
+**Deployment:**
+
+- Frontend deployed to Vercel: https://frontend-kpwc3qndt-nico-lovejoys-projects.vercel.app
+- Backend remains on Fly.io: https://jazz-picker.fly.dev
 
 ## 📋 Next Steps
 
-1. **Implement Option 3 design** - User wants even simpler cards
-2. **Deploy frontend** to Cloudflare Pages
-3. iPad optimizations (touch targets, gestures)
-4. Setlist feature (LocalStorage)
+1. Custom domain for Vercel (optional)
+2. iPad optimizations (touch targets, gestures)
+3. Setlist feature (LocalStorage)
+4. Service worker for offline PDFs
 
 ## 🔧 Current State
 
 - Backend: ✅ Production on Fly.io
-- Frontend: ✅ Dev ready, needs deployment
+- Frontend: ✅ Production on Vercel
 - Database: Using catalog.json (no migration yet)
 
-## 📝 Key Notes
+## 📝 LocalStorage Architecture
 
-- User prefers ultra-minimal design
-- Main use case: musician with instrument selected
-- MCM aesthetic
-- 9 commits pushed to main
+| Key | Purpose |
+|-----|---------|
+| `jazz-picker-instrument` | Remembered instrument selection |
+| `jazz-picker-setlists` (future) | User setlists |
+| `jazz-picker-prefs` (future) | UI preferences |
+
+## 🔗 URLs
+
+- **Frontend:** https://frontend-kpwc3qndt-nico-lovejoys-projects.vercel.app
+- **Backend API:** https://jazz-picker.fly.dev
+- **Local dev:** http://localhost:5173 (proxies to Fly.io backend)
 
 ---
-**Agent:** Claude Code (Sonnet 4.5)
+
+**Agent:** Claude Code (Opus 4.5)
 **Date:** Nov 25, 2025

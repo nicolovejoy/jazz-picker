@@ -3,19 +3,34 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
 import type { InstrumentType, SingerRangeType, Variation, SongSummary } from '@/types/catalog';
 
+const STORAGE_KEY = 'jazz-picker-instrument';
+
+function getStoredInstrument(): InstrumentType | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && ['C', 'Bb', 'Eb', 'Bass', 'All'].includes(stored)) {
+      return stored as InstrumentType;
+    }
+  } catch {
+    // localStorage not available
+  }
+  return null;
+}
+
 function App() {
-  const [instrument, setInstrument] = useState<InstrumentType>('All');
+  const storedInstrument = getStoredInstrument();
+  const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
   const [singerRange, setSingerRange] = useState<SingerRangeType>('All');
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [expandedSong, setExpandedSong] = useState<string | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -25,21 +40,22 @@ function App() {
     limit: LIMIT,
     offset: page * LIMIT,
     query: searchQuery,
-    instrument,
+    instrument: instrument || 'All',
     singerRange
   });
 
   // Pre-fetch next page
   useEffect(() => {
-    if (data && hasMore && !isFetching) {
+    if (data && hasMore && !isFetching && instrument) {
       const nextPage = page + 1;
       const nextOffset = nextPage * LIMIT;
+      const inst = instrument || 'All';
 
       // Only pre-fetch if there's potentially more data
       if (nextOffset < data.total) {
         queryClient.prefetchQuery({
-          queryKey: ['songs', LIMIT, nextOffset, searchQuery, instrument, singerRange],
-          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, instrument, singerRange),
+          queryKey: ['songs', LIMIT, nextOffset, searchQuery, inst, singerRange],
+          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, inst, singerRange),
         });
       }
     }
@@ -49,7 +65,6 @@ function App() {
   useEffect(() => {
     setPage(0);
     setAllSongs([]);
-    setExpandedSong(null);
   }, [searchQuery, instrument, singerRange]);
 
   // Accumulate songs as pages load
@@ -98,10 +113,24 @@ function App() {
 
   const handleInstrumentChange = useCallback((inst: InstrumentType) => {
     setInstrument(inst);
+    try {
+      localStorage.setItem(STORAGE_KEY, inst);
+    } catch {
+      // localStorage not available
+    }
   }, []);
 
   const handleRangeChange = useCallback((range: SingerRangeType) => {
     setSingerRange(range);
+  }, []);
+
+  const handleResetInstrument = useCallback(() => {
+    setInstrument(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // localStorage not available
+    }
   }, []);
 
   const handleEnterPress = useCallback(async () => {
@@ -110,21 +139,24 @@ function App() {
 
     const song = allSongs[0];
 
-    // Fetch song details
+    // Fetch song details and open PDF if single variation
     try {
       const songDetail = await api.getSongV2(song.title);
 
       if (songDetail.variations.length === 1) {
         // Single variation: open PDF directly
         setSelectedVariation(songDetail.variations[0] as any);
-      } else if (songDetail.variations.length > 1) {
-        // Multiple variations: expand the card
-        setExpandedSong(song.title);
       }
+      // Multiple variations: user needs to click a specific key button
     } catch (error) {
       console.error('Failed to fetch song details:', error);
     }
   }, [allSongs]);
+
+  // Show welcome screen if no instrument selected
+  if (!instrument) {
+    return <WelcomeScreen onSelectInstrument={handleInstrumentChange} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -137,6 +169,7 @@ function App() {
         onSingerRangeChange={handleRangeChange}
         onSearch={handleSearch}
         onEnterPress={handleEnterPress}
+        onResetInstrument={handleResetInstrument}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">
@@ -156,8 +189,6 @@ function App() {
               instrument={instrument}
               singerRange={singerRange}
               searchQuery={searchQuery}
-              expandedSong={expandedSong}
-              onToggleExpand={(title) => setExpandedSong(expandedSong === title ? null : title)}
               onSelectVariation={setSelectedVariation}
             />
 

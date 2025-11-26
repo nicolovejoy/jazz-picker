@@ -6,12 +6,10 @@ interface SongListProps {
   instrument: InstrumentType;
   singerRange: SingerRangeType;
   searchQuery: string;
-  expandedSong: string | null;
-  onToggleExpand: (title: string) => void;
   onSelectVariation: (variation: Variation) => void;
 }
 
-export function SongList({ songs, instrument, singerRange, searchQuery, expandedSong, onToggleExpand, onSelectVariation }: SongListProps) {
+export function SongList({ songs, instrument, singerRange, searchQuery, onSelectVariation }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -41,10 +39,8 @@ export function SongList({ songs, instrument, singerRange, searchQuery, expanded
           <SongListItem
             key={`${song.title}-${index}`}
             song={song}
-            isExpanded={expandedSong === song.title}
             instrument={instrument}
             singerRange={singerRange}
-            onToggle={() => onToggleExpand(song.title)}
             onSelectVariation={onSelectVariation}
           />
         ))}
