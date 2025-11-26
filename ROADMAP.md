@@ -47,68 +47,51 @@
 
 ---
 
-## 🗓️ 3-Month Roadmap
+## 🗓️ 3-Month Roadmap (Revised: Database First)
 
-### Month 1: Production Foundation (Week 1-4)
+### Week 1: Foundation & Auth (Days 1-5)
 
-**Week 1: Deploy & Stabilize** ✅
-- Backend error handling & caching (1 hour) - Backend Agent
-- Frontend deployment to Cloudflare Pages (4 hours) - DevOps Agent
-- Monitoring setup (4 hours) - DevOps Agent
-- **Total: 9 hours | Outcome: Live production app**
+**Day 1-2: Database Migration** 🚧 (Current Status)
+- ✅ Build SQLite schema & import script (`build_catalog.py`)
+- ✅ Generate initial `catalog.db`
+- ⏳ Update `app.py` to read from SQLite instead of JSON
+- ⏳ Verify API v2 endpoints with DB backend
+- **Outcome: Zero-downtime migration to SQLite**
 
-**Week 2: iPad Optimization** 📱
-- Increase touch targets (1 day) - Frontend Agent
-- Landscape-optimized layouts (1 day) - Frontend Agent
-- Gesture refinements (1 day) - Frontend Agent
-- **Total: 3 days | Outcome: Better music stand experience**
+**Day 3: Authentication** 🔐
+- Add `users` table
+- Implement Flask-Login / JWT
+- Create `/auth/register` and `/auth/login` endpoints
+- Protect sensitive endpoints
+- **Outcome: Secure backend**
 
-**Week 3: Setlist Feature** 🎵
-- Core data layer (useSetlists hook) (4 hours) - Setlist Agent
-- Setlist Manager UI (4 hours) - Setlist Agent
-- Integration with app (2 hours) - Setlist Agent
-- **Total: 10 hours | Outcome: Working setlists (LocalStorage)**
+**Day 4-5: Setlists & Deploy** 🚀
+- Add `setlists` tables
+- Implement Setlist CRUD API
+- Deploy Backend (Fly.io with SQLite volume)
+- Deploy Frontend (Cloudflare Pages)
+- **Outcome: Production app with Auth & Setlists**
 
-**Week 4: Testing & Feedback** 🧪
-- Test on various iPads
-- Gather user feedback
-- Bug fixes
-- **Total: Varies | Outcome: Validated features**
+### Week 2: Frontend Features (Days 6-10)
 
-### Month 2: Performance & PWA (Week 5-8)
+**Day 6-7: Auth UI & Polish** 🎨
+- Login/Signup screens (MCM aesthetic)
+- "My Setlists" sidebar integration
+- Protected route logic
 
-**Week 5-6: Service Worker** 💾
-- Implement basic service worker (2 days) - Frontend Agent
-- Add PDF caching strategy (2 days) - Frontend Agent
-- Test offline behavior (1 day) - Frontend Agent
-- **Total: 1 week | Outcome: Offline PDF viewing**
+**Day 8-10: iPad Optimization** 📱
+- Touch target improvements
+- Landscape/Portrait modes
+- **Outcome: Complete iPad experience**
 
-**Week 7: React Query Optimization** ⚡
-- Search debouncing (1 day) - Frontend Agent
-- Virtual scrolling (2 days) - Frontend Agent
-- Optimized prefetching (1 day) - Frontend Agent
-- **Total: 4 days | Outcome: 10x better performance**
+### Month 2: Performance & Offline (Weeks 3-6)
+- Service Worker (Offline Mode)
+- React Query optimizations
+- Advanced filtering
 
-**Week 8: Polish** ✨
-- Loading skeletons
-- Dark/light mode toggle
-- Haptic feedback
-- Pull-to-refresh
-
-### Month 3: Advanced Features (Week 9-12)
-
-**Week 9-10: Data Model Improvements** 📊
-- Schema versioning (1 day) - Backend Agent
-- Stable IDs for songs/variations (1 day) - Backend Agent
-- Additional metadata (composer, year, tags) (1 day) - Backend Agent
-- **Total: 3 days | Outcome: Database-ready data model**
-
-**Week 11-12: Database + Auth (Optional)** 🔐
-- Fly Postgres setup (1 day) - DevOps Agent
-- Flask-SQLAlchemy models (1 day) - Backend Agent
-- Flask-Login authentication (1 day) - Backend Agent
-- Migrate setlists to DB (1 day) - Setlist Agent
-- **Total: 4 days | Outcome: Multi-user setlists**
+### Month 3: Advanced (Weeks 7+)
+- Multi-user sharing features
+- Migration to Postgres (if needed)
 
 ---
 

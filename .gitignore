@@ -44,3 +44,4 @@ Wrappers/*.midi
 .DS_Store
 Thumbs.db
 .claude/settings.json
+catalog.db

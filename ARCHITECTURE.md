@@ -69,7 +69,7 @@
           "display_name": "All of Me Standard Key",
           "key": "c",
           "instrument": "Treble",
-          "variation_type": "Standard (Concert)",
+          "variation_type": "Standard Key",
           "pdf_path": "../Standard/All of Me - Ly - C Standard"
         }
       ]
@@ -79,24 +79,53 @@
 ```
 
 ### Filtering Logic
-- **Instruments:** C (Standard Concert), Bb, Eb, Bass
-- **Voice Ranges:** Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard
+- **Instruments:** C (Piano/Guitar), Bb, Eb, Bass
+- **Voice Ranges:** Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard Key
 - Voice variations excluded from instrument filters (fixed Nov 22)
 - Accurate variation counts per filter
 
 ---
 
-## API Endpoints
+## API Reference
 
-### Songs
-- `GET /api/v2/songs` - Paginated song list (limit, offset, q, instrument, range)
-- `GET /api/v2/songs/:title` - Song details with all variations
+### Base URL
+- **Production:** `https://jazz-picker.fly.dev`
+- **Local:** `http://localhost:5001`
 
-### PDFs
-- `GET /pdf/:filename` - S3 presigned URL (15min expiry)
+### Endpoints
 
-### Health
-- `GET /health` - Health check for deployment platforms
+**GET `/api/v2/songs`**
+- **Query:** `limit` (50), `offset` (0), `q` (search), `instrument`, `range`
+- **Response:** Paginated list of songs with variation counts.
+
+**GET `/api/v2/songs/:title`**
+- **Response:** Detailed song object with all variations.
+- **Example:**
+  ```json
+  {
+    "title": "All of Me",
+    "variations": [
+      {
+        "display_name": "All of Me Standard Key",
+        "key": "c",
+        "instrument": "Treble",
+        "variation_type": "Standard Key",
+        "pdf_path": "..."
+      }
+    ]
+  }
+  ```
+
+**GET `/pdf/:filename`**
+- **Response:** S3 presigned URL (expires in 15 min).
+- **Example:** `{"url": "https://s3...", "expires_at": "..."}`
+
+**GET `/health`**
+- **Response:** `{"status": "healthy"}`
+
+### Authentication (Coming Soon)
+- **Header:** `Authorization: Bearer <jwt_token>`
+- **Endpoints:** `/auth/login`, `/auth/register`
 
 ---
 

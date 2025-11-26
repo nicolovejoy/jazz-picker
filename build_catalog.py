@@ -9,21 +9,25 @@ This script scans all .ly files in the Wrappers directory and extracts:
 - Core file reference
 - Expected PDF output path
 
-Output: catalog.json
+Output: 
+- catalog.json (for backwards compatibility)
+- catalog.db (SQLite database)
 """
 
 import os
 import re
 import json
+import sqlite3
 from pathlib import Path
 from collections import defaultdict
+from datetime import datetime
 
 # Regex patterns for parsing wrapper files
 SONG_PATTERN = re.compile(r'\\song\{([^}]+)\}\{"([^"]+)"\}')
 INSTRUMENT_PATTERN = re.compile(r'instrument\s*=\s*"([^"]+)"')
 WHAT_KEY_PATTERN = re.compile(r'whatKey\s*=\s*([a-z,\'"]+)')
 WHAT_CLEF_PATTERN = re.compile(r'whatClef\s*=\s*"([^"]+)"')
-INCLUDE_CORE_PATTERN = re.compile(r'\\include\s+"\.\.\/Core\/([^"]+)"')
+INCLUDE_CORE_PATTERN = re.compile(r'\\include\s+"\.\./Core/([^"]+)"')
 
 # Filename pattern: {Title} - Ly - {Key} {Variation}.ly
 FILENAME_PATTERN = re.compile(r'^(.+?) - Ly - (.+?)\.ly$')
@@ -124,6 +128,8 @@ def parse_wrapper_file(filepath):
 
     # Determine variation type from key_and_variation
     variation_type = 'Unknown'
+    voice_range = None
+    
     if 'Standard' in key_and_variation:
         if 'Bass for Standard' in key_and_variation:
             variation_type = 'Bass'
@@ -132,15 +138,117 @@ def parse_wrapper_file(filepath):
         elif 'for Eb' in key_and_variation:
             variation_type = 'Eb Instrument'
         else:
-            variation_type = 'Standard (Concert)'
+            variation_type = 'Standard Key'
+        voice_range = 'Standard Key'
     elif 'Alto Voice' in key_and_variation:
         variation_type = 'Alto Voice'
+        voice_range = 'Alto Voice'
     elif 'Baritone Voice' in key_and_variation:
         variation_type = 'Baritone Voice'
+        voice_range = 'Baritone Voice'
 
     metadata['variation_type'] = variation_type
+    metadata['voice_range'] = voice_range
 
     return metadata
+
+
+def init_database(db_path='catalog.db'):
+    """Initialize SQLite database with schema."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Drop existing tables (fresh start each time)
+    cursor.execute('DROP TABLE IF EXISTS variations')
+    cursor.execute('DROP TABLE IF EXISTS songs')
+    cursor.execute('DROP TABLE IF EXISTS metadata')
+    
+    # Songs table
+    cursor.execute('''
+        CREATE TABLE songs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT UNIQUE NOT NULL,
+            core_files TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('CREATE INDEX idx_songs_title ON songs(title)')
+    
+    # Variations table
+    cursor.execute('''
+        CREATE TABLE variations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            song_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            key TEXT,
+            instrument TEXT,
+            variation_type TEXT,
+            voice_range TEXT,
+            pdf_path TEXT NOT NULL,
+            FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    cursor.execute('CREATE INDEX idx_variations_song_id ON variations(song_id)')
+    cursor.execute('CREATE INDEX idx_variations_instrument ON variations(instrument)')
+    cursor.execute('CREATE INDEX idx_variations_voice_range ON variations(voice_range)')
+    
+    # Metadata table
+    cursor.execute('''
+        CREATE TABLE metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    ''')
+    
+    conn.commit()
+    return conn
+
+
+def save_to_database(catalog, db_path='catalog.db'):
+    """Save catalog to SQLite database."""
+    conn = init_database(db_path)
+    cursor = conn.cursor()
+    
+    # Save metadata
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
+                   ('total_songs', str(catalog['metadata']['total_songs'])))
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
+                   ('total_files', str(catalog['metadata']['total_files'])))
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
+                   ('generated', catalog['metadata']['generated']))
+    
+    # Save songs and variations
+    for song_title, song_data in catalog['songs'].items():
+        # Insert song
+        cursor.execute(
+            'INSERT INTO songs (title, core_files) VALUES (?, ?)',
+            (song_title, json.dumps(song_data['core_files']))
+        )
+        song_id = cursor.lastrowid
+        
+        # Insert variations
+        for variation in song_data['variations']:
+            cursor.execute('''
+                INSERT INTO variations 
+                (song_id, filename, display_name, key, instrument, variation_type, voice_range, pdf_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                song_id,
+                variation['filename'],
+                variation['display_name'],
+                variation.get('key'),
+                variation.get('instrument'),
+                variation.get('variation_type'),
+                variation.get('voice_range'),
+                variation['pdf_path']
+            ))
+    
+    conn.commit()
+    conn.close()
+    print(f"Database saved to {db_path}")
 
 
 def build_catalog(wrappers_dir='lilypond-data/Wrappers'):
@@ -197,8 +305,6 @@ def build_catalog(wrappers_dir='lilypond-data/Wrappers'):
         }
 
     catalog['metadata']['total_songs'] = len(catalog['songs'])
-
-    from datetime import datetime
     catalog['metadata']['generated'] = datetime.now().isoformat()
 
     return catalog
@@ -234,7 +340,10 @@ if __name__ == '__main__':
 
     if catalog:
         save_catalog(catalog)
+        save_to_database(catalog)
         print_summary(catalog)
         print("\n✓ Catalog built successfully!")
+        print("  → catalog.json (JSON format)")
+        print("  → catalog.db (SQLite database)")
     else:
         print("\n✗ Failed to build catalog")

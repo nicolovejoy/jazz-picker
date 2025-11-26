@@ -1,107 +1,41 @@
-# Jazz Picker 🎵
+# Jazz Picker
 
-Web app for browsing Eric's LilyPond jazz lead sheet collection. Flask backend will eventually compile PDFs via Docker (but for now stores copies locally and serves them), React frontend (in development) for iPad music stand use as well as for browsing on the web or eventually even small iOs devices.
+A modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands.
 
-## Development Setup
+## 🚀 Quick Start
 
-**See [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) for AI tool usage and branching strategy.**
-
-**Backend:**
-
+### 1. Backend (Flask)
 ```bash
-python3 build_catalog.py  # Generate catalog.json (735 songs)
-python3 app.py            # Runs on http://localhost:5001
+pip install -r requirements.txt
+python3 app.py
+# Runs on http://localhost:5001
 ```
 
-**Frontend:**
-
+### 2. Frontend (React + Vite)
 ```bash
 cd frontend
 npm install
-npm run dev              # Runs on http://localhost:5173
+npm run dev
+# Runs on http://localhost:5173
 ```
 
-**With Docker:**
+---
 
-```bash
-docker-compose up --build  # See DOCKER_README.md
-```
+## 🛠️ Workflow & Deployment
 
-## Architecture
+**Development:**
+- **Git:** Feature branches off `main`.
+- **Sync PDFs:** `python3 build_catalog.py` then `./sync_pdfs_to_s3.sh`.
 
-**Backend (Flask):**
+**Deployment:**
+- **Backend:** `fly deploy` (Fly.io)
+- **Frontend:** Cloudflare Pages (Coming soon)
+- **S3:** Stores PDFs (`jazz-picker-pdfs`)
 
-- **Production:** https://jazz-picker.fly.dev (deployed on Fly.io)
-- Catalog API v2: `/api/v2/songs` (paginated, ~50KB responses)
-- S3 presigned URLs: `/pdf/<filename>` (15min expiry)
-- Optional basic authentication for API protection
-- CORS configured for browser access
-- Auto-scaling (0-1 machines, starts on-demand)
+**Docker:** `docker-compose up --build`
 
-**Frontend (React):**
+---
 
-- Two-filter system: Instrument + Singer Range
-- Search across 735 songs (4000+ variations)
-- PDF viewer with orientation detection
-  - **Portrait mode:** 1 page, swipe navigation
-  - **Landscape mode:** 2 pages side-by-side (music stand view)
-- Touch gestures for page navigation
-- Optimized for iPad music stand use
-
-## Project Structure
-
-```
-├── app.py                    # Flask backend (port 5001)
-├── build_catalog.py          # Generate catalog.json
-├── catalog.json              # 735 songs, 4000+ variations
-├── frontend/                 # React app (port 5173)
-│   ├── src/components/       # Header, SongList, PDFViewer
-│   └── README.md             # Frontend docs
-├── lilypond-data/
-│   ├── Wrappers/             # 4000+ .ly files
-│   └── Core/                 # 735 core files
-└── DOCKER_README.md          # Docker setup
-```
-
-## Status
-
-**Working:**
-
-- ✅ Backend API v2 with slim, paginated responses
-- ✅ **Deployed to production:** https://jazz-picker.fly.dev
-- ✅ Optional basic authentication (disabled by default)
-- ✅ Infinite scroll (replaces pagination)
-- ✅ Smart navigation (single-variation auto-open, Enter key shortcuts)
-- ✅ Improved search UX (sticky search bar, clear button, shows search term in "no results")
-- ✅ Fixed instrument filtering (accurate variation counts)
-- ✅ PDF viewing with S3 storage (2GB, 4367 files)
-- ✅ AWS S3 integration with CORS and secure IAM user
-
-**Features:**
-
-- 🎵 Browse 735 jazz standards with 4000+ transposed variations
-- 🔍 Real-time search with infinite scroll
-- 🎹 Smart UX: Click single-variation songs → opens PDF directly
-- ⌨️ Press Enter in search (1 result) → opens PDF or shows variations
-- 🔧 Accurate filtering by instrument (C/Bb/Eb/Bass) and singer range
-- 📱 **iPad-Optimized PDF Viewer**
-  - **Clean Mode**: Auto-hide navigation after 2 seconds for immersive viewing
-  - **Portrait**: Single page with swipe navigation
-  - **Landscape**: Side-by-side pages (music stand view)
-  - **Pinch Zoom**: 2-finger zoom for viewing fine details
-  - **Keyboard Shortcuts**: Arrow keys, F for fullscreen, Escape to close
-  - **Dynamic Scaling**: Automatically fills screen based on orientation
-- 🌐 **PWA Support**: Add to iPad home screen for full-screen, app-like experience
-- ⚙️ **Settings Menu**: Global preferences accessible from home page
-- ☁️ S3 storage with presigned URLs
-- 🎼 Compiled by Eric using LilyPond
-
-**Next Steps:**
-
-- Deploy frontend to Cloudflare Pages/Vercel/Netlify
-- Test on various iPad models and orientations
-- Add user preferences (remember zoom levels, filters)
-- Setlist functionality
-- Server-side LilyPond compilation (Phase 2)
-
-See `frontend/README.md` for frontend details.
+## 📚 Documentation
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: System design, API reference, and Data Model.
+- **[ROADMAP.md](ROADMAP.md)**: Current plan and next steps.
