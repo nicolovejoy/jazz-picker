@@ -1,46 +1,42 @@
-# Session Handoff - Nov 25, 2025 (Antigravity → Claude CLI)
+# Session Handoff - Nov 25, 2025
 
-## 🚨 Immediate Action Required (For Claude CLI)
+## ✅ Completed This Session
 
-We are in the middle of a **Database Migration**.
-- **Goal:** Switch from `catalog.json` to SQLite (`catalog.db`) to support Auth & Setlists.
-- **Current State:** `catalog.db` is generated and populated.
-- **Next Step:** Update `app.py` to read from `catalog.db`.
+**Backend (Deployed to https://jazz-picker.fly.dev):**
+- Error handling & input validation
+- HTTP caching (ETags, 304 responses)
+- Fixed badge filtering bug
 
-### 1. What Was Just Done ✅
-- **Updated `build_catalog.py`**: Now generates both `catalog.json` AND `catalog.db`.
-- **Generated Database**: `catalog.db` exists with 735 songs.
-- **Updated Roadmap**: Switched to "Database First" strategy (see `UNIFIED_ROADMAP.md`).
-- **Updated Architecture**: Clarified terminology in `ARCHITECTURE.md`.
+**Frontend (Local Dev):**
+- Redesigned cards: minimal inline variations
+- Single variation → 1-click to PDF
+- Multiple variations → inline key buttons
+- Fixed duplicate keys & filter reset bugs
 
-### 2. Next Steps (Execute in Order) 📋
+**Docs:**
+- Created CLAUDE.md
+- Updated SESSION_SUMMARY.md
 
-**Step 1: Update `app.py`**
-- Modify `load_catalog()` to connect to SQLite `catalog.db`.
-- Update `get_songs_v2` and `get_song_v2` to query SQL tables.
-- **Constraint:** Keep `catalog.json` fallback if DB fails (optional, but good for safety).
+## 📋 Next Steps
 
-**Step 2: Implement Auth (Day 3 Plan)**
-- Add `User` model to `app.py` (SQLAlchemy).
-- Add `/auth/register` and `/auth/login` endpoints.
-- Use `Flask-Login` or `Flask-JWT-Extended`.
+1. **Implement Option 3 design** - User wants even simpler cards
+2. **Deploy frontend** to Cloudflare Pages
+3. iPad optimizations (touch targets, gestures)
+4. Setlist feature (LocalStorage)
 
-**Step 3: Deploy**
-- Deploy to Fly.io with SQLite volume.
+## 🔧 Current State
 
-### 3. File Status
-- `build_catalog.py`: **UPDATED** (Safe to commit)
-- `catalog.db`: **NEW** (Do not commit large binary, ensure it's in .gitignore or handled)
-- `UNIFIED_ROADMAP.md`: **UPDATED** (Safe to commit)
-- `ARCHITECTURE.md`: **UPDATED** (Safe to commit)
-- `HANDOFF.md`: **UPDATED** (Safe to commit)
+- Backend: ✅ Production on Fly.io
+- Frontend: ✅ Dev ready, needs deployment
+- Database: Using catalog.json (no migration yet)
 
-### 4. Context for Claude CLI
-- **User Preference:** Wants Auth from Day 1.
-- **Tech Stack:** Flask + SQLite (Fly.io) + React (Vite).
-- **Aesthetic:** "MCM" (Mid-Century Modern) - keep this in mind for Auth UI.
+## 📝 Key Notes
+
+- User prefers ultra-minimal design
+- Main use case: musician with instrument selected
+- MCM aesthetic
+- 9 commits pushed to main
 
 ---
-**Session End:** Nov 25, 2025
-**Agent:** Antigravity
-**Next Agent:** Claude CLI
+**Agent:** Claude Code (Sonnet 4.5)
+**Date:** Nov 25, 2025
