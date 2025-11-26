@@ -1,7 +1,8 @@
 import type { Song, SongListResponse, SongDetail } from '@/types/catalog';
 
 // In production, use the Fly.io backend directly. In dev, use Vite's proxy.
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+const API_BASE = `${BACKEND_URL}/api`;
 
 export const api = {
   async getSongs(): Promise<Song[]> {
@@ -49,8 +50,7 @@ export const api = {
 
   async getPDF(filename: string): Promise<string> {
     console.log('[API] Fetching PDF:', filename);
-    const baseUrl = import.meta.env.VITE_API_URL || '';
-    const url = `${baseUrl}/pdf/${encodeURIComponent(filename)}`;
+    const url = `${BACKEND_URL}/pdf/${encodeURIComponent(filename)}`;
     console.log('[API] URL:', url);
 
     const response = await fetch(url);
