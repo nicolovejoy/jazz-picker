@@ -27,14 +27,12 @@ function formatKey(lilypondKey: string): string {
 // Format variation for button display
 function formatVariationLabel(variation: { key?: string; variation_type?: string }): string {
   const key = formatKey(variation.key || '');
-  const type = variation.variation_type || '';
+  return key || variation.variation_type || '';
+}
 
-  // Add suffix for Bass variations
-  if (type === 'Bass') {
-    return key ? `${key} (Bass)` : 'Bass';
-  }
-
-  return key || type;
+// Check if variation is a Bass clef chart
+function isBassVariation(variation: { variation_type?: string }): boolean {
+  return variation.variation_type === 'Bass';
 }
 
 interface SongListItemProps {
@@ -92,15 +90,23 @@ export function SongListItem({ song, instrument, onSelectVariation }: SongListIt
         </div>
       ) : filteredVariations.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {filteredVariations.map((variation) => (
-            <button
-              key={variation.id}
-              onClick={() => onSelectVariation(variation as any)}
-              className="px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-blue-300 hover:text-blue-200 rounded-mcm border border-blue-400/30 hover:border-blue-400 transition-all"
-            >
-              {formatVariationLabel(variation)}
-            </button>
-          ))}
+          {filteredVariations.map((variation) => {
+            const isBass = isBassVariation(variation);
+            return (
+              <button
+                key={variation.id}
+                onClick={() => onSelectVariation(variation as any)}
+                title={isBass ? 'Bass clef chart' : undefined}
+                className={`px-3 py-1.5 text-sm rounded-mcm border transition-all ${
+                  isBass
+                    ? 'bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-300 hover:text-emerald-200 border-emerald-400/30 hover:border-emerald-400'
+                    : 'bg-blue-400/10 hover:bg-blue-400/20 text-blue-300 hover:text-blue-200 border-blue-400/30 hover:border-blue-400'
+                }`}
+              >
+                {formatVariationLabel(variation)}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className="text-xs text-gray-500">
