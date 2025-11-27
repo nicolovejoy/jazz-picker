@@ -1,15 +1,14 @@
-import type { SongSummary, Variation, InstrumentType, SingerRangeType } from '@/types/catalog';
+import type { SongSummary, Variation, InstrumentType } from '@/types/catalog';
 import { SongListItem } from './SongListItem';
 
 interface SongListProps {
   songs: SongSummary[];
   instrument: InstrumentType;
-  singerRange: SingerRangeType;
   searchQuery: string;
   onSelectVariation: (variation: Variation) => void;
 }
 
-export function SongList({ songs, instrument, singerRange, searchQuery, onSelectVariation }: SongListProps) {
+export function SongList({ songs, instrument, searchQuery, onSelectVariation }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -40,7 +39,6 @@ export function SongList({ songs, instrument, singerRange, searchQuery, onSelect
             key={`${song.title}-${index}`}
             song={song}
             instrument={instrument}
-            singerRange={singerRange}
             onSelectVariation={onSelectVariation}
           />
         ))}

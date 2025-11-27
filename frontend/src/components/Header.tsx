@@ -1,34 +1,23 @@
 import { useState } from 'react';
-import type { InstrumentType, SingerRangeType } from '@/types/catalog';
+import type { InstrumentType } from '@/types/catalog';
 import { FiSearch, FiX, FiMenu } from 'react-icons/fi';
 import { SettingsMenu } from './SettingsMenu';
 
 interface HeaderProps {
   totalSongs: number;
   instrument: InstrumentType;
-  singerRange: SingerRangeType;
   searchQuery: string;
   onInstrumentChange: (instrument: InstrumentType) => void;
-  onSingerRangeChange: (range: SingerRangeType) => void;
   onSearch: (query: string) => void;
   onEnterPress: () => void;
   onResetInstrument?: () => void;
 }
 
-const singerRangeColors: Record<SingerRangeType, string> = {
-  'Alto/Mezzo/Soprano': 'border-alto bg-alto/10',
-  'Baritone/Tenor/Bass': 'border-baritone bg-baritone/10',
-  'Standard': 'border-standard bg-standard/10',
-  'All': 'border-all-keys bg-all-keys/10',
-};
-
 export function Header({
   totalSongs,
   instrument,
-  singerRange,
   searchQuery,
   onInstrumentChange,
-  onSingerRangeChange,
   onSearch,
   onEnterPress,
   onResetInstrument,
@@ -87,48 +76,26 @@ export function Header({
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3 md:gap-4 max-w-2xl mx-auto">
-        <div className="flex-1">
-          <label
-            htmlFor="instrument"
-            className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
-          >
-            Instrument
-          </label>
-          <select
-            id="instrument"
-            value={instrument}
-            onChange={(e) => onInstrumentChange(e.target.value as InstrumentType)}
-            className="w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border border-blue-400/50 rounded-mcm text-white focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 cursor-pointer transition-all"
-          >
-            <option value="C">C (Piano, Guitar, Vocals)</option>
-            <option value="Bb">Bb (Trumpet, Tenor Sax, Clarinet)</option>
-            <option value="Eb">Eb (Alto Sax, Bari Sax)</option>
-            <option value="Bass">Bass Clef (Bass, Trombone)</option>
-            <option value="All">All Charts</option>
-          </select>
-        </div>
-
-        <div className="flex-1">
-          <label
-            htmlFor="singerRange"
-            className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
-          >
-            Singer Range
-          </label>
-          <select
-            id="singerRange"
-            value={singerRange}
-            onChange={(e) => onSingerRangeChange(e.target.value as SingerRangeType)}
-            className={`w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border rounded-mcm text-white focus:outline-none focus:ring-1 focus:border-transparent cursor-pointer transition-all ${singerRangeColors[singerRange]}`}
-          >
-            <option value="Alto/Mezzo/Soprano">🟣 Alto/Mezzo/Soprano</option>
-            <option value="Baritone/Tenor/Bass">🟢 Baritone/Tenor/Bass</option>
-            <option value="Standard">⚪ Standard Keys</option>
-            <option value="All">🟦 All Keys</option>
-          </select>
-        </div>
+      {/* Instrument Filter */}
+      <div className="max-w-md mx-auto">
+        <label
+          htmlFor="instrument"
+          className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
+        >
+          Instrument
+        </label>
+        <select
+          id="instrument"
+          value={instrument}
+          onChange={(e) => onInstrumentChange(e.target.value as InstrumentType)}
+          className="w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border border-blue-400/50 rounded-mcm text-white focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 cursor-pointer transition-all"
+        >
+          <option value="C">C (Piano, Guitar, Vocals)</option>
+          <option value="Bb">Bb (Trumpet, Tenor Sax, Clarinet)</option>
+          <option value="Eb">Eb (Alto Sax, Bari Sax)</option>
+          <option value="Bass">Bass Clef (Bass, Trombone)</option>
+          <option value="All">All Charts</option>
+        </select>
       </div>
     </header>
 

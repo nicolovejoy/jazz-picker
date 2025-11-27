@@ -286,7 +286,7 @@ def get_songs_v2():
 
     query = request.args.get('q', '').lower()
     instrument_filter = request.args.get('instrument', 'All')
-    range_filter = request.args.get('range', 'All')
+    range_filter = request.args.get('range', 'Standard')  # Default to Standard (no voice variations)
 
     # Validate filters
     if instrument_filter not in VALID_INSTRUMENTS:

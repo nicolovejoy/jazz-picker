@@ -1,15 +1,14 @@
 import { useSongDetail } from '@/hooks/useSongDetail';
-import type { SongSummary, Variation, InstrumentType, SingerRangeType } from '@/types/catalog';
-import { getInstrumentCategory, getSingerRangeCategory } from '@/types/catalog';
+import type { SongSummary, Variation, InstrumentType } from '@/types/catalog';
+import { getInstrumentCategory } from '@/types/catalog';
 
 interface SongListItemProps {
   song: SongSummary;
   instrument: InstrumentType;
-  singerRange: SingerRangeType;
   onSelectVariation: (variation: Variation) => void;
 }
 
-export function SongListItem({ song, instrument, singerRange, onSelectVariation }: SongListItemProps) {
+export function SongListItem({ song, instrument, onSelectVariation }: SongListItemProps) {
   const isSingleVariation = song.variation_count === 1;
 
   // Always fetch song details to show variations inline
@@ -20,12 +19,6 @@ export function SongListItem({ song, instrument, singerRange, onSelectVariation 
       const category = getInstrumentCategory(v.variation_type);
       if (category !== instrument) return false;
     }
-
-    if (singerRange !== 'All') {
-      const category = getSingerRangeCategory(v.variation_type);
-      if (category !== singerRange) return false;
-    }
-
     return true;
   }) || [];
 

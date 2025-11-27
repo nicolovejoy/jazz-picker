@@ -14,18 +14,17 @@ export const api = {
   },
 
   async getSongsV2(
-    limit = 50, 
-    offset = 0, 
-    query = '', 
-    instrument = 'All', 
-    singerRange = 'All'
+    limit = 50,
+    offset = 0,
+    query = '',
+    instrument = 'All'
   ): Promise<SongListResponse> {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
       q: query,
       instrument,
-      range: singerRange,
+      range: 'Standard', // Always filter to Standard charts only
     });
     const response = await fetch(`${API_BASE}/v2/songs?${params}`);
     if (!response.ok) throw new Error('Failed to fetch songs');

@@ -6,7 +6,7 @@ import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
-import type { InstrumentType, SingerRangeType, Variation, SongSummary } from '@/types/catalog';
+import type { InstrumentType, Variation, SongSummary } from '@/types/catalog';
 
 const STORAGE_KEY = 'jazz-picker-instrument';
 
@@ -25,7 +25,6 @@ function getStoredInstrument(): InstrumentType | null {
 function App() {
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
-  const [singerRange, setSingerRange] = useState<SingerRangeType>('All');
   const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
@@ -41,7 +40,6 @@ function App() {
     offset: page * LIMIT,
     query: searchQuery,
     instrument: instrument || 'All',
-    singerRange
   });
 
   // Pre-fetch next page
@@ -54,18 +52,18 @@ function App() {
       // Only pre-fetch if there's potentially more data
       if (nextOffset < data.total) {
         queryClient.prefetchQuery({
-          queryKey: ['songs', LIMIT, nextOffset, searchQuery, inst, singerRange],
-          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, inst, singerRange),
+          queryKey: ['songs', LIMIT, nextOffset, searchQuery, inst],
+          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, inst),
         });
       }
     }
-  }, [data, page, hasMore, isFetching, searchQuery, instrument, singerRange, queryClient]);
+  }, [data, page, hasMore, isFetching, searchQuery, instrument, queryClient]);
 
   // Reset songs when filters change
   useEffect(() => {
     setPage(0);
     setAllSongs([]);
-  }, [searchQuery, instrument, singerRange]);
+  }, [searchQuery, instrument]);
 
   // Accumulate songs as pages load
   useEffect(() => {
@@ -120,10 +118,6 @@ function App() {
     }
   }, []);
 
-  const handleRangeChange = useCallback((range: SingerRangeType) => {
-    setSingerRange(range);
-  }, []);
-
   const handleResetInstrument = useCallback(() => {
     setInstrument(null);
     try {
@@ -163,10 +157,8 @@ function App() {
       <Header
         totalSongs={data?.total || 0}
         instrument={instrument}
-        singerRange={singerRange}
         searchQuery={searchQuery}
         onInstrumentChange={handleInstrumentChange}
-        onSingerRangeChange={handleRangeChange}
         onSearch={handleSearch}
         onEnterPress={handleEnterPress}
         onResetInstrument={handleResetInstrument}
@@ -187,7 +179,6 @@ function App() {
             <SongList
               songs={allSongs}
               instrument={instrument}
-              singerRange={singerRange}
               searchQuery={searchQuery}
               onSelectVariation={setSelectedVariation}
             />
