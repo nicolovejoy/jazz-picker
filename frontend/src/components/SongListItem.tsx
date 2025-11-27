@@ -2,6 +2,41 @@ import { useSongDetail } from '@/hooks/useSongDetail';
 import type { SongSummary, Variation, InstrumentType } from '@/types/catalog';
 import { getInstrumentCategory } from '@/types/catalog';
 
+// Convert LilyPond key notation to readable format
+// e.g., "bf," -> "B♭", "df" -> "D♭", "fs" -> "F♯"
+function formatKey(lilypondKey: string): string {
+  if (!lilypondKey) return '';
+
+  // Remove octave markers (commas and apostrophes)
+  const cleanKey = lilypondKey.replace(/[,']+$/, '');
+
+  // Map LilyPond note names to readable format
+  const noteMap: Record<string, string> = {
+    'c': 'C', 'cs': 'C♯', 'cf': 'C♭',
+    'd': 'D', 'ds': 'D♯', 'df': 'D♭',
+    'e': 'E', 'es': 'E♯', 'ef': 'E♭',
+    'f': 'F', 'fs': 'F♯', 'ff': 'F♭',
+    'g': 'G', 'gs': 'G♯', 'gf': 'G♭',
+    'a': 'A', 'as': 'A♯', 'af': 'A♭',
+    'b': 'B', 'bs': 'B♯', 'bf': 'B♭',
+  };
+
+  return noteMap[cleanKey] || cleanKey.toUpperCase();
+}
+
+// Format variation for button display
+function formatVariationLabel(variation: { key?: string; variation_type?: string }): string {
+  const key = formatKey(variation.key || '');
+  const type = variation.variation_type || '';
+
+  // Add suffix for Bass variations
+  if (type === 'Bass') {
+    return key ? `${key} (Bass)` : 'Bass';
+  }
+
+  return key || type;
+}
+
 interface SongListItemProps {
   song: SongSummary;
   instrument: InstrumentType;
@@ -57,20 +92,15 @@ export function SongListItem({ song, instrument, onSelectVariation }: SongListIt
         </div>
       ) : filteredVariations.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {filteredVariations.map((variation) => {
-            // Extract key from variation
-            const keyMatch = variation.key || variation.display_name.split(' - ')[1] || variation.variation_type;
-
-            return (
-              <button
-                key={variation.id}
-                onClick={() => onSelectVariation(variation as any)}
-                className="px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-blue-300 hover:text-blue-200 rounded-mcm border border-blue-400/30 hover:border-blue-400 transition-all"
-              >
-                {keyMatch}
-              </button>
-            );
-          })}
+          {filteredVariations.map((variation) => (
+            <button
+              key={variation.id}
+              onClick={() => onSelectVariation(variation as any)}
+              className="px-3 py-1.5 text-sm bg-blue-400/10 hover:bg-blue-400/20 text-blue-300 hover:text-blue-200 rounded-mcm border border-blue-400/30 hover:border-blue-400 transition-all"
+            >
+              {formatVariationLabel(variation)}
+            </button>
+          ))}
         </div>
       ) : (
         <div className="text-xs text-gray-500">
