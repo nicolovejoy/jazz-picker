@@ -2,51 +2,53 @@
 
 ## ✅ Completed This Session
 
-**Frontend UX:**
-- Welcome screen with instrument picker (required before browsing)
-- LocalStorage persistence for instrument selection
-- "Change my instrument" in Settings menu
+**Frontend:**
+- Welcome screen with instrument picker
+- LocalStorage persistence for instrument preference
+- Deployed to Vercel: https://frontend-phi-khaki-43.vercel.app/
+- GitHub CI/CD integration with Vercel
 
-**Deployment:**
-- Frontend on Vercel: https://frontend-ommxkfowi-nico-lovejoys-projects.vercel.app
-- Backend on Fly.io: https://jazz-picker.fly.dev
-- CORS enabled (allow all origins)
-- Env var: `VITE_BACKEND_URL=https://jazz-picker.fly.dev`
+**Backend:**
+- CORS enabled (all origins)
+- Deployed to Fly.io: https://jazz-picker.fly.dev
 
-## ⚠️ Known Issue (To Test Tomorrow)
+## 🎯 Decision Made: Simplify Filters
 
-PDF loading should work now after env var fix. Need to redeploy and test:
-```bash
-cd frontend && vercel --prod --yes
-```
+**Eric approved this approach:**
+
+1. **Remove Singer Range filter** from UI
+2. **Show only Standard charts**, filtered by Instrument (C, Bb, Eb, Bass)
+3. **Hide Alto/Baritone Voice PDFs** until dynamic LilyPond compilation is added
+
+**Rationale:** The current data has incomplete coverage of key/instrument combinations. Once LilyPond runs on the backend, users can generate any song in any key for any instrument dynamically - making pre-generated voice range PDFs unnecessary.
 
 ## 📋 Next Steps
 
-1. Test PDF loading in production
-2. Connect GitHub repo to Vercel for CI/CD (Settings → Git)
-3. Custom domain (optional)
-4. iPad optimizations
-5. Setlist feature (LocalStorage)
-
-## 🔧 Current State
-
-- Backend: ✅ Production on Fly.io (CORS enabled)
-- Frontend: ✅ On Vercel (needs redeploy for PDF fix)
-- Auth: None (public API for now)
+1. **Remove Singer Range filter** from Header.tsx
+2. **Update backend** to only return Standard variations (exclude Alto/Baritone)
+3. **Clean up frontend** types and filtering logic
+4. Test all instrument filters work correctly
+5. iPad optimizations
+6. Future: LilyPond compilation for dynamic key/transposition
 
 ## 🔗 URLs
 
-- **Frontend:** https://frontend-ommxkfowi-nico-lovejoys-projects.vercel.app
-- **Backend API:** https://jazz-picker.fly.dev
-- **Local dev:** http://localhost:5173
+- **Frontend:** https://frontend-phi-khaki-43.vercel.app/
+- **Backend:** https://jazz-picker.fly.dev
+- **GitHub:** https://github.com/nicolovejoy/jazz-picker
 
-## 📝 Environment Variables (Vercel)
+## 📝 Future Vision
 
-| Var | Value |
-|-----|-------|
-| `VITE_BACKEND_URL` | `https://jazz-picker.fly.dev` |
+```
+User Flow (Future):
+1. Pick your instrument (Bb trumpet, Eb alto sax, etc.)
+2. Browse songs (all in Standard reference)
+3. Select a song → See PDF
+4. Optional: Change key → LilyPond generates new PDF on demand
+5. Optional: App suggests optimal key based on melody range
+```
 
 ---
 
 **Agent:** Claude Code (Opus 4.5)
-**Date:** Nov 25, 2025
+**Date:** Nov 26, 2025
