@@ -314,7 +314,7 @@ def get_songs_v2():
             match_instrument = False
             if instrument_filter == 'All':
                 match_instrument = True
-            elif instrument_filter == 'C' and 'Standard' in v_type:
+            elif instrument_filter == 'C' and ('Standard' in v_type or 'Alto' in v_type or 'Baritone' in v_type):
                 match_instrument = True
             elif instrument_filter == 'Bb' and 'Bb Instrument' in v_type:
                 match_instrument = True
