@@ -1,53 +1,58 @@
-# Session Handoff - Nov 26, 2025
+# Session Handoff - Nov 27, 2025
 
 ## Completed This Session
 
-**Filter Simplification (Eric-approved):**
-- Removed Singer Range filter from UI (Header.tsx)
-- Backend now defaults to `range=Standard` (excludes Alto/Baritone Voice PDFs)
-- Frontend always sends `range=Standard` to API
-- Cleaned up singerRange state from App.tsx, SongList.tsx, SongListItem.tsx
+**UI Improvements:**
+- Key buttons now show proper notation (B♭ instead of bf,)
+- Bass clef charts color-coded green with hover tooltip
+- Removed Singer Range filter (Eric-approved simplification)
 
-**Documentation Cleanup:**
-- Deleted outdated `ARCHITECTURE.md` (content moved to CLAUDE.md)
-- Deleted outdated `SESSION_SUMMARY.md` and `ROADMAP.md` (previous commit)
-- Updated `README.md` with correct Vercel deployment info
-- Updated `frontend/README.md` - removed outdated claims
+**Documentation:**
+- Deleted outdated `ARCHITECTURE.md`
+- Created `LILYPOND_PLAN.md` - research on dynamic chart generation
+- Created `SCHEMA_PLAN.md` - SQLite database schema for Phase 1 & 2
+
+**Planning:**
+- Researched LilyPond Docker integration options
+- Designed schema for songs, variations, singers, generated_charts, users, setlists
+- Decision: SQLite on Fly.io volume, plan for user accounts but execute LilyPond first
 
 ## Current State
 
 **Live URLs:**
 - Frontend: https://frontend-phi-khaki-43.vercel.app/
 - Backend: https://jazz-picker.fly.dev
-- GitHub: https://github.com/nicolovejoy/jazz-picker
 
-**Features:**
-- Welcome screen with instrument picker (C, Bb, Eb, Bass)
-- Instrument filter (persisted in LocalStorage)
+**Features Working:**
+- Instrument filter (C, Bb, Eb, Bass)
 - Search with infinite scroll
-- iPad-optimized PDF viewer (pinch zoom, swipe, auto-hide nav)
+- iPad-optimized PDF viewer
+- Key display with ♭/♯ symbols
 
-## Future Vision (Eric's direction)
+## Next Steps (Phase 1: LilyPond)
 
-```
-User Flow (Future with LilyPond backend):
-1. Pick your instrument (Bb trumpet, Eb alto sax, etc.)
-2. Browse songs (all in Standard reference key)
-3. Select a song -> See PDF in standard key
-4. Optional: Change key -> LilyPond generates new PDF on demand
-5. Future: Presets like "Ella Fitzgerald's key" based on famous recordings
-```
+See `SCHEMA_PLAN.md` for full details.
 
-**Key insight from Eric:** Once LilyPond runs on the backend, users can generate any song in any key for any instrument dynamically. Pre-generated voice range PDFs become unnecessary - instead, existing wrappers become "presets".
+1. Enhance `build_catalog.py` for SQLite + singer extraction
+2. Setup Fly.io volume for SQLite persistence
+3. Add LilyPond to Docker image
+4. Create `/api/v2/generate` endpoint
+5. Update frontend: cached keys vs generatable
 
-## Next Steps
+## Key Decisions Made
 
-1. iPad optimizations (touch targets, landscape layouts)
-2. LilyPond backend integration for dynamic key/transposition
-3. Setlist feature (LocalStorage-based)
-4. Service worker for offline PDF caching
+- **SQLite on Fly.io** (not Postgres) for data store
+- **Singer extraction at build time** from wrapper `instrument` field
+- **Range stored on songs**, computed per variation by transposition
+- **User accounts planned** but not blocking LilyPond work
+- **Admin approval flow** for new users (prospective_user → user)
+
+## Open Questions for Eric
+
+1. `variation_type` decomposition - split into instrument/clef/preset_label?
+2. Preferred singer range format for users?
+3. Core file timestamp - git history or file mtime?
 
 ---
 
-**Agent:** Claude Code (Opus 4.5)
-**Date:** Nov 26, 2025
+**Date:** Nov 27, 2025
