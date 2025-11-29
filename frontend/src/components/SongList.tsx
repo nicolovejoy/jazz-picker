@@ -6,9 +6,10 @@ interface SongListProps {
   instrument: InstrumentType;
   searchQuery: string;
   onSelectVariation: (variation: Variation) => void;
+  onOpenPdfUrl: (url: string) => void;
 }
 
-export function SongList({ songs, instrument, searchQuery, onSelectVariation }: SongListProps) {
+export function SongList({ songs, instrument, searchQuery, onSelectVariation, onOpenPdfUrl }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -40,6 +41,7 @@ export function SongList({ songs, instrument, searchQuery, onSelectVariation }: 
             song={song}
             instrument={instrument}
             onSelectVariation={onSelectVariation}
+            onOpenPdfUrl={onOpenPdfUrl}
           />
         ))}
       </div>

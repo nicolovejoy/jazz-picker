@@ -7,8 +7,12 @@ import { api } from '@/services/api';
 // Set up worker - use unpkg CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+interface ExtendedVariation extends Variation {
+  directUrl?: string;
+}
+
 interface PDFViewerProps {
-  variation: Variation;
+  variation: ExtendedVariation;
   onClose: () => void;
 }
 
@@ -41,8 +45,17 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
       try {
         setLoading(true);
         setError(null);
-        console.log('[PDFViewer] Fetching PDF for:', variation.filename);
 
+        // If directUrl is provided (generated PDF), use it directly
+        if (variation.directUrl) {
+          if (mounted) {
+            setPdfUrl(variation.directUrl);
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log('[PDFViewer] Fetching PDF for:', variation.filename);
         const url = await api.getPDF(variation.filename);
 
         if (mounted) {

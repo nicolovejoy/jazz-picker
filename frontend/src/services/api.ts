@@ -4,6 +4,12 @@ import type { SongListResponse, SongDetail } from '@/types/catalog';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 const API_BASE = `${BACKEND_URL}/api`;
 
+export interface GenerateResponse {
+  url: string;
+  cached: boolean;
+  generation_time_ms: number;
+}
+
 export const api = {
   async getSongsV2(
     limit = 50,
@@ -65,5 +71,24 @@ export const api = {
       // Convert blob to object URL
       return URL.createObjectURL(blob);
     }
+  },
+
+  async generatePDF(
+    song: string,
+    key: string,
+    clef: 'treble' | 'bass' = 'treble'
+  ): Promise<GenerateResponse> {
+    const response = await fetch(`${API_BASE}/v2/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ song, key, clef }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Generation failed' }));
+      throw new Error(error.error || 'Failed to generate PDF');
+    }
+
+    return response.json();
   },
 };

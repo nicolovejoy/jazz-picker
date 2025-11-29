@@ -8,6 +8,11 @@ import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
 import type { InstrumentType, Variation, SongSummary } from '@/types/catalog';
 
+// Special variation type for generated PDFs with direct URL
+interface GeneratedVariation extends Variation {
+  directUrl?: string;
+}
+
 const STORAGE_KEY = 'jazz-picker-instrument';
 
 function getStoredInstrument(): InstrumentType | null {
@@ -25,7 +30,7 @@ function getStoredInstrument(): InstrumentType | null {
 function App() {
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
-  const [selectedVariation, setSelectedVariation] = useState<Variation | null>(null);
+  const [selectedVariation, setSelectedVariation] = useState<GeneratedVariation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -127,6 +132,24 @@ function App() {
     }
   }, []);
 
+  const handleOpenPdfUrl = useCallback((url: string) => {
+    // Create a pseudo-variation with direct URL for generated PDFs
+    setSelectedVariation({
+      filename: 'generated',
+      filepath: '',
+      title: 'Generated',
+      key_and_variation: '',
+      pdf_path: '',
+      display_name: 'Generated',
+      instrument: '',
+      key: '',
+      clef: '',
+      core_file: '',
+      variation_type: 'Generated',
+      directUrl: url,
+    });
+  }, []);
+
   const handleEnterPress = useCallback(async () => {
     // Only handle if exactly 1 song in results
     if (allSongs.length !== 1) return;
@@ -181,6 +204,7 @@ function App() {
               instrument={instrument}
               searchQuery={searchQuery}
               onSelectVariation={setSelectedVariation}
+              onOpenPdfUrl={handleOpenPdfUrl}
             />
 
             {/* Infinite Scroll Trigger */}
