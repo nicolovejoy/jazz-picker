@@ -25,7 +25,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Constants for validation
 MAX_LIMIT = 200
 VALID_INSTRUMENTS = {'All', 'C', 'Bb', 'Eb', 'Bass'}
-VALID_RANGES = {'All', 'Alto/Mezzo/Soprano', 'Baritone/Tenor/Bass', 'Standard'}
 
 # Load catalog
 CATALOG_FILE = 'catalog.json'
@@ -286,14 +285,10 @@ def get_songs_v2():
 
     query = request.args.get('q', '').lower()
     instrument_filter = request.args.get('instrument', 'All')
-    range_filter = request.args.get('range', 'Standard')  # Default to Standard (no voice variations)
 
     # Validate filters
     if instrument_filter not in VALID_INSTRUMENTS:
         return jsonify({'error': f'Invalid instrument. Must be one of: {", ".join(VALID_INSTRUMENTS)}'}), 400
-
-    if range_filter not in VALID_RANGES:
-        return jsonify({'error': f'Invalid range. Must be one of: {", ".join(VALID_RANGES)}'}), 400
     
     # Filter songs
     filtered_songs = []
@@ -302,15 +297,14 @@ def get_songs_v2():
         if query and query not in title.lower():
             continue
 
-        # Calculate available instruments and ranges for MATCHING variations only
+        # Calculate available instruments for MATCHING variations only
         instruments = set()
-        ranges = set()
         matching_variations = 0
 
         for var in data['variations']:
             v_type = var['variation_type']
 
-            # Check if this variation matches the requested filters
+            # Check if this variation matches the instrument filter
             match_instrument = False
             if instrument_filter == 'All':
                 match_instrument = True
@@ -323,18 +317,7 @@ def get_songs_v2():
             elif instrument_filter == 'Bass' and v_type == 'Bass':
                 match_instrument = True
 
-            match_range = False
-            if range_filter == 'All':
-                match_range = True
-            elif range_filter == 'Alto/Mezzo/Soprano' and 'Alto' in v_type:
-                match_range = True
-            elif range_filter == 'Baritone/Tenor/Bass' and 'Baritone' in v_type:
-                match_range = True
-            elif range_filter == 'Standard' and 'Standard' in v_type:
-                match_range = True
-
-            # Only add instruments/ranges for variations that match BOTH filters
-            if match_instrument and match_range:
+            if match_instrument:
                 matching_variations += 1
 
                 # Add instrument category for this MATCHING variation
@@ -347,21 +330,12 @@ def get_songs_v2():
                 if v_type == 'Bass':
                     instruments.add('Bass')
 
-                # Add range category for this MATCHING variation
-                if 'Alto' in v_type:
-                    ranges.add('Alto/Mezzo/Soprano')
-                elif 'Baritone' in v_type:
-                    ranges.add('Baritone/Tenor/Bass')
-                elif 'Standard' in v_type:
-                    ranges.add('Standard')
-
-        # Only include song if it has at least one variation matching the filters
+        # Only include song if it has at least one variation matching the filter
         if matching_variations > 0:
             filtered_songs.append({
                 'title': title,
                 'variation_count': matching_variations,
                 'available_instruments': sorted(list(instruments)),
-                'available_ranges': sorted(list(ranges))
             })
 
     # Sort alphabetically
@@ -382,7 +356,6 @@ def get_songs_v2():
         'limit': limit,
         'offset': offset,
         'instrument': instrument_filter,
-        'range': range_filter
     }))
 
     # Add caching headers (5 minutes for song lists)

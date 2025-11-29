@@ -1,18 +1,10 @@
-import type { Song, SongListResponse, SongDetail } from '@/types/catalog';
+import type { SongListResponse, SongDetail } from '@/types/catalog';
 
 // In production, use the Fly.io backend directly. In dev, use Vite's proxy.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 const API_BASE = `${BACKEND_URL}/api`;
 
 export const api = {
-  async getSongs(): Promise<Song[]> {
-    const response = await fetch(`${API_BASE}/songs`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch songs');
-    }
-    return response.json();
-  },
-
   async getSongsV2(
     limit = 50,
     offset = 0,
@@ -24,7 +16,6 @@ export const api = {
       offset: offset.toString(),
       q: query,
       instrument,
-      range: 'Standard', // Always filter to Standard charts only
     });
     const response = await fetch(`${API_BASE}/v2/songs?${params}`);
     if (!response.ok) throw new Error('Failed to fetch songs');
@@ -35,14 +26,6 @@ export const api = {
     const response = await fetch(`${API_BASE}/v2/songs/${encodeURIComponent(title)}`);
     if (!response.ok) {
       throw new Error('Failed to fetch song details');
-    }
-    return response.json();
-  },
-
-  async searchSongs(query: string): Promise<Song[]> {
-    const response = await fetch(`${API_BASE}/songs/search?q=${encodeURIComponent(query)}`);
-    if (!response.ok) {
-      throw new Error('Failed to search songs');
     }
     return response.json();
   },
