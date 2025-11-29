@@ -636,6 +636,221 @@ def check_pdf(filename):
     return jsonify({'exists': pdf_path.exists(), 'path': str(pdf_path)})
 
 
+# LilyPond generation constants
+LILYPOND_DATA_DIR = Path('lilypond-data')
+GENERATED_DIR = LILYPOND_DATA_DIR / 'Generated'  # Inside lilypond-data for correct relative paths
+VALID_KEYS = {'c', 'cs', 'df', 'd', 'ds', 'ef', 'e', 'f', 'fs', 'gf', 'g', 'gs', 'af', 'a', 'as', 'bf', 'b'}
+VALID_CLEFS = {'treble', 'bass'}
+
+
+def slugify(text):
+    """Convert text to a safe filename slug."""
+    import re
+    text = text.lower()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[\s_-]+', '-', text)
+    return text.strip('-')
+
+
+def generate_wrapper_content(core_file, target_key, clef, instrument_label):
+    """Generate LilyPond wrapper file content."""
+    return f'''%% -*- Mode: LilyPond -*-
+%% Auto-generated wrapper for dynamic key transposition
+
+\\version "2.24.0"
+
+\\include "english.ly"
+
+instrument = "{instrument_label}"
+whatKey = {target_key}
+whatClef = "{clef}"
+
+\\include "../Core/{core_file}"
+'''
+
+
+@app.route('/api/v2/generate', methods=['POST'])
+@requires_auth
+def generate_pdf():
+    """
+    Generate a PDF for any song in any key.
+
+    Request body:
+    {
+        "song": "502 Blues",      // Song title
+        "key": "c",               // Target key (LilyPond notation)
+        "clef": "treble"          // "treble" or "bass"
+    }
+
+    Returns:
+    {
+        "url": "https://s3.../generated/502-blues-c-treble.pdf",
+        "cached": true/false,
+        "generation_time_ms": 2340
+    }
+    """
+    import time
+    start_time = time.time()
+
+    if catalog_data is None:
+        load_catalog()
+
+    if not catalog_data:
+        return jsonify({'error': 'Catalog not loaded'}), 500
+
+    # Parse request
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body must be JSON'}), 400
+
+    song_title = data.get('song')
+    target_key = data.get('key', '').lower()
+    clef = data.get('clef', 'treble').lower()
+
+    # Validate inputs
+    if not song_title:
+        return jsonify({'error': 'Missing required field: song'}), 400
+
+    if not target_key:
+        return jsonify({'error': 'Missing required field: key'}), 400
+
+    if target_key not in VALID_KEYS:
+        return jsonify({'error': f'Invalid key. Must be one of: {", ".join(sorted(VALID_KEYS))}'}), 400
+
+    if clef not in VALID_CLEFS:
+        return jsonify({'error': f'Invalid clef. Must be one of: {", ".join(VALID_CLEFS)}'}), 400
+
+    # Look up song in catalog
+    if song_title not in catalog_data['songs']:
+        return jsonify({'error': f'Song not found: {song_title}'}), 404
+
+    song_data = catalog_data['songs'][song_title]
+    core_files = song_data.get('core_files', [])
+
+    if not core_files:
+        return jsonify({'error': f'No core file found for song: {song_title}'}), 500
+
+    # Use the first core file (most songs have exactly one)
+    core_file = core_files[0]
+
+    # Generate S3 key for this variation
+    slug = slugify(song_title)
+    s3_key = f"generated/{slug}-{target_key}-{clef}.pdf"
+
+    # Check if already cached in S3
+    if s3_client:
+        try:
+            s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
+            # Already exists - return presigned URL
+            url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+                ExpiresIn=900
+            )
+            generation_time = int((time.time() - start_time) * 1000)
+            return jsonify({
+                'url': url,
+                'cached': True,
+                'generation_time_ms': generation_time
+            })
+        except ClientError as e:
+            if e.response['Error']['Code'] != '404':
+                print(f"⚠️  S3 error checking cache: {e}")
+            # Not cached, continue to generate
+
+    # Create generated directory if needed
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate wrapper file
+    instrument_label = f"{target_key.upper()} Key ({clef})"
+    wrapper_content = generate_wrapper_content(core_file, target_key, clef, instrument_label)
+
+    wrapper_filename = f"{slug}-{target_key}-{clef}.ly"
+    wrapper_path = GENERATED_DIR / wrapper_filename
+    pdf_path = GENERATED_DIR / f"{slug}-{target_key}-{clef}.pdf"
+
+    try:
+        # Write wrapper file
+        with open(wrapper_path, 'w') as f:
+            f.write(wrapper_content)
+
+        # Run LilyPond from lilypond-data directory so includes resolve correctly
+        result = subprocess.run(
+            ['lilypond', '-o', f'Generated/{slug}-{target_key}-{clef}', f'Generated/{wrapper_filename}'],
+            cwd=str(LILYPOND_DATA_DIR),
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        # Check if PDF was created (LilyPond may return non-zero with warnings but still produce output)
+        if not pdf_path.exists():
+            # Actual failure - extract error lines
+            stderr_lines = result.stderr.split('\n')
+            error_summary = [line.strip() for line in stderr_lines if 'error:' in line.lower()][:5]
+            error_text = '\n'.join(error_summary) if error_summary else result.stderr[:500]
+
+            return jsonify({
+                'error': 'LilyPond compilation failed',
+                'details': error_text
+            }), 500
+
+        # Upload to S3 if available
+        if s3_client:
+            try:
+                s3_client.upload_file(
+                    str(pdf_path),
+                    S3_BUCKET,
+                    s3_key,
+                    ExtraArgs={'ContentType': 'application/pdf'}
+                )
+
+                # Generate presigned URL
+                url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+                    ExpiresIn=900
+                )
+
+                # Clean up local files
+                wrapper_path.unlink(missing_ok=True)
+                pdf_path.unlink(missing_ok=True)
+
+                generation_time = int((time.time() - start_time) * 1000)
+                return jsonify({
+                    'url': url,
+                    'cached': False,
+                    'generation_time_ms': generation_time
+                })
+            except Exception as e:
+                print(f"⚠️  Failed to upload to S3: {e}")
+                # Fall through to local file serving
+
+        # No S3 - serve from local file (development mode)
+        generation_time = int((time.time() - start_time) * 1000)
+        return jsonify({
+            'url': f'/generated/{pdf_path.name}',
+            'cached': False,
+            'generation_time_ms': generation_time,
+            'note': 'Local file (S3 not available)'
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'LilyPond compilation timed out (60s limit)'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Generation failed: {str(e)}'}), 500
+    finally:
+        # Clean up wrapper file
+        if wrapper_path.exists():
+            wrapper_path.unlink(missing_ok=True)
+
+
+@app.route('/generated/<path:filename>')
+def serve_generated(filename):
+    """Serve locally generated PDFs (development mode only)."""
+    return send_from_directory(str(GENERATED_DIR), filename, mimetype='application/pdf')
+
+
 def validate_startup():
     """Validate required configuration on startup."""
     errors = []

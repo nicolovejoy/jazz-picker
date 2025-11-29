@@ -1,13 +1,14 @@
 # Jazz Picker - Production Dockerfile
-# Serves catalog and S3 presigned URLs (no LilyPond compilation yet)
+# Serves catalog, S3 presigned URLs, and dynamic LilyPond PDF generation
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including LilyPond
 RUN apt-get update && apt-get install -y \
     --no-install-recommends \
+    lilypond \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better caching)
@@ -19,14 +20,18 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Copy application code
 COPY app.py .
 
-# Note: catalog.json will be loaded from S3 on startup
-# No need to include it in the image
+# Copy LilyPond source files (Core + Include directories)
+COPY lilypond-data/Core /app/lilypond-data/Core
+COPY lilypond-data/Include /app/lilypond-data/Include
 
-# Create cache directory (for future local caching if needed)
-RUN mkdir -p /app/cache/pdfs
+# Note: catalog.json will be loaded from S3 on startup
+# Wrappers are generated dynamically, not copied
+
+# Create directories for generated files and cache
+RUN mkdir -p /app/cache/pdfs /app/lilypond-data/Generated
 
 # Expose Flask port
 EXPOSE 5001
 
-# Use gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--timeout", "60", "app:app"]
+# Increase timeout for LilyPond compilation (can take 5-10 seconds)
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--timeout", "120", "app:app"]
