@@ -661,6 +661,12 @@ def generate_wrapper_content(core_file, target_key, clef, instrument_label):
 
 \\include "english.ly"
 
+%% Ensure adequate margins for PDF rendering
+\\paper {{
+  left-margin = 15\\mm
+  right-margin = 10\\mm
+}}
+
 instrument = "{instrument_label}"
 whatKey = {target_key}
 whatClef = "{clef}"

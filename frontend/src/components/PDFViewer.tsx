@@ -100,11 +100,10 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
     // In landscape mode, consider width for 2 pages side-by-side
     if (isLandscapeNow) {
       const widthScale = availableWidth / (standardPageWidth * 2 + 4); // 2 pages + small gap
-      // Use the smaller of the two scales, with slight boost to fill screen
-      return Math.min(Math.max(Math.min(heightScale, widthScale) * 1.05, 0.8), 3.0);
+      return Math.min(Math.max(Math.min(heightScale, widthScale), 0.8), 3.0);
     } else {
       // Portrait mode: just use height scale
-      return Math.min(Math.max(heightScale * 1.05, 0.8), 3.0);
+      return Math.min(Math.max(heightScale, 0.8), 3.0);
     }
   };
 
