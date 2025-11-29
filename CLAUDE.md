@@ -97,10 +97,19 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - Optional basic auth
 
 **API Endpoints:**
-- `GET /api/v2/songs?limit=50&offset=0&q=search&instrument=C&range=Alto/Mezzo/Soprano` - Paginated song list
+- `GET /api/v2/songs?limit=50&offset=0&q=search&instrument=C` - Paginated song list
 - `GET /api/v2/songs/:title` - Song detail with variations
-- `GET /pdf/:filename` - Returns S3 presigned URL as JSON `{"url": "...", "expires_at": "..."}`
+- `GET /pdf/:filename` - Returns S3 presigned URL as JSON
+- `POST /api/v2/generate` - Generate PDF in any key (see below)
 - `GET /health` - Health check
+
+**Generate Endpoint:**
+```json
+POST /api/v2/generate
+{"song": "502 Blues", "key": "d", "clef": "treble"}
+
+Response: {"url": "https://s3.../generated/...", "cached": true/false, "generation_time_ms": 7500}
+```
 
 **Environment Variables:**
 - `USE_S3=true` - Enable S3 integration
@@ -146,9 +155,8 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - Error handling with user-friendly messages
 
 **Types (`types/catalog.ts`):**
-- `Song`, `Variation`, `SongSummary`, `SongDetail` - Data models
+- `SongSummary`, `SongDetail`, `Variation` - Data models
 - `InstrumentType`: 'C' | 'Bb' | 'Eb' | 'Bass' | 'All'
-- `SingerRangeType`: 'Alto/Mezzo/Soprano' | 'Baritone/Tenor/Bass' | 'Standard' | 'All'
 
 ### Catalog Generation (`build_catalog.py`)
 
@@ -205,12 +213,9 @@ Outputs:
 - **Keyboard**: Arrow keys (next/prev page), F (fullscreen), Esc (exit)
 - **Touch**: Pinch zoom, swipe gestures, tap top 20% to toggle nav
 
-### Filter Logic (Critical)
+### Filter Logic
 - **Instrument Filter**: Filters variations by instrument type (C, Bb, Eb, Bass)
-- **Singer Range Filter**: Filters by voice range (Alto/Mezzo/Soprano, Baritone/Tenor/Bass, Standard)
-- Voice variations are EXCLUDED from instrument filters (fixed Nov 22)
-- Both filters can be active simultaneously
-- Accurate variation counts displayed per filter
+- Voice variations are separate from instrument filters
 
 ### S3 Integration
 - PDFs stored in folders: `Standard/`, `Alto-Voice/`, `Baritone-Voice/`, etc.
@@ -224,26 +229,32 @@ Outputs:
 - Uses standard HTTP Basic Authentication
 - Currently no frontend login UI (API-level only)
 
-## Git Workflow
+## Infrastructure
 
-- **Main branch**: `main`
-- **Current feature branch**: `frontend/mcm-redesign` (latest frontend features)
-- Feature branches off `main`
-- Backend deployed from latest commit on deploy
+AWS resources are managed via Terraform in `infrastructure/`:
+
+```bash
+cd infrastructure
+terraform init
+terraform plan
+terraform apply
+```
+
+**Managed resources:**
+- S3 bucket (`jazz-picker-pdfs`)
+- IAM user (`jazz-picker-api`) with read + write (generated/ only) policies
+
+**Not managed by Terraform:**
+- Fly.io (uses `fly.toml` + `fly secrets`)
+- IAM access keys (stored as Fly secrets)
 
 ## Known Issues & Context
 
-1. **Database Migration in Progress**: Project is transitioning from `catalog.json` to SQLite (`catalog.db`) for better query performance. `build_catalog.py` already generates both formats. Backend still reads from JSON.
+1. **No Tests**: Project currently has no test suite.
 
-2. **No Tests**: Project currently has no test suite for either frontend or backend.
+2. **Symlinks**: Root directory contains symlinks to Dropbox folders - don't modify these.
 
-3. **Symlinks**: Root directory contains symlinks to Dropbox folders (`Alto Voice`, `Baritone Voice`, `Standard`, `Midi`, `Others`) - these point to Eric's local Dropbox. Don't modify these.
-
-4. **Frontend Deployment**: Not yet deployed. Planned for Cloudflare Pages with env var `VITE_API_URL=https://jazz-picker.fly.dev`.
-
-5. **Setlist Feature**: Roadmap includes LocalStorage-based setlist feature (no backend changes required initially).
-
-6. **Voice Range Filtering**: Implemented Nov 22 to fix issue where voice variations appeared in instrument filters. Voice variations are now separate filter.
+3. **Database Migration**: Transitioning from `catalog.json` to SQLite. Backend still reads JSON.
 
 ## Common Patterns
 
@@ -299,32 +310,20 @@ export function useEndpoint() {
 
 ```
 jazz-picker/
-├── app.py                    # Flask backend (main entry point)
-├── build_catalog.py          # Catalog generation script
-├── sync_pdfs_to_s3.sh       # S3 sync script
-├── catalog.json             # Song metadata (5.7MB)
-├── catalog.db               # SQLite version (1.3MB, future)
-├── requirements.txt         # Python dependencies
-├── fly.toml                 # Fly.io deployment config
-├── Dockerfile.prod          # Production Docker image
-├── ARCHITECTURE.md          # Detailed architecture docs
-├── ROADMAP.md              # Development roadmap
+├── app.py                    # Flask backend
+├── build_catalog.py          # Catalog generation
+├── catalog.json              # Song metadata (5.7MB)
+├── fly.toml                  # Fly.io config
+├── Dockerfile.prod           # Production Docker (includes LilyPond)
+├── infrastructure/           # Terraform (AWS resources)
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
 └── frontend/
-    ├── package.json         # Node dependencies
-    ├── vite.config.ts       # Vite configuration + proxy
-    ├── tsconfig.json        # TypeScript configuration
     └── src/
-        ├── App.tsx          # Main application
-        ├── main.tsx         # React entry point
-        ├── components/      # React components
-        ├── hooks/           # Custom React hooks
-        ├── services/        # API client
-        └── types/           # TypeScript types
+        ├── App.tsx
+        ├── components/
+        ├── hooks/
+        ├── services/
+        └── types/
 ```
-
-## Documentation
-
-- `ARCHITECTURE.md` - System design, API reference, deployment guide
-- `ROADMAP.md` - 3-month development plan with priorities
-- `README.md` - Quick start guide
-- This file - Development reference for Claude Code

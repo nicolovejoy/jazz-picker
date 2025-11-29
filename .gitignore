@@ -45,3 +45,10 @@ Wrappers/*.midi
 Thumbs.db
 .claude/settings.json
 catalog.db
+
+# Terraform
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+infrastructure/*.tfstate
+infrastructure/*.tfstate.backup
+infrastructure/*.tfplan
