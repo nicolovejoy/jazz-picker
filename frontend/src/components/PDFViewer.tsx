@@ -144,20 +144,28 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
         case 'ArrowLeft':
           e.preventDefault();
           if (currentPage > 1) {
+            // Go to previous page
             setSwipeDirection('right');
             setCurrentPage((prev) => Math.max(prev - pagesPerView, 1));
             setTimeout(() => setSwipeDirection(null), 200);
+          } else if (setlistNav && setlistNav.currentIndex > 0) {
+            // At first page - go to previous song in setlist
+            setlistNav.onPrevSong();
           }
-          resetInactivityTimer(); // Show nav briefly when using keyboard
+          resetInactivityTimer();
           break;
         case 'ArrowRight':
           e.preventDefault();
           if (currentPage + pagesPerView <= numPages) {
+            // Go to next page
             setSwipeDirection('left');
             setCurrentPage((prev) => Math.min(prev + pagesPerView, numPages - pagesPerView + 1));
             setTimeout(() => setSwipeDirection(null), 200);
+          } else if (setlistNav && setlistNav.currentIndex < setlistNav.totalSongs - 1) {
+            // At last page - go to next song in setlist
+            setlistNav.onNextSong();
           }
-          resetInactivityTimer(); // Show nav briefly when using keyboard
+          resetInactivityTimer();
           break;
         case 'Escape':
           e.preventDefault();
@@ -179,7 +187,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [currentPage, numPages, isLandscape, isFullscreen, onClose]);
+  }, [currentPage, numPages, isLandscape, isFullscreen, onClose, setlistNav]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
