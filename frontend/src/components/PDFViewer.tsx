@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo, FiDownload } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 
 // Set up worker - use unpkg CDN
@@ -230,6 +230,39 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      // Generate filename from metadata or fallback
+      const filename = metadata
+        ? `${metadata.songTitle} - ${metadata.key.toUpperCase()}.pdf`
+        : 'lead-sheet.pdf';
+
+      // If it's a blob URL, we can use it directly
+      if (pdfUrl.startsWith('blob:')) {
+        const a = document.createElement('a');
+        a.href = pdfUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // For S3 presigned URLs, fetch and create blob
+        const response = await fetch(pdfUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+    }
+  };
+
   // Helper function to get distance between two touch points
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
     const dx = touch1.clientX - touch2.clientX;
@@ -406,6 +439,15 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
             ) : (
               <FiMaximize className="text-white text-lg" />
             )}
+          </button>
+
+          {/* Download Button */}
+          <button
+            onClick={handleDownload}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            aria-label="Download PDF"
+          >
+            <FiDownload className="text-white text-lg" />
           </button>
 
           {/* Close Button */}
