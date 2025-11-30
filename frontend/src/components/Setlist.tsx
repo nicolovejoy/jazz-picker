@@ -17,7 +17,7 @@ const SETLIST = [
   { title: "I Fall In Love Too Easily", key: "bf", clef: "treble" },
   { title: "Blue Christmas", key: "c", clef: "treble" },
   { title: "I've Got My Love to Keep Me Warm", key: "af", clef: "treble" },
-  { title: "Alright, Okay, You Win", key: "c", clef: "treble" },
+  { title: "Alright Okay You Win", key: "c", clef: "treble" },
   { title: "Almost Blue", key: "f", clef: "treble" },
   { title: "Black Coffee", key: "c", clef: "treble" },
   { title: "Is You Is or Is You Ain't My Baby", key: "a", clef: "treble" },
