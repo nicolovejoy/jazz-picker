@@ -86,7 +86,7 @@ export function SongListItem({ song, instrument, onSelectVariation, onOpenPdfUrl
       <>
         <div className="w-full bg-white/8 backdrop-blur-sm rounded-mcm p-4 border border-white/10 hover:border-blue-400 hover:bg-white/10 transition-all group flex items-center justify-between">
           <button
-            onClick={() => onSelectVariation(filteredVariations[0] as any)}
+            onClick={() => onSelectVariation({ ...filteredVariations[0], songTitle: song.title } as any)}
             disabled={isLoading}
             className="flex-1 text-left"
           >
@@ -136,7 +136,7 @@ export function SongListItem({ song, instrument, onSelectVariation, onOpenPdfUrl
               return (
                 <button
                   key={variation.id}
-                  onClick={() => onSelectVariation(variation as any)}
+                  onClick={() => onSelectVariation({ ...variation, songTitle: song.title } as any)}
                   title={isBass ? 'Bass clef chart' : undefined}
                   className={`px-3 py-1.5 text-sm rounded-mcm border transition-all ${
                     isBass

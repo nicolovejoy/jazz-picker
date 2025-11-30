@@ -9,6 +9,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 interface ExtendedVariation extends Variation {
   directUrl?: string;
+  songTitle?: string;
 }
 
 interface PDFViewerProps {
@@ -55,12 +56,17 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
           return;
         }
 
-        console.log('[PDFViewer] Fetching PDF for:', variation.filename);
-        const url = await api.getPDF(variation.filename);
+        // Use generate endpoint for all PDFs
+        // Determine clef from variation_type (Bass variations use bass clef)
+        const clef = variation.variation_type?.includes('Bass') ? 'bass' : 'treble';
+        const songTitle = variation.songTitle || variation.title;
+
+        console.log('[PDFViewer] Generating PDF for:', songTitle, 'key:', variation.key, 'clef:', clef);
+        const result = await api.generatePDF(songTitle, variation.key, clef as 'treble' | 'bass');
 
         if (mounted) {
-          console.log('[PDFViewer] PDF URL received:', url);
-          setPdfUrl(url);
+          console.log('[PDFViewer] PDF URL received:', result.url, 'cached:', result.cached);
+          setPdfUrl(result.url);
           setLoading(false);
         }
       } catch (err) {
@@ -80,7 +86,7 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
         URL.revokeObjectURL(pdfUrl);
       }
     };
-  }, [variation.filename]);
+  }, [variation.songTitle, variation.title, variation.key, variation.variation_type, variation.directUrl]);
 
   // Calculate optimal scale based on viewport height and width
   const calculateOptimalScale = () => {

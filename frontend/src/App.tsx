@@ -162,7 +162,7 @@ function App() {
 
       if (songDetail.variations.length === 1) {
         // Single variation: open PDF directly
-        setSelectedVariation(songDetail.variations[0] as any);
+        setSelectedVariation({ ...songDetail.variations[0], songTitle: song.title } as any);
       }
       // Multiple variations: user needs to click a specific key button
     } catch (error) {

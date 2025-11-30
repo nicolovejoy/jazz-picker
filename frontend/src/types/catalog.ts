@@ -26,6 +26,7 @@ export interface SongDetailVariation {
   instrument: string;
   variation_type: string;
   filename: string;
+  songTitle?: string; // Added client-side for generation
 }
 
 export interface SongDetail {

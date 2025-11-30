@@ -2,10 +2,15 @@
 
 ## Completed This Session
 
+**Switched to 100% dynamic PDF generation:**
+- Removed pre-built PDF support - all PDFs now generated on-demand via `/api/v2/generate`
+- Removed `/pdf/:filename` endpoint and related code
+- Frontend now calls generate endpoint when clicking any variation
+- PDFs cached in S3 `generated/` folder after first generation (~7s new, <200ms cached)
+
 **Fixed PDF margin cutoff issue:**
 - Root cause: LilyPond version mismatch (apt provides 2.24, Eric's code requires 2.25)
 - Solution: Updated Dockerfile.prod to download LilyPond 2.25.30 from GitLab releases
-- Removed incorrect `\paper` block workaround from wrapper generation (wrappers should match Eric's format exactly)
 
 ## Current State
 
@@ -17,38 +22,48 @@
 - All instrument filters (C, Bb, Eb, Bass)
 - Search with infinite scroll
 - PDF viewer (iPad-optimized)
-- Dynamic PDF generation in any key with frontend UI
+- Dynamic PDF generation in any key
 - S3 caching of generated PDFs
-- Proper PDF margins (LilyPond 2.25 fix)
+- Custom key generation via plus button
 
 ## Infrastructure
 
 **Backend (Fly.io):**
 - Flask API with LilyPond 2.25.30
-- Downloads development version binary at build time
+- All PDFs generated on-demand, cached in S3
 - 2 workers, 120s timeout for PDF generation
 
 **AWS (Terraform-managed):**
 - S3 bucket: `jazz-picker-pdfs`
-- IAM user: `jazz-picker-api` with read + write (`generated/` only) permissions
+- Only `generated/` folder used now (pre-built folders can be deleted)
+- IAM user: `jazz-picker-api` with read + write permissions
 
 ## Key Files
 
 - `Dockerfile.prod` - LilyPond 2.25 installation
-- `app.py:655-668` - Wrapper generation (matches Eric's format)
-- `infrastructure/main.tf` - Terraform AWS resources
-- `frontend/src/components/GenerateModal.tsx` - Key selector UI
+- `app.py` - `/api/v2/generate` endpoint
+- `frontend/src/components/PDFViewer.tsx` - calls generate endpoint
+- `frontend/src/components/GenerateModal.tsx` - custom key selector UI
 
-## Notes
+## Cache Invalidation
 
-- Eric's lilypond-data requires LilyPond 2.25 (development branch) due to syntax like `\normal-weight` and `\musicLength`
-- Wrappers must match Eric's exact format - no extra `\paper` blocks
-- `lilypond-data/` is a symlink to Eric's Dropbox - don't modify those files
+When Eric updates a chart, clear the cache for that song:
+```bash
+aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive --exclude "*" --include "song-slug-*"
+```
+Or clear all generated PDFs:
+```bash
+aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
+```
 
-## Action Required
+## Catalog Cleanup (Optional)
 
-**S3 PDFs deleted:** Alto-Voice/, Baritone-Voice/, Others/ folders were deleted from S3. Need to re-sync pre-built PDFs from Eric's source or re-run `./sync_pdfs_to_s3.sh`.
+These fields are no longer used and can be removed from `build_catalog.py`:
+- `variation.pdf_path`
+- `variation.filename`
+- `variation.filepath`
 
 ## TODO
 
-- [ ] Surface cached/generated indicator in frontend UI (show when PDF is from cache vs freshly generated)
+- [ ] Surface cached/generated indicator in frontend UI
+- [ ] Build setlist feature with pre-generation
