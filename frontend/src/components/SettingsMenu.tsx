@@ -102,12 +102,12 @@ export function SettingsMenu({ isOpen, onClose, currentInstrument, onInstrumentC
             {/* Instrument */}
             <section>
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                My Instrument
+                Current Instrument
               </h3>
               <div className="space-y-4">
                 <label className="block">
                   <span className="text-gray-500 text-xs block mb-1.5">
-                    PDFs will be transposed for your instrument
+                    Charts will be transposed for this instrument
                   </span>
                   <select
                     value={currentInstrument.id}

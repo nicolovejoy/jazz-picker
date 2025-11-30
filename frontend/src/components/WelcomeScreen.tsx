@@ -45,7 +45,7 @@ export function WelcomeScreen({ onSelectInstrument }: WelcomeScreenProps) {
         {/* Instrument Selection */}
         <div className="space-y-4">
           <p className="text-center text-gray-300 text-sm uppercase tracking-wide mb-4">
-            What do you play?
+            What are you playing today?
           </p>
 
           {instrumentGroups.map((group) => (
