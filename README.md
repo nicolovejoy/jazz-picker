@@ -43,5 +43,11 @@ npm run dev
 
 ## Documentation
 
-- **[CLAUDE.md](CLAUDE.md)**: Comprehensive development reference
-- **[HANDOFF.md](HANDOFF.md)**: Session notes and recent changes
+All documentation has been moved to the `docs/` directory.
+
+- **[CLAUDE.md](docs/CLAUDE.md)**: Comprehensive development reference
+- **[HANDOFF.md](docs/HANDOFF.md)**: Session notes and recent changes
+- **[UX_VISION.md](docs/UX_VISION.md)**: UX Vision & Strategy
+- **[LILYPOND_PLAN.md](docs/LILYPOND_PLAN.md)**: LilyPond integration plan
+- **[SCHEMA_PLAN.md](docs/SCHEMA_PLAN.md)**: Database schema plan
+- **[SQLITE_MIGRATION_PLAN.md](docs/SQLITE_MIGRATION_PLAN.md)**: SQLite migration plan

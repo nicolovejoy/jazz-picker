@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
+import { BottomNav } from './components/BottomNav';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -8,6 +9,7 @@ import { AuthGate } from './components/AuthGate';
 import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
+import { AddToSetlistModal } from './components/AddToSetlistModal';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
@@ -51,7 +53,7 @@ function App() {
   const [instrument, setInstrument] = useState<Instrument | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
-  const [showSetlistManager, setShowSetlistManager] = useState(false);
+  const [activeTab, setActiveTab] = useState<'songs' | 'setlists' | 'settings'>('songs');
   const [activeSetlist, setActiveSetlist] = useState<Setlist | null>(null);
   const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
   const [showAbout, setShowAbout] = useState(false);
@@ -59,6 +61,7 @@ function App() {
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -141,6 +144,7 @@ function App() {
       setlistService.getSetlist(setlistId).then(setlist => {
         if (setlist) {
           setActiveSetlist(setlist);
+          setActiveTab('setlists');
         }
       }).catch(err => {
         console.error('Failed to load setlist from URL:', err);
@@ -225,72 +229,131 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      <Header
-        totalSongs={data?.total || 0}
-        instrument={instrument}
-        searchQuery={searchQuery}
-        onInstrumentChange={handleInstrumentChange}
-        onSearch={handleSearch}
-        onEnterPress={handleEnterPress}
-        onOpenSetlist={() => setShowSetlistManager(true)}
-        onLogout={signOut}
-        onOpenAbout={() => setShowAbout(true)}
-      />
-
-      <main className="container mx-auto px-4 py-8 pb-24">
-        {isError ? (
-          <div className="text-center py-20 text-red-400">
-            <p className="text-xl">Error loading songs</p>
-            <p className="text-sm mt-2">Please try again later</p>
-          </div>
-        ) : isLoading && page === 0 ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-          </div>
-        ) : (
-          <>
-            <SongList
-              songs={allSongs}
-              searchQuery={searchQuery}
-              instrument={instrument}
-              onOpenPdfUrl={handleOpenPdfUrl}
-            />
-
-            {/* Infinite Scroll Trigger */}
-            {hasMore && (
-              <div ref={observerTarget} className="flex justify-center py-8">
-                {isFetching && (
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-                )}
-              </div>
-            )}
-
-            {/* End of list message */}
-            {!hasMore && allSongs.length > 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <p>End of list ({allSongs.length} songs)</p>
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
-      {showSetlistManager && !activeSetlist && (
-        <SetlistManager
-          onSelectSetlist={(setlist) => setActiveSetlist(setlist)}
-          onClose={() => setShowSetlistManager(false)}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-16">
+      {/* Header only shows on Songs tab */}
+      {activeTab === 'songs' && (
+        <Header
+          totalSongs={data?.total || 0}
+          instrument={instrument}
+          searchQuery={searchQuery}
+          onInstrumentChange={handleInstrumentChange}
+          onSearch={handleSearch}
+          onEnterPress={handleEnterPress}
+          onLogout={signOut}
+          onOpenAbout={() => setShowAbout(true)}
         />
       )}
 
-      {activeSetlist && (
-        <SetlistViewer
-          setlist={activeSetlist}
-          instrument={instrument}
-          onOpenPdfUrl={handleOpenPdfUrl}
-          onSetlistNav={setSetlistNav}
-          onBack={() => setActiveSetlist(null)}
-        />
+      <main className={`container mx-auto px-4 ${activeTab === 'songs' ? 'py-8' : 'py-4'}`}>
+        {/* Songs Tab */}
+        {activeTab === 'songs' && (
+          <>
+            {isError ? (
+              <div className="text-center py-20 text-red-400">
+                <p className="text-xl">Error loading songs</p>
+                <p className="text-sm mt-2">Please try again later</p>
+              </div>
+            ) : isLoading && page === 0 ? (
+              <div className="flex justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+              </div>
+            ) : (
+              <>
+                <SongList
+                  songs={allSongs}
+                  searchQuery={searchQuery}
+                  instrument={instrument}
+                  onOpenPdfUrl={handleOpenPdfUrl}
+                  onAddToSetlist={setSongToAdd}
+                />
+
+                {/* Infinite Scroll Trigger */}
+                {hasMore && (
+                  <div ref={observerTarget} className="flex justify-center py-8">
+                    {isFetching && (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+                    )}
+                  </div>
+                )}
+
+                {/* End of list message */}
+                {!hasMore && allSongs.length > 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>End of list ({allSongs.length} songs)</p>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Setlists Tab */}
+        {activeTab === 'setlists' && (
+          <>
+            {activeSetlist ? (
+              <SetlistViewer
+                setlist={activeSetlist}
+                instrument={instrument}
+                onOpenPdfUrl={handleOpenPdfUrl}
+                onSetlistNav={setSetlistNav}
+                onBack={() => setActiveSetlist(null)}
+              />
+            ) : (
+              <SetlistManager
+                onSelectSetlist={(setlist) => setActiveSetlist(setlist)}
+                onClose={() => setActiveTab('songs')} // Fallback, though nav handles switching
+              />
+            )}
+          </>
+        )}
+
+        {/* Settings Tab (Placeholder for now, reusing AboutPage content + Logout) */}
+        {activeTab === 'settings' && (
+          <div className="max-w-md mx-auto py-8 space-y-6">
+            <h2 className="text-2xl font-bold mb-4">Settings</h2>
+            
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <h3 className="text-lg font-semibold mb-2">Instrument</h3>
+              <p className="text-gray-300 mb-4">Current: <span className="text-blue-400">{instrument.label}</span></p>
+              <button
+                onClick={() => setInstrument(null)} // Triggers WelcomeScreen
+                className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors"
+              >
+                Change Instrument
+              </button>
+            </div>
+
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <h3 className="text-lg font-semibold mb-2">Account</h3>
+              <p className="text-gray-300 mb-4">Signed in as {user.email}</p>
+              <button
+                onClick={signOut}
+                className="w-full py-2 bg-red-600/80 hover:bg-red-500/80 rounded-lg text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <h3 className="text-lg font-semibold mb-2">About</h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Jazz Picker v2.0<br/>
+                Piano House Project
+              </p>
+              <button
+                onClick={() => setShowAbout(true)}
+                className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+              >
+                View Credits
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Bottom Navigation - Always visible except in PDF Viewer */}
+      {!pdfUrl && (
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       )}
 
       {pdfUrl && (
@@ -301,6 +364,16 @@ function App() {
           onClose={() => {
             setPdfUrl(null);
             setPdfMetadata(null);
+          }}
+        />
+      )}
+
+      {songToAdd && (
+        <AddToSetlistModal
+          song={songToAdd}
+          onClose={() => setSongToAdd(null)}
+          onAdded={() => {
+            // Optional: Show toast or feedback
           }}
         />
       )}

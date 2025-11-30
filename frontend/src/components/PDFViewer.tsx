@@ -3,8 +3,11 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo, FiDownload } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 
-// Set up worker - use unpkg CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Set up worker - use local import for Vite
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -27,7 +30,6 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [showNav, setShowNav] = useState(true); // Nav visibility state
-  const [headerTouchStart, setHeaderTouchStart] = useState<number | null>(null);
   const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +94,41 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Wake Lock
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[PDFViewer] Wake Lock active');
+        }
+      } catch (err) {
+        console.error('[PDFViewer] Wake Lock failed:', err);
+      }
+    };
+
+    requestWakeLock();
+
+    // Re-request wake lock when visibility changes (e.g. switching tabs)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(console.error);
+        console.log('[PDFViewer] Wake Lock released');
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -354,28 +391,6 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
     }
   };
 
-  // Handle swipe-up gesture on header to hide nav
-  const onHeaderTouchStart = (e: React.TouchEvent) => {
-    setHeaderTouchStart(e.targetTouches[0].clientY);
-  };
-
-  const onHeaderTouchEnd = (e: React.TouchEvent) => {
-    if (!headerTouchStart) return;
-
-    const touchEndY = e.changedTouches[0].clientY;
-    const distance = headerTouchStart - touchEndY;
-
-    // Swipe up (distance > 0) to hide nav
-    if (distance > 30) {
-      setShowNav(false);
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-    }
-
-    setHeaderTouchStart(null);
-  };
-
   // Slider change handler
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newPage = parseInt(e.target.value);
@@ -387,51 +402,42 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
-      {/* Safe area spacer - always visible behind header */}
+      {/* Safe area spacer */}
       <div className="flex-shrink-0 bg-black" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
-      {/* Header - absolutely positioned, slides up when hidden */}
+      {/* Minimal Floating Controls */}
       <div
-        className={`absolute left-0 right-0 bg-white/10 backdrop-blur-lg px-2 py-2 flex items-center justify-between border-b border-white/10 transition-transform duration-300 z-10 ${
-          showNav ? 'translate-y-0' : '-translate-y-full'
+        className={`absolute top-4 right-4 flex items-center gap-2 transition-opacity duration-300 z-50 ${
+          showNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
-        style={{ top: 'env(safe-area-inset-top, 0px)' }}
-        onTouchStart={onHeaderTouchStart}
-        onTouchEnd={onHeaderTouchEnd}
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
       >
-        <div className="flex-1 min-w-0 mr-2">
-          {numPages > 0 && (
-            <p className="text-sm text-gray-300">{numPages} page{numPages !== 1 ? 's' : ''}</p>
-          )}
+        {/* Zoom Controls */}
+        <div className="hidden sm:flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
+          <button
+            onClick={handleZoomOut}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            aria-label="Zoom out"
+          >
+            <FiZoomOut className="text-white text-lg" />
+          </button>
+          <span className="text-white text-xs min-w-[3rem] text-center font-medium">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            onClick={handleZoomIn}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            aria-label="Zoom in"
+          >
+            <FiZoomIn className="text-white text-lg" />
+          </button>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center gap-3 ml-4">
-          {/* Zoom Controls */}
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={handleZoomOut}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
-              aria-label="Zoom out"
-            >
-              <FiZoomOut className="text-white text-lg" />
-            </button>
-            <span className="text-white text-sm min-w-[3.5rem] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              onClick={handleZoomIn}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
-              aria-label="Zoom in"
-            >
-              <FiZoomIn className="text-white text-lg" />
-            </button>
-          </div>
-
-          {/* Fullscreen Button */}
+        {/* Action Group */}
+        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
           <button
             onClick={toggleFullscreen}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
             aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
             {isFullscreen ? (
@@ -441,23 +447,36 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
             )}
           </button>
 
-          {/* Download Button */}
           <button
             onClick={handleDownload}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
             aria-label="Download PDF"
           >
             <FiDownload className="text-white text-lg" />
           </button>
+        </div>
 
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-mcm text-white font-medium transition-colors flex items-center gap-2"
-          >
-            <FiX className="text-lg" />
-            <span className="hidden sm:inline">Close</span>
-          </button>
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="p-3 bg-blue-600 hover:bg-blue-500 rounded-full text-white shadow-lg transition-colors"
+          aria-label="Close"
+        >
+          <FiX className="text-xl" />
+        </button>
+      </div>
+
+      {/* Page Count Badge (Top Left) */}
+      <div
+        className={`absolute top-4 left-4 transition-opacity duration-300 z-50 ${
+          showNav && numPages > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+      >
+        <div className="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
+          <p className="text-xs font-medium text-gray-200">
+            {numPages} page{numPages !== 1 ? 's' : ''}
+          </p>
         </div>
       </div>
 

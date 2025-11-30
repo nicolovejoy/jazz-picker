@@ -7,9 +7,10 @@ interface SongListProps {
   searchQuery: string;
   instrument: Instrument;
   onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
+  onAddToSetlist: (song: SongSummary) => void;
 }
 
-export function SongList({ songs, searchQuery, instrument, onOpenPdfUrl }: SongListProps) {
+export function SongList({ songs, searchQuery, instrument, onOpenPdfUrl, onAddToSetlist }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -41,6 +42,7 @@ export function SongList({ songs, searchQuery, instrument, onOpenPdfUrl }: SongL
             song={song}
             instrument={instrument}
             onOpenPdfUrl={onOpenPdfUrl}
+            onAddToSetlist={onAddToSetlist}
           />
         ))}
       </div>

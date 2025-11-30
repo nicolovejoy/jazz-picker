@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Instrument } from '@/types/catalog';
-import { FiSearch, FiX, FiMenu } from 'react-icons/fi';
+import { FiSearch, FiX } from 'react-icons/fi';
 import { SettingsMenu } from './SettingsMenu';
 
 interface HeaderProps {
@@ -10,7 +10,6 @@ interface HeaderProps {
   onInstrumentChange: (instrument: Instrument) => void;
   onSearch: (query: string) => void;
   onEnterPress: () => void;
-  onOpenSetlist?: () => void;
   onLogout?: () => void;
   onOpenAbout?: () => void;
 }
@@ -22,7 +21,6 @@ export function Header({
   onInstrumentChange,
   onSearch,
   onEnterPress,
-  onOpenSetlist,
   onLogout,
   onOpenAbout,
 }: HeaderProps) {
@@ -37,24 +35,7 @@ export function Header({
   return (
     <>
       <header className="bg-white/5 backdrop-blur-lg rounded-mcm p-6 md:p-8 mb-6">
-        {/* Top Row - Setlist + Settings */}
-        <div className="flex justify-between mb-4">
-          {onOpenSetlist ? (
-            <button
-              onClick={onOpenSetlist}
-              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-mcm transition-colors text-green-300 font-medium"
-            >
-              Setlists
-            </button>
-          ) : <div />}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"
-            aria-label="Settings"
-          >
-            <FiMenu className="text-white text-xl" />
-          </button>
-        </div>
+        {/* Top Row - Removed as moved to BottomNav */}
 
         <div className="text-center mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-blue-400 mb-2">

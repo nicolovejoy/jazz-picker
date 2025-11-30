@@ -5,13 +5,16 @@ import { GenerateModal } from './GenerateModal';
 import { formatKey, concertToWritten, type SongSummary, type Instrument } from '@/types/catalog';
 import type { PdfMetadata } from '../App';
 
+import { FiPlus } from 'react-icons/fi';
+
 interface SongListItemProps {
   song: SongSummary;
   instrument: Instrument;
   onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
+  onAddToSetlist: (song: SongSummary) => void;
 }
 
-export function SongListItem({ song, instrument, onOpenPdfUrl }: SongListItemProps) {
+export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }: SongListItemProps) {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
@@ -147,16 +150,28 @@ export function SongListItem({ song, instrument, onOpenPdfUrl }: SongListItemPro
           </div>
         </div>
 
-        {/* Plus button area - fixed width on right */}
-        <button
-          onClick={() => setShowGenerateModal(true)}
-          className="w-16 flex items-center justify-center border-l border-white/10 hover:bg-white/5 text-gray-400 hover:text-blue-300 transition-all"
-          title="Generate in custom key"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+        {/* Action Buttons Area */}
+        <div className="flex flex-col border-l border-white/10">
+          {/* Add to Setlist Button */}
+          <button
+            onClick={() => onAddToSetlist(song)}
+            className="flex-1 w-12 flex items-center justify-center hover:bg-white/5 text-gray-400 hover:text-blue-300 transition-all border-b border-white/10"
+            title="Add to Setlist"
+          >
+            <FiPlus className="text-lg" />
+          </button>
+
+          {/* Generate Custom Key Button */}
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="flex-1 w-12 flex items-center justify-center hover:bg-white/5 text-gray-400 hover:text-blue-300 transition-all"
+            title="Generate in custom key"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {showGenerateModal && (
