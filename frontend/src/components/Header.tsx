@@ -11,6 +11,7 @@ interface HeaderProps {
   onSearch: (query: string) => void;
   onEnterPress: () => void;
   onResetInstrument?: () => void;
+  onOpenSetlist?: () => void;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
   onSearch,
   onEnterPress,
   onResetInstrument,
+  onOpenSetlist,
 }: HeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -33,8 +35,16 @@ export function Header({
   return (
     <>
       <header className="bg-white/5 backdrop-blur-lg rounded-mcm p-6 md:p-8 mb-6">
-        {/* Settings Button - Top Right */}
-        <div className="flex justify-end mb-4">
+        {/* Top Row - Setlist + Settings */}
+        <div className="flex justify-between mb-4">
+          {onOpenSetlist ? (
+            <button
+              onClick={onOpenSetlist}
+              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-mcm transition-colors text-green-300 font-medium"
+            >
+              Gig Setlist
+            </button>
+          ) : <div />}
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="p-2 bg-white/10 hover:bg-white/20 rounded-mcm transition-colors"

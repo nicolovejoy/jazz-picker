@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { Setlist } from './components/Setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
 import type { InstrumentType, SongSummary } from '@/types/catalog';
@@ -35,6 +36,7 @@ function App() {
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
+  const [showSetlist, setShowSetlist] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -184,6 +186,7 @@ function App() {
         onSearch={handleSearch}
         onEnterPress={handleEnterPress}
         onResetInstrument={handleResetInstrument}
+        onOpenSetlist={() => setShowSetlist(true)}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">
@@ -222,6 +225,13 @@ function App() {
           </>
         )}
       </main>
+
+      {showSetlist && (
+        <Setlist
+          onOpenPdfUrl={handleOpenPdfUrl}
+          onClose={() => setShowSetlist(false)}
+        />
+      )}
 
       {pdfUrl && (
         <PDFViewer
