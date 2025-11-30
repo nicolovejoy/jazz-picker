@@ -15,3 +15,9 @@ variable "iam_user_name" {
   type        = string
   default     = "jazz-picker-api"
 }
+
+variable "github_repo_lilypond" {
+  description = "GitHub repo allowed to update catalog (format: owner/repo)"
+  type        = string
+  default     = "neonscribe/lilypond-lead-sheets"
+}

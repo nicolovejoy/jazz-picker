@@ -249,10 +249,27 @@ terraform apply
 **Managed resources:**
 - S3 bucket (`jazz-picker-pdfs`)
 - IAM user (`jazz-picker-api`) with read + write (generated/ only) policies
+- GitHub OIDC provider + IAM role (`jazz-picker-catalog-updater`) for auto-refresh workflow
 
 **Not managed by Terraform:**
 - Fly.io (uses `fly.toml` + `fly secrets`)
 - IAM access keys (stored as Fly secrets)
+
+### Auto-Refresh Catalog
+
+When Eric pushes changes to `neonscribe/lilypond-lead-sheets`, a GitHub Action automatically:
+1. Rebuilds `catalog.db` from the lilypond files
+2. Uploads to S3 (using OIDC - no stored AWS credentials)
+3. Restarts the Fly app to load the new catalog
+
+The workflow lives in Eric's repo. A reference copy is in `.github/workflows/update-catalog.yml`.
+
+**Manual refresh:**
+```bash
+python3 build_catalog.py
+aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
+fly apps restart jazz-picker
+```
 
 ## Known Issues & Context
 
@@ -324,8 +341,10 @@ jazz-picker/
 ├── catalog.db                # SQLite catalog (downloaded from S3)
 ├── fly.toml                  # Fly.io config
 ├── Dockerfile.prod           # Production Docker (includes LilyPond)
+├── .github/workflows/
+│   └── update-catalog.yml    # Reference copy of auto-refresh workflow
 ├── infrastructure/           # Terraform (AWS resources)
-│   ├── main.tf
+│   ├── main.tf               # S3, IAM user, OIDC provider, IAM role
 │   ├── variables.tf
 │   └── outputs.tf
 └── frontend/

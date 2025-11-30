@@ -17,3 +17,8 @@ output "iam_user_arn" {
   description = "ARN of the IAM user"
   value       = aws_iam_user.api.arn
 }
+
+output "github_actions_role_arn" {
+  description = "ARN of the IAM role for GitHub Actions OIDC"
+  value       = aws_iam_role.github_actions_catalog.arn
+}

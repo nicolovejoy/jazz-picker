@@ -2,6 +2,12 @@
 
 ## Completed This Session
 
+**Auto-Refresh Catalog (GitHub Actions + OIDC):**
+- Added OIDC identity provider to AWS (Terraform) - GitHub Actions can now assume IAM roles without long-lived credentials
+- Created `jazz-picker-catalog-updater` IAM role scoped to only upload `catalog.db` to S3
+- Workflow in Eric's repo: on push to Wrappers/ or Core/, rebuilds catalog, uploads to S3, restarts Fly app
+- Waiting on Eric to add `FLY_API_TOKEN` secret to his repo
+
 **Password Protection:**
 - Added `PasswordGate.tsx` component - shown before welcome screen
 - Shared password: `vashonista!`
@@ -106,6 +112,8 @@
 **AWS (Terraform-managed):**
 - S3 bucket: `jazz-picker-pdfs`
 - Contains: `catalog.db`, `generated/` folder for cached PDFs
+- OIDC provider for GitHub Actions (keyless auth)
+- IAM role `jazz-picker-catalog-updater` for catalog updates
 
 ---
 
@@ -121,17 +129,11 @@
 - Future: editable setlists, drag to reorder
 - Requires user accounts for persistence
 
-## Auto-Refresh Catalog
-When Eric updates charts in his repo:
-
-**Option A: GitHub Action (recommended)**
-- Add workflow to Eric's lilypond-lead-sheets repo
-- On push: rebuild catalog.db, upload to S3, restart Fly app
-
-**Option B: Manual**
-- Run `build_catalog.py` locally
-- Upload: `aws s3 cp catalog.db s3://jazz-picker-pdfs/`
-- Deploy: `fly deploy`
+## Auto-Refresh Catalog ✅
+Implemented via GitHub Action in Eric's `neonscribe/lilypond-lead-sheets` repo:
+- On push to `Wrappers/` or `Core/`: rebuilds catalog, uploads to S3, restarts Fly app
+- Uses OIDC for AWS auth (no long-lived credentials)
+- Manual fallback: `python3 build_catalog.py && aws s3 cp catalog.db s3://jazz-picker-pdfs/ && fly apps restart jazz-picker`
 
 ## Technical Debt
 - [ ] No test suite
