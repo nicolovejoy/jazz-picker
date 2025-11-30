@@ -4,10 +4,11 @@ import { Header } from './components/Header';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
-import { PasswordGate } from './components/PasswordGate';
+import { AuthGate } from './components/AuthGate';
 import { Setlist } from './components/Setlist';
 import { AboutPage } from './components/AboutPage';
 import { useSongsV2 } from './hooks/useSongsV2';
+import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
 import type { InstrumentType, SongSummary } from '@/types/catalog';
 
@@ -27,7 +28,6 @@ export interface SetlistNavigation {
 }
 
 const STORAGE_KEY = 'jazz-picker-instrument';
-const AUTH_STORAGE_KEY = 'jazz-picker-auth';
 
 function getStoredInstrument(): InstrumentType | null {
   try {
@@ -41,16 +41,8 @@ function getStoredInstrument(): InstrumentType | null {
   return null;
 }
 
-function isAuthenticated(): boolean {
-  try {
-    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
-
 function App() {
-  const [authenticated, setAuthenticated] = useState(isAuthenticated);
+  const { user, loading, signOut } = useAuth();
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -63,24 +55,6 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const LIMIT = 50;
-
-  const handleAuthenticated = useCallback(() => {
-    setAuthenticated(true);
-    try {
-      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
-    } catch {
-      // localStorage not available
-    }
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    setAuthenticated(false);
-    try {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    } catch {
-      // localStorage not available
-    }
-  }, []);
 
   const queryClient = useQueryClient();
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -210,9 +184,18 @@ function App() {
     }
   }, [allSongs]);
 
-  // Show password gate if not authenticated
-  if (!authenticated) {
-    return <PasswordGate onAuthenticated={handleAuthenticated} />;
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+      </div>
+    );
+  }
+
+  // Show auth gate if not logged in
+  if (!user) {
+    return <AuthGate />;
   }
 
   // Show welcome screen if no instrument selected
@@ -231,7 +214,7 @@ function App() {
         onEnterPress={handleEnterPress}
         onResetInstrument={handleResetInstrument}
         onOpenSetlist={() => setShowSetlist(true)}
-        onLogout={handleLogout}
+        onLogout={signOut}
         onOpenAbout={() => setShowAbout(true)}
       />
 
