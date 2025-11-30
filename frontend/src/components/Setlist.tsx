@@ -14,7 +14,7 @@ const SETLIST = [
   { title: "The Thrill Is Gone", key: "g", clef: "treble" },
   { title: "Black Orpheus", key: "e", clef: "treble" },
   { title: "Fever", key: "a", clef: "treble" },
-  { title: "I Fall in Love Too Easily", key: "bf", clef: "treble" },
+  { title: "I Fall In Love Too Easily", key: "bf", clef: "treble" },
   { title: "Blue Christmas", key: "c", clef: "treble" },
   { title: "I've Got My Love to Keep Me Warm", key: "af", clef: "treble" },
   { title: "Alright, Okay, You Win", key: "c", clef: "treble" },
