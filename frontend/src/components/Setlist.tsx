@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/services/api';
 import type { PdfMetadata } from '../App';
 
@@ -7,7 +7,13 @@ interface SetlistProps {
   onClose: () => void;
 }
 
-const SETLIST = [
+interface SetlistSong {
+  title: string;
+  key: string;
+  clef: string;
+}
+
+const SETLIST: SetlistSong[] = [
   { title: "Blue Bossa", key: "c", clef: "treble" },
   { title: "East of the Sun", key: "c", clef: "treble" },
   { title: "Peel Me a Grape", key: "a", clef: "treble" },
@@ -34,12 +40,40 @@ const KEY_DISPLAY: Record<string, string> = {
 
 export function Setlist({ onOpenPdfUrl, onClose }: SetlistProps) {
   const [loading, setLoading] = useState<number | null>(null);
+  const [cachedStatus, setCachedStatus] = useState<Record<number, boolean>>({});
+
+  // Check cached status for all songs on mount
+  useEffect(() => {
+    const checkCachedStatus = async () => {
+      const status: Record<number, boolean> = {};
+
+      await Promise.all(
+        SETLIST.map(async (song, index) => {
+          try {
+            const cached = await api.getCachedKeys(song.title);
+            const isCached = cached.cached_keys.some(
+              (k) => k.key === song.key && k.clef === song.clef
+            );
+            status[index] = isCached;
+          } catch {
+            status[index] = false;
+          }
+        })
+      );
+
+      setCachedStatus(status);
+    };
+
+    checkCachedStatus();
+  }, []);
 
   const handleSongClick = async (index: number) => {
     const song = SETLIST[index];
     setLoading(index);
     try {
       const result = await api.generatePDF(song.title, song.key, song.clef as 'treble' | 'bass');
+      // Mark as cached after successful generation
+      setCachedStatus((prev) => ({ ...prev, [index]: true }));
       onOpenPdfUrl(result.url, {
         songTitle: song.title,
         key: song.key,
@@ -77,6 +111,8 @@ export function Setlist({ onOpenPdfUrl, onClose }: SetlistProps) {
               className={`w-full p-4 rounded-lg border text-left flex items-center gap-4 transition-all ${
                 loading === index
                   ? 'bg-blue-500/20 border-blue-500/50'
+                  : cachedStatus[index]
+                  ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50'
                   : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
               }`}
             >
