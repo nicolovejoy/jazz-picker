@@ -29,7 +29,7 @@ const SETLIST: SetlistSong[] = [
   { title: "Black Coffee", key: "c", clef: "treble" },
   { title: "Is You Is or Is You Ain't (Ma' Baby)", key: "a", clef: "treble" },
   { title: "Dream a Little Dream of Me", key: "c", clef: "treble" },
-  { title: "C'est Si Bon English", key: "ef", clef: "treble" },
+  { title: "C'est Si Bon French", key: "ef", clef: "treble" },
   { title: "The In Crowd", key: "d", clef: "treble" },
 ];
 
