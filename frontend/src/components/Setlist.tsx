@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
-import type { PdfMetadata } from '../App';
+import type { PdfMetadata, SetlistNavigation } from '../App';
 
 interface SetlistProps {
   onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
+  onSetlistNav: (nav: SetlistNavigation | null) => void;
   onClose: () => void;
 }
 
@@ -28,7 +29,7 @@ const SETLIST: SetlistSong[] = [
   { title: "Black Coffee", key: "c", clef: "treble" },
   { title: "Is You Is or Is You Ain't (Ma' Baby)", key: "a", clef: "treble" },
   { title: "Dream a Little Dream of Me", key: "c", clef: "treble" },
-  { title: "C'est Si Bon", key: "ef", clef: "treble" },
+  { title: "C'est Si Bon English", key: "ef", clef: "treble" },
   { title: "The In Crowd", key: "d", clef: "treble" },
 ];
 
@@ -38,9 +39,10 @@ const KEY_DISPLAY: Record<string, string> = {
   'af': 'Ab', 'a': 'A', 'as': 'A#', 'bf': 'Bb', 'b': 'B'
 };
 
-export function Setlist({ onOpenPdfUrl, onClose }: SetlistProps) {
+export function Setlist({ onOpenPdfUrl, onSetlistNav, onClose }: SetlistProps) {
   const [loading, setLoading] = useState<number | null>(null);
   const [cachedStatus, setCachedStatus] = useState<Record<number, boolean>>({});
+  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
   // Check cached status for all songs on mount
   useEffect(() => {
@@ -67,12 +69,16 @@ export function Setlist({ onOpenPdfUrl, onClose }: SetlistProps) {
     checkCachedStatus();
   }, []);
 
-  const handleSongClick = async (index: number) => {
+  // Load a song by index and open the PDF
+  const loadSong = useCallback(async (index: number) => {
+    if (index < 0 || index >= SETLIST.length) return;
+
     const song = SETLIST[index];
     setLoading(index);
+    setCurrentIndex(index);
+
     try {
       const result = await api.generatePDF(song.title, song.key, song.clef as 'treble' | 'bass');
-      // Mark as cached after successful generation
       setCachedStatus((prev) => ({ ...prev, [index]: true }));
       onOpenPdfUrl(result.url, {
         songTitle: song.title,
@@ -87,6 +93,37 @@ export function Setlist({ onOpenPdfUrl, onClose }: SetlistProps) {
     } finally {
       setLoading(null);
     }
+  }, [onOpenPdfUrl]);
+
+  // Update navigation callbacks when currentIndex changes
+  useEffect(() => {
+    if (currentIndex !== null) {
+      onSetlistNav({
+        currentIndex,
+        totalSongs: SETLIST.length,
+        onPrevSong: () => {
+          if (currentIndex > 0) {
+            loadSong(currentIndex - 1);
+          }
+        },
+        onNextSong: () => {
+          if (currentIndex < SETLIST.length - 1) {
+            loadSong(currentIndex + 1);
+          }
+        },
+      });
+    }
+  }, [currentIndex, loadSong, onSetlistNav]);
+
+  // Clear navigation when setlist closes
+  useEffect(() => {
+    return () => {
+      onSetlistNav(null);
+    };
+  }, [onSetlistNav]);
+
+  const handleSongClick = (index: number) => {
+    loadSong(index);
   };
 
   return (

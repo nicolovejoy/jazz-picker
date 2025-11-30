@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo } from 'react-icons/fi';
-import type { PdfMetadata } from '../App';
+import type { PdfMetadata, SetlistNavigation } from '../App';
 
 // Set up worker - use unpkg CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -9,10 +9,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 interface PDFViewerProps {
   pdfUrl: string;
   metadata?: PdfMetadata | null;
+  setlistNav?: SetlistNavigation | null;
   onClose: () => void;
 }
 
-export function PDFViewer({ pdfUrl, metadata, onClose }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
@@ -269,7 +270,7 @@ export function PDFViewer({ pdfUrl, metadata, onClose }: PDFViewerProps) {
   const onTouchEnd = () => {
     // Reset pinch tracking
     setLastPinchDistance(null);
-    
+
     // Handle swipe if it was a single touch
     if (!touchStart || !touchEnd) return;
 
@@ -278,9 +279,25 @@ export function PDFViewer({ pdfUrl, metadata, onClose }: PDFViewerProps) {
     const isRightSwipe = distance < -minSwipeDistance;
 
     const pagesPerView = isLandscape ? 2 : 1;
-    const canSwipe = isLandscape ? numPages > 2 : numPages > 1;
+    const canSwipePages = isLandscape ? numPages > 2 : numPages > 1;
+    const isAtFirstPage = currentPage === 1;
+    const isAtLastPage = currentPage + pagesPerView > numPages;
 
-    if (!canSwipe) return;
+    // Handle setlist navigation when at boundaries
+    if (setlistNav) {
+      if (isRightSwipe && isAtFirstPage) {
+        // Swipe right at first page -> previous song
+        setlistNav.onPrevSong();
+        return;
+      }
+      if (isLeftSwipe && isAtLastPage) {
+        // Swipe left at last page -> next song
+        setlistNav.onNextSong();
+        return;
+      }
+    }
+
+    if (!canSwipePages) return;
 
     if (isLeftSwipe && currentPage + pagesPerView <= numPages) {
       setSwipeDirection('left');

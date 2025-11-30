@@ -18,6 +18,13 @@ export interface PdfMetadata {
   generationTimeMs: number;
 }
 
+export interface SetlistNavigation {
+  currentIndex: number;
+  totalSongs: number;
+  onPrevSong: () => void;
+  onNextSong: () => void;
+}
+
 const STORAGE_KEY = 'jazz-picker-instrument';
 const AUTH_STORAGE_KEY = 'jazz-picker-auth';
 
@@ -48,6 +55,7 @@ function App() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
   const [showSetlist, setShowSetlist] = useState(false);
+  const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -264,6 +272,7 @@ function App() {
       {showSetlist && (
         <Setlist
           onOpenPdfUrl={handleOpenPdfUrl}
+          onSetlistNav={setSetlistNav}
           onClose={() => setShowSetlist(false)}
         />
       )}
@@ -272,6 +281,7 @@ function App() {
         <PDFViewer
           pdfUrl={pdfUrl}
           metadata={pdfMetadata}
+          setlistNav={setlistNav}
           onClose={() => {
             setPdfUrl(null);
             setPdfMetadata(null);
