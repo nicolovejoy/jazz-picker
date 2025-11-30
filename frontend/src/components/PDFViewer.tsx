@@ -344,7 +344,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
   const canNavigate = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Header - slides down when showNav is true */}
       <div
         className={`bg-white/10 backdrop-blur-lg px-2 py-2 flex items-center justify-between border-b border-white/10 transition-transform duration-300 ${
