@@ -2,94 +2,116 @@
 
 ## Completed This Session
 
-**Switched to 100% dynamic PDF generation:**
-- Removed pre-built PDF support - all PDFs now generated on-demand via `/api/v2/generate`
-- Removed `/pdf/:filename` endpoint and related code
-- Frontend now calls generate endpoint when clicking any variation
-- PDFs cached in S3 `generated/` folder after first generation (~7s new, <200ms cached)
+**SQLite Migration:**
+- Backend now uses `catalog.db` instead of `catalog.json`
+- Created `db.py` module for all database access
+- `catalog.db` downloaded from S3 on startup
+- Uploaded current catalog.db to S3
 
-**Fixed PDF margin cutoff issue:**
-- Root cause: LilyPond version mismatch (apt provides 2.24, Eric's code requires 2.25)
-- Solution: Updated Dockerfile.prod to download LilyPond 2.25.30 from GitLab releases
+**Frontend Redesign:**
+- New song card design: default key + cached keys as pills
+- Green border indicates songs with any cached version
+- Plus button opens GenerateModal for custom key selection
+- Auto-refresh: generating a new key immediately updates the card
+
+**Debug Badge:**
+- PDF viewer shows info badge (bottom-left)
+- Displays: cached/generated status, generation time, song/key info
+- Tap to expand for full details
+
+**Domain:**
+- Connected `pianohouseproject.org` to Vercel frontend
 
 ## Current State
 
 **Live URLs:**
-- Frontend: https://frontend-phi-khaki-43.vercel.app/
+- Frontend: https://pianohouseproject.org (also: frontend-phi-khaki-43.vercel.app)
 - Backend: https://jazz-picker.fly.dev
 
 **What Works:**
+- 735 songs with dynamic PDF generation
 - All instrument filters (C, Bb, Eb, Bass)
 - Search with infinite scroll
-- PDF viewer (iPad-optimized)
-- Dynamic PDF generation in any key
-- S3 caching of generated PDFs
-- Custom key generation via plus button
+- iPad-optimized PDF viewer
+- S3 caching of generated PDFs (~7s new, <200ms cached)
+- Debug badge showing cache status
+
+**State Management:**
+- React Query for server state (songs, cached keys)
+- React useState for UI state
+- LocalStorage for instrument preference
+
+## Key Files Changed
+
+- `db.py` - NEW: SQLite database access layer
+- `app.py` - Uses SQLite via db module
+- `Dockerfile.prod` - Copies db.py, downloads catalog.db from S3
+- `frontend/src/components/SongListItem.tsx` - New card design
+- `frontend/src/components/PDFViewer.tsx` - Debug badge
+- `frontend/src/components/GenerateModal.tsx` - Cache invalidation on generate
 
 ## Infrastructure
 
 **Backend (Fly.io):**
 - Flask API with LilyPond 2.25.30
-- All PDFs generated on-demand, cached in S3
-- 2 workers, 120s timeout for PDF generation
+- SQLite catalog downloaded from S3 on startup
+- 2 workers, 120s timeout
 
 **AWS (Terraform-managed):**
 - S3 bucket: `jazz-picker-pdfs`
-- Only `generated/` folder used now (pre-built folders can be deleted)
-- IAM user: `jazz-picker-api` with read + write permissions
+- Contains: `catalog.db`, `generated/` folder for cached PDFs
 
-## Key Files
+---
 
-- `Dockerfile.prod` - LilyPond 2.25 installation
-- `app.py` - `/api/v2/generate` endpoint
-- `frontend/src/components/PDFViewer.tsx` - calls generate endpoint
-- `frontend/src/components/GenerateModal.tsx` - custom key selector UI
+# Future Work
 
-## Cache Invalidation
+## Auth Implementation
 
-When Eric updates a chart, clear the cache for that song:
-```bash
-aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive --exclude "*" --include "song-slug-*"
-```
-Or clear all generated PDFs:
-```bash
-aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
-```
+**Decision needed:** Supabase Auth vs Vercel Auth vs simple password
 
-## Catalog Cleanup (Optional)
+### Phase 1: Simple Password Gate
+- Frontend password prompt (stored in localStorage)
+- Quick to implement, good enough for friends/family access
 
-These fields are no longer used and can be removed from `build_catalog.py`:
-- `variation.pdf_path`
-- `variation.filename`
-- `variation.filepath`
+### Phase 2: User Accounts
+- Enables per-user setlists and preferences
+- Options: Supabase Auth, Clerk, Auth0
 
-## Known Issues (Next Session)
+### Phase 3: Roles (if needed)
+- Admin: cache invalidation, stats
+- User: normal access
 
-**Variation display is broken:**
-- Catalog still shows old variations (Bb, Eb, Alto Voice keys, etc.)
-- These are meaningless now since any key can be generated
-- Clicking some variations causes "Invalid key" error (key format mismatch)
+## Setlists Feature
 
-**Root cause:** The catalog was designed for pre-built PDFs with specific transpositions. Now that we generate on-demand, the UX should change.
+**Concept:** Users create named lists of songs for gigs/practice.
 
-## Next Steps
+**Requires:**
+- User accounts (for persistence)
+- New database tables: `setlists`, `setlist_songs`
+- UI: Create/edit setlist, drag to reorder, "practice mode" view
+- Optional: Pre-generate all PDFs in a setlist for offline use
 
-1. **Simplify song display:**
-   - Each song should show just the song title (no key variations)
-   - Remove variation buttons entirely
-   - Clicking a song opens GenerateModal to pick key + clef
+**State Management:**
+- Add Zustand when setlists need client-side state
+- React Query continues for server data
 
-2. **Update catalog structure:**
-   - Remove variations array from songs (or simplify to just metadata)
-   - Keep only: title, core_files, original_key (for default selection)
-   - Run `build_catalog.py` with new structure
+## Auto-Refresh Catalog
 
-3. **Fix key format:**
-   - Some catalog keys have octave markers (e.g., `bf,` instead of `bf`)
-   - Strip these in frontend or fix in catalog
+When Eric updates charts in his repo:
 
-4. **Future: Setlists with pre-generation**
+**Option A: GitHub Action (recommended)**
+- Add workflow to Eric's lilypond-lead-sheets repo
+- On push: rebuild catalog.db, upload to S3, restart Fly app
+- Secrets needed: AWS keys, FLY_API_TOKEN
 
-## TODO
+**Option B: Manual**
+- Run `build_catalog.py` locally
+- Upload: `aws s3 cp catalog.db s3://jazz-picker-pdfs/`
+- Deploy: `fly deploy`
 
-- [ ] Surface cached/generated indicator in frontend UI
+## Technical Debt
+
+- [ ] No test suite
+- [ ] Large JS bundle (684KB) - could code-split
+- [ ] Cleanup unused catalog.json from S3
+- [ ] Remove old pre-built PDF folders from S3 (Standard/, Alto-Voice/, etc.)

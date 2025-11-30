@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
 - **Backend**: Flask API (Python) deployed on Fly.io
 - **Frontend**: React + TypeScript + Vite application (local development, Cloudflare Pages planned)
-- **Storage**: AWS S3 for PDFs (2GB), catalog metadata in JSON/SQLite
+- **Storage**: AWS S3 for PDFs, SQLite catalog (downloaded from S3 on startup)
 
 The project serves ~735 songs with multiple variations per song (different keys, instruments, voice ranges) from Eric's lilypond lead sheets repository.
 
@@ -119,9 +119,10 @@ Response: {"url": "https://s3.../generated/...", "cached": true/false, "generati
 - `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` - Auth credentials
 
 **Data Loading:**
-1. Attempts to load `catalog.json` from S3
+1. Downloads `catalog.db` (SQLite) from S3 on startup
 2. Falls back to local file if S3 unavailable
-3. Catalog contains ~735 songs with metadata for ~4366 files
+3. Uses `db.py` module for all database queries
+4. Catalog contains ~735 songs with metadata for ~4366 variations
 
 ### Frontend (`frontend/src/`)
 
@@ -254,7 +255,7 @@ terraform apply
 
 2. **Symlinks**: Root directory contains symlinks to Dropbox folders - don't modify these.
 
-3. **Database Migration**: Transitioning from `catalog.json` to SQLite. Backend still reads JSON.
+3. **Database**: Backend uses SQLite (`catalog.db`) via `db.py` module. JSON catalog is deprecated.
 
 4. **LilyPond Version**: Eric's lilypond-data requires LilyPond 2.25 (development branch). The Dockerfile downloads it from GitLab releases. Debian/Ubuntu apt only provides 2.24.
 
@@ -313,8 +314,9 @@ export function useEndpoint() {
 ```
 jazz-picker/
 ├── app.py                    # Flask backend
+├── db.py                     # SQLite database access layer
 ├── build_catalog.py          # Catalog generation
-├── catalog.json              # Song metadata (5.7MB)
+├── catalog.db                # SQLite catalog (downloaded from S3)
 ├── fly.toml                  # Fly.io config
 ├── Dockerfile.prod           # Production Docker (includes LilyPond)
 ├── infrastructure/           # Terraform (AWS resources)
