@@ -21,12 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 # Copy application code
 COPY app.py .
+COPY db.py .
 
 # Copy LilyPond source files (Core + Include directories)
 COPY lilypond-data/Core /app/lilypond-data/Core
 COPY lilypond-data/Include /app/lilypond-data/Include
 
-# Note: catalog.json will be loaded from S3 on startup
+# Note: catalog.db will be downloaded from S3 on startup
 # Wrappers are generated dynamically, not copied
 
 # Create directories for generated files and cache

@@ -3,19 +3,20 @@
 Jazz Picker - A web interface for browsing Eric's lilypond lead sheets.
 """
 
-from flask import Flask, render_template, jsonify, request, send_file, send_from_directory, make_response
+from flask import Flask, jsonify, request, send_from_directory, make_response
 from flask_cors import CORS
-import json
 import subprocess
 import os
+import sys
 import socket
 from pathlib import Path
-from datetime import datetime, timedelta
-from functools import wraps, lru_cache
+from functools import wraps
 import boto3
 from botocore.exceptions import ClientError
-import sys
 import hashlib
+import time
+
+import db  # SQLite database module
 
 app = Flask(__name__)
 
@@ -26,10 +27,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 MAX_LIMIT = 200
 VALID_INSTRUMENTS = {'All', 'C', 'Bb', 'Eb', 'Bass'}
 
-# Load catalog
-CATALOG_FILE = 'catalog.json'
-catalog_data = None
-catalog_etag = None  # ETag for catalog version
+# Database
+DB_FILE = 'catalog.db'
+S3_DB_KEY = 'catalog.db'
+db_etag = None  # ETag for catalog version
+
 WRAPPERS_DIR = 'lilypond-data/Wrappers'
 CACHE_DIR = Path('cache/pdfs')
 
@@ -114,42 +116,48 @@ def bad_request(error):
     }), 400
 
 
-def load_catalog():
-    """Load the catalog from JSON file or S3."""
-    global catalog_data, catalog_etag
+def init_catalog_db():
+    """Initialize the catalog database, downloading from S3 if needed."""
+    global db_etag
 
-    # Try S3 first if enabled
+    db_path = Path(DB_FILE)
+
+    # Try to download from S3 if enabled and file doesn't exist or is old
     if USE_S3 and s3_client:
         try:
-            print(f"⬇️  Fetching catalog from S3 ({S3_BUCKET})...")
-            response = s3_client.get_object(Bucket=S3_BUCKET, Key=CATALOG_FILE)
-            catalog_data = json.loads(response['Body'].read().decode('utf-8'))
-            print(f"✅ Loaded catalog from S3 ({catalog_data['metadata']['total_songs']} songs)")
+            # Check if S3 has a newer version
+            response = s3_client.head_object(Bucket=S3_BUCKET, Key=S3_DB_KEY)
+            s3_etag = response.get('ETag', '').strip('"')
 
-            # Generate ETag from catalog metadata (timestamp + total songs)
-            etag_source = f"{catalog_data['metadata']['generated']}-{catalog_data['metadata']['total_songs']}"
-            catalog_etag = hashlib.md5(etag_source.encode()).hexdigest()
+            # Download if local doesn't exist or ETags differ
+            should_download = not db_path.exists()
+            if db_path.exists() and s3_etag:
+                local_mtime = db_path.stat().st_mtime
+                local_etag = hashlib.md5(str(local_mtime).encode()).hexdigest()
+                should_download = local_etag != s3_etag
 
-            return catalog_data
-        except Exception as e:
-            print(f"⚠️  Could not load catalog from S3: {e}")
-            print("   Falling back to local file...")
+            if should_download:
+                print(f"⬇️  Downloading catalog.db from S3...")
+                s3_client.download_file(S3_BUCKET, S3_DB_KEY, DB_FILE)
+                print(f"✅ Downloaded catalog.db from S3")
 
-    # Fallback to local file
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                print(f"⚠️  catalog.db not found in S3, using local file")
+            else:
+                print(f"⚠️  Could not check S3 for catalog.db: {e}")
+
+    # Initialize the database
     try:
-        with open(CATALOG_FILE, 'r', encoding='utf-8') as f:
-            catalog_data = json.load(f)
-        print(f"✅ Loaded catalog from local file ({catalog_data['metadata']['total_songs']} songs)")
+        song_count = db.init_db(db_path)
+        print(f"✅ Loaded catalog database ({song_count} songs)")
 
-        # Generate ETag from catalog metadata
-        etag_source = f"{catalog_data['metadata']['generated']}-{catalog_data['metadata']['total_songs']}"
-        catalog_etag = hashlib.md5(etag_source.encode()).hexdigest()
+        # Generate ETag from file modification time
+        db_etag = hashlib.md5(str(db_path.stat().st_mtime).encode()).hexdigest()
+
     except FileNotFoundError:
-        print("❌ Catalog not found locally or on S3.")
-        catalog_data = None
-        catalog_etag = None
-
-    return catalog_data
+        print("❌ catalog.db not found locally or on S3.")
+        raise
 
 
 def add_cache_headers(response, max_age=300, etag=None):
@@ -190,11 +198,8 @@ def get_local_ip():
 @app.route('/')
 def index():
     """API root - provides information about available endpoints."""
-    if catalog_data is None:
-        load_catalog()
-
-    total_songs = catalog_data['metadata']['total_songs'] if catalog_data else 0
-    total_variations = catalog_data['metadata']['total_files'] if catalog_data else 0
+    total_songs = db.get_total_songs()
+    total_variations = db.get_total_variations()
 
     return jsonify({
         'name': 'Jazz Picker API',
@@ -203,71 +208,36 @@ def index():
         'catalog': {
             'total_songs': total_songs,
             'total_variations': total_variations,
-            'loaded': catalog_data is not None
         },
         'endpoints': {
             'health': '/health',
-            'songs_v2': '/api/v2/songs?limit=20&offset=0&instrument=All&range=All',
+            'songs_v2': '/api/v2/songs?limit=20&offset=0&instrument=All',
             'song_details': '/api/v2/songs/{title}',
-            'pdf': '/pdf/{filename}',
-            'search': '/api/songs/search?q={query}'
+            'generate': '/api/v2/generate',
         },
-        'frontend': 'https://jazz-picker.pages.dev (or your deployment URL)'
+        'frontend': 'https://jazz-picker.pages.dev'
     })
 
 
 @app.route('/health')
 def health():
     """Health check endpoint for deployment platforms."""
-    health_status = {
+    total_songs = db.get_total_songs()
+    total_variations = db.get_total_variations()
+
+    return jsonify({
         'status': 'healthy',
-        'catalog_loaded': catalog_data is not None,
+        'total_songs': total_songs,
+        'total_variations': total_variations,
         's3_enabled': USE_S3,
         's3_configured': s3_client is not None
-    }
-
-    if catalog_data:
-        health_status['total_songs'] = catalog_data['metadata']['total_songs']
-        health_status['total_variations'] = catalog_data['metadata']['total_files']
-
-    return jsonify(health_status), 200
-
-
-@app.route('/api/songs')
-@requires_auth
-def get_songs():
-    """API endpoint to get all songs (Legacy v1)."""
-    if catalog_data is None:
-        load_catalog()
-        
-    if not catalog_data:
-        return jsonify([])
-
-    # Convert songs dict to sorted list
-    songs_list = [
-        {
-            'title': title,
-            **data
-        }
-        for title, data in catalog_data['songs'].items()
-    ]
-
-    # Sort alphabetically
-    songs_list.sort(key=lambda x: x['title'])
-
-    return jsonify(songs_list)
+    }), 200
 
 
 @app.route('/api/v2/songs')
 @requires_auth
 def get_songs_v2():
     """API v2: Get paginated, slim song list."""
-    if catalog_data is None:
-        load_catalog()
-
-    if not catalog_data:
-        return jsonify({'error': 'Catalog not loaded', 'songs': [], 'total': 0}), 500
-
     # Query parameters with validation
     try:
         limit = int(request.args.get('limit', 50))
@@ -283,75 +253,23 @@ def get_songs_v2():
     if offset < 0:
         return jsonify({'error': 'Offset must be non-negative'}), 400
 
-    query = request.args.get('q', '').lower()
+    query = request.args.get('q', '')
     instrument_filter = request.args.get('instrument', 'All')
 
     # Validate filters
     if instrument_filter not in VALID_INSTRUMENTS:
         return jsonify({'error': f'Invalid instrument. Must be one of: {", ".join(VALID_INSTRUMENTS)}'}), 400
-    
-    # Filter songs
-    filtered_songs = []
-    for title, data in catalog_data['songs'].items():
-        # 1. Filter by Search Query
-        if query and query not in title.lower():
-            continue
 
-        # Calculate available instruments for MATCHING variations only
-        instruments = set()
-        matching_variations = 0
-
-        for var in data['variations']:
-            v_type = var['variation_type']
-
-            # Check if this variation matches the instrument filter
-            match_instrument = False
-            if instrument_filter == 'All':
-                match_instrument = True
-            elif instrument_filter == 'C' and ('Standard' in v_type or 'Alto' in v_type or 'Baritone' in v_type):
-                match_instrument = True
-            elif instrument_filter == 'Bb' and 'Bb Instrument' in v_type:
-                match_instrument = True
-            elif instrument_filter == 'Eb' and 'Eb Instrument' in v_type:
-                match_instrument = True
-            elif instrument_filter == 'Bass' and v_type == 'Bass':
-                match_instrument = True
-
-            if match_instrument:
-                matching_variations += 1
-
-                # Add instrument category for this MATCHING variation
-                if 'Standard' in v_type:
-                    instruments.add('C')
-                if 'Bb Instrument' in v_type:
-                    instruments.add('Bb')
-                if 'Eb Instrument' in v_type:
-                    instruments.add('Eb')
-                if v_type == 'Bass':
-                    instruments.add('Bass')
-
-        # Only include song if it has at least one variation matching the filter
-        if matching_variations > 0:
-            filtered_songs.append({
-                'title': title,
-                'variation_count': matching_variations,
-                'available_instruments': sorted(list(instruments)),
-            })
-
-    # Sort alphabetically
-    filtered_songs.sort(key=lambda x: x['title'])
-    
-    # Paginate
-    total = len(filtered_songs)
-    paginated_songs = filtered_songs[offset : offset + limit]
+    # Query database
+    songs, total = db.search_songs(query, instrument_filter, limit, offset)
 
     # Check ETag - if client has current version, return 304
-    if check_etag(catalog_etag):
+    if check_etag(db_etag):
         return make_response('', 304)
 
     # Create response with caching headers
     response = make_response(jsonify({
-        'songs': paginated_songs,
+        'songs': songs,
         'total': total,
         'limit': limit,
         'offset': offset,
@@ -359,106 +277,41 @@ def get_songs_v2():
     }))
 
     # Add caching headers (5 minutes for song lists)
-    return add_cache_headers(response, max_age=300, etag=catalog_etag)
-
-
-@app.route('/api/songs/search')
-@requires_auth
-def search_songs():
-    """API endpoint to search songs by title."""
-    if catalog_data is None:
-        load_catalog()
-        
-    if not catalog_data:
-        return jsonify([])
-
-    query = request.args.get('q', '').lower()
-    variation_filter = request.args.get('variation', None)
-
-    if not query and not variation_filter:
-        return jsonify([])
-
-    results = []
-    for title, data in catalog_data['songs'].items():
-        # Filter by title
-        if query and query not in title.lower():
-            continue
-
-        # Filter by variation type if specified
-        variations = data['variations']
-        if variation_filter:
-            variations = [v for v in variations if v['variation_type'] == variation_filter]
-
-        if variations:
-            results.append({
-                'title': title,
-                'core_files': data['core_files'],
-                'variations': variations
-            })
-
-    # Sort results
-    results.sort(key=lambda x: x['title'])
-
-    return jsonify(results)
-
-
-@app.route('/api/song/<path:song_title>')
-@requires_auth
-def get_song(song_title):
-    """API endpoint to get a specific song's details (Legacy v1)."""
-    if catalog_data is None:
-        load_catalog()
-        
-    if not catalog_data:
-        return jsonify({'error': 'Catalog not loaded'}), 500
-
-    if song_title in catalog_data['songs']:
-        return jsonify({
-            'title': song_title,
-            **catalog_data['songs'][song_title]
-        })
-    else:
-        return jsonify({'error': 'Song not found'}), 404
+    return add_cache_headers(response, max_age=300, etag=db_etag)
 
 
 @app.route('/api/v2/songs/<path:song_title>')
 @requires_auth
 def get_song_v2(song_title):
     """API v2: Get specific song details."""
-    if catalog_data is None:
-        load_catalog()
+    song = db.get_song_by_title(song_title)
 
-    if not catalog_data:
-        return jsonify({'error': 'Catalog not loaded'}), 500
-
-    if song_title in catalog_data['songs']:
-        # Check ETag - if client has current version, return 304
-        if check_etag(catalog_etag):
-            return make_response('', 304)
-
-        song_data = catalog_data['songs'][song_title]
-
-        # Transform variations for v2
-        variations = []
-        for var in song_data['variations']:
-            variations.append({
-                'id': var.get('filename', '').replace('.ly', ''),  # Use filename as ID
-                'display_name': var.get('display_name', ''),
-                'key': var.get('key', ''),
-                'instrument': var.get('instrument', ''),
-                'variation_type': var.get('variation_type', ''),
-                'filename': var.get('filename', '')
-            })
-
-        response = make_response(jsonify({
-            'title': song_title,
-            'variations': variations
-        }))
-
-        # Add caching headers (10 minutes for song details)
-        return add_cache_headers(response, max_age=600, etag=catalog_etag)
-    else:
+    if not song:
         return jsonify({'error': 'Song not found'}), 404
+
+    # Check ETag - if client has current version, return 304
+    if check_etag(db_etag):
+        return make_response('', 304)
+
+    # Transform variations for v2
+    variations = []
+    for var in song['variations']:
+        variations.append({
+            'id': var.get('filename', '').replace('.ly', ''),
+            'display_name': var.get('display_name', ''),
+            'key': var.get('key', ''),
+            'instrument': var.get('instrument', ''),
+            'variation_type': var.get('variation_type', ''),
+            'filename': var.get('filename', '')
+        })
+
+    response = make_response(jsonify({
+        'title': song_title,
+        'variations': variations
+    }))
+
+    # Add caching headers (10 minutes for song details)
+    return add_cache_headers(response, max_age=600, etag=db_etag)
 
 
 # LilyPond generation constants
@@ -493,6 +346,61 @@ whatClef = "{clef}"
 '''
 
 
+@app.route('/api/v2/songs/<path:song_title>/cached')
+@requires_auth
+def get_cached_keys(song_title):
+    """
+    Get list of cached PDF keys for a song.
+
+    Returns:
+    {
+        "default_key": "g",          // Original key (stripped of octave markers)
+        "default_clef": "treble",    // Original clef
+        "cached_keys": [             // Keys that are already cached in S3
+            {"key": "c", "clef": "treble"},
+            {"key": "g", "clef": "bass"}
+        ]
+    }
+    """
+    # Get default key from database
+    default_key, default_clef = db.get_song_default_key(song_title)
+
+    # Verify song exists
+    if not db.get_song_by_title(song_title):
+        return jsonify({'error': f'Song not found: {song_title}'}), 404
+
+    cached_keys = []
+
+    # Check S3 for cached versions
+    if s3_client:
+        slug = slugify(song_title)
+        prefix = f"generated/{slug}-"
+
+        try:
+            response = s3_client.list_objects_v2(
+                Bucket=S3_BUCKET,
+                Prefix=prefix
+            )
+
+            for obj in response.get('Contents', []):
+                # Parse key from filename: {slug}-{key}-{clef}.pdf
+                filename = obj['Key'].replace(prefix, '').replace('.pdf', '')
+                parts = filename.rsplit('-', 1)
+                if len(parts) == 2:
+                    cached_keys.append({
+                        'key': parts[0],
+                        'clef': parts[1]
+                    })
+        except ClientError as e:
+            print(f"⚠️  Error listing cached keys: {e}")
+
+    return jsonify({
+        'default_key': default_key,
+        'default_clef': default_clef,
+        'cached_keys': cached_keys
+    })
+
+
 @app.route('/api/v2/generate', methods=['POST'])
 @requires_auth
 def generate_pdf():
@@ -513,14 +421,7 @@ def generate_pdf():
         "generation_time_ms": 2340
     }
     """
-    import time
     start_time = time.time()
-
-    if catalog_data is None:
-        load_catalog()
-
-    if not catalog_data:
-        return jsonify({'error': 'Catalog not loaded'}), 500
 
     # Parse request
     data = request.get_json()
@@ -544,15 +445,10 @@ def generate_pdf():
     if clef not in VALID_CLEFS:
         return jsonify({'error': f'Invalid clef. Must be one of: {", ".join(VALID_CLEFS)}'}), 400
 
-    # Look up song in catalog
-    if song_title not in catalog_data['songs']:
-        return jsonify({'error': f'Song not found: {song_title}'}), 404
-
-    song_data = catalog_data['songs'][song_title]
-    core_files = song_data.get('core_files', [])
-
+    # Look up song in database
+    core_files = db.get_core_files(song_title)
     if not core_files:
-        return jsonify({'error': f'No core file found for song: {song_title}'}), 500
+        return jsonify({'error': f'Song not found: {song_title}'}), 404
 
     # Use the first core file (most songs have exactly one)
     core_file = core_files[0]
@@ -679,19 +575,13 @@ def validate_startup():
     """Validate required configuration on startup."""
     errors = []
 
-    # Validate catalog loading
+    # Initialize catalog database
     try:
-        load_catalog()
-        if catalog_data is None:
-            errors.append("Catalog failed to load from both S3 and local file")
-        elif 'metadata' not in catalog_data or 'songs' not in catalog_data:
-            errors.append("Catalog structure is invalid (missing metadata or songs)")
-        else:
-            print(f"✅ Loaded catalog with {catalog_data['metadata']['total_songs']} songs")
+        init_catalog_db()
     except FileNotFoundError:
-        errors.append(f"{CATALOG_FILE} not found. Run build_catalog.py first!")
+        errors.append(f"{DB_FILE} not found. Run build_catalog.py first!")
     except Exception as e:
-        errors.append(f"Failed to load catalog: {e}")
+        errors.append(f"Failed to load catalog database: {e}")
 
     # Validate S3 configuration if enabled
     if USE_S3:
@@ -726,10 +616,12 @@ def validate_startup():
         sys.exit(1)
 
 
-if __name__ == '__main__':
-    # Validate configuration before starting
-    validate_startup()
+# Initialize database and validate configuration at module load time
+# (needed for gunicorn which doesn't run __main__ block)
+validate_startup()
 
+
+if __name__ == '__main__':
     # Listen on all interfaces to allow iPad access on local network
     # Port 5001 (5000 is often used by AirPlay on macOS)
     PORT = 5001

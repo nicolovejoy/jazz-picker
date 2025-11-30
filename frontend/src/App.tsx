@@ -6,11 +6,14 @@ import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
-import type { InstrumentType, Variation, SongSummary } from '@/types/catalog';
+import type { InstrumentType, SongSummary } from '@/types/catalog';
 
-// Special variation type for generated PDFs with direct URL
-interface GeneratedVariation extends Variation {
-  directUrl?: string;
+export interface PdfMetadata {
+  songTitle: string;
+  key: string;
+  clef: string;
+  cached: boolean;
+  generationTimeMs: number;
 }
 
 const STORAGE_KEY = 'jazz-picker-instrument';
@@ -30,7 +33,8 @@ function getStoredInstrument(): InstrumentType | null {
 function App() {
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
-  const [selectedVariation, setSelectedVariation] = useState<GeneratedVariation | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -132,22 +136,9 @@ function App() {
     }
   }, []);
 
-  const handleOpenPdfUrl = useCallback((url: string) => {
-    // Create a pseudo-variation with direct URL for generated PDFs
-    setSelectedVariation({
-      filename: 'generated',
-      filepath: '',
-      title: 'Generated',
-      key_and_variation: '',
-      pdf_path: '',
-      display_name: 'Generated',
-      instrument: '',
-      key: '',
-      clef: '',
-      core_file: '',
-      variation_type: 'Generated',
-      directUrl: url,
-    });
+  const handleOpenPdfUrl = useCallback((url: string, metadata?: PdfMetadata) => {
+    setPdfUrl(url);
+    setPdfMetadata(metadata || null);
   }, []);
 
   const handleEnterPress = useCallback(async () => {
@@ -156,17 +147,25 @@ function App() {
 
     const song = allSongs[0];
 
-    // Fetch song details and open PDF if single variation
+    // Fetch cached info and generate PDF in default key
     try {
-      const songDetail = await api.getSongV2(song.title);
-
-      if (songDetail.variations.length === 1) {
-        // Single variation: open PDF directly
-        setSelectedVariation({ ...songDetail.variations[0], songTitle: song.title } as any);
-      }
-      // Multiple variations: user needs to click a specific key button
+      const cachedInfo = await api.getCachedKeys(song.title);
+      const clef = cachedInfo.default_clef === 'bass' ? 'bass' : 'treble';
+      const result = await api.generatePDF(
+        song.title,
+        cachedInfo.default_key,
+        clef
+      );
+      setPdfUrl(result.url);
+      setPdfMetadata({
+        songTitle: song.title,
+        key: cachedInfo.default_key,
+        clef,
+        cached: result.cached,
+        generationTimeMs: result.generation_time_ms,
+      });
     } catch (error) {
-      console.error('Failed to fetch song details:', error);
+      console.error('Failed to open song:', error);
     }
   }, [allSongs]);
 
@@ -201,9 +200,7 @@ function App() {
           <>
             <SongList
               songs={allSongs}
-              instrument={instrument}
               searchQuery={searchQuery}
-              onSelectVariation={setSelectedVariation}
               onOpenPdfUrl={handleOpenPdfUrl}
             />
 
@@ -226,10 +223,14 @@ function App() {
         )}
       </main>
 
-      {selectedVariation && (
+      {pdfUrl && (
         <PDFViewer
-          variation={selectedVariation}
-          onClose={() => setSelectedVariation(null)}
+          pdfUrl={pdfUrl}
+          metadata={pdfMetadata}
+          onClose={() => {
+            setPdfUrl(null);
+            setPdfMetadata(null);
+          }}
         />
       )}
     </div>

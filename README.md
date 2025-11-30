@@ -2,6 +2,8 @@
 
 A modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands.
 
+**Source charts:** [neonscribe/lilypond-lead-sheets](https://github.com/neonscribe/lilypond-lead-sheets) (Eric's LilyPond collection)
+
 ## Quick Start
 
 ### 1. Backend (Flask)

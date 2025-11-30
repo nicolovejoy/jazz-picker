@@ -10,6 +10,17 @@ export interface GenerateResponse {
   generation_time_ms: number;
 }
 
+export interface CachedKey {
+  key: string;
+  clef: string;
+}
+
+export interface CachedKeysResponse {
+  default_key: string;
+  default_clef: string;
+  cached_keys: CachedKey[];
+}
+
 export const api = {
   async getSongsV2(
     limit = 50,
@@ -52,6 +63,16 @@ export const api = {
       throw new Error(error.error || 'Failed to generate PDF');
     }
 
+    return response.json();
+  },
+
+  async getCachedKeys(songTitle: string): Promise<CachedKeysResponse> {
+    const response = await fetch(
+      `${API_BASE}/v2/songs/${encodeURIComponent(songTitle)}/cached`
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch cached keys');
+    }
     return response.json();
   },
 };

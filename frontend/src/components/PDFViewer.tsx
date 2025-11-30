@@ -1,28 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import type { Variation } from '@/types/catalog';
-import { api } from '@/services/api';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo } from 'react-icons/fi';
+import type { PdfMetadata } from '../App';
 
 // Set up worker - use unpkg CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-interface ExtendedVariation extends Variation {
-  directUrl?: string;
-  songTitle?: string;
-}
-
 interface PDFViewerProps {
-  variation: ExtendedVariation;
+  pdfUrl: string;
+  metadata?: PdfMetadata | null;
   onClose: () => void;
 }
 
-export function PDFViewer({ variation, onClose }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, onClose }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLandscape, setIsLandscape] = useState(
     window.innerWidth > window.innerHeight
@@ -37,56 +31,6 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
   
   const containerRef = useRef<HTMLDivElement>(null);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Fetch PDF URL when component mounts or variation changes
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadPDF() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // If directUrl is provided (generated PDF), use it directly
-        if (variation.directUrl) {
-          if (mounted) {
-            setPdfUrl(variation.directUrl);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Use generate endpoint for all PDFs
-        // Determine clef from variation_type (Bass variations use bass clef)
-        const clef = variation.variation_type?.includes('Bass') ? 'bass' : 'treble';
-        const songTitle = variation.songTitle || variation.title;
-
-        console.log('[PDFViewer] Generating PDF for:', songTitle, 'key:', variation.key, 'clef:', clef);
-        const result = await api.generatePDF(songTitle, variation.key, clef as 'treble' | 'bass');
-
-        if (mounted) {
-          console.log('[PDFViewer] PDF URL received:', result.url, 'cached:', result.cached);
-          setPdfUrl(result.url);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error('[PDFViewer] Failed to load PDF:', err);
-          setError(err instanceof Error ? err.message : 'Failed to load PDF');
-          setLoading(false);
-        }
-      }
-    }
-
-    loadPDF();
-
-    return () => {
-      mounted = false;
-      if (pdfUrl && pdfUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [variation.songTitle, variation.title, variation.key, variation.variation_type, variation.directUrl]);
 
   // Calculate optimal scale based on viewport height and width
   const calculateOptimalScale = () => {
@@ -393,11 +337,8 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
         onTouchEnd={onHeaderTouchEnd}
       >
         <div className="flex-1 min-w-0 mr-2">
-          <h2 className="text-base font-semibold text-white leading-tight">
-            {variation.display_name}
-          </h2>
           {numPages > 0 && (
-            <p className="text-xs text-gray-400">{numPages} page{numPages !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-gray-300">{numPages} page{numPages !== 1 ? 's' : ''}</p>
           )}
         </div>
 
@@ -455,10 +396,10 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {error ?  (
+        {error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md">
-              <p className="text-red-400 text-lg font-semibold mb-2">⚠️ Error</p>
+              <p className="text-red-400 text-lg font-semibold mb-2">Error</p>
               <p className="text-gray-300">{error}</p>
               <button
                 onClick={onClose}
@@ -466,14 +407,6 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
               >
                 Close
               </button>
-            </div>
-          </div>
-        ) : loading || !pdfUrl ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-              <p className="text-gray-400 text-lg">Loading PDF...</p>
-              <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
             </div>
           </div>
         ) : (
@@ -558,6 +491,46 @@ export function PDFViewer({ variation, onClose }: PDFViewerProps) {
           </>
         )}
       </div>
+
+      {/* Debug Info Badge */}
+      {metadata && (
+        <div className="absolute bottom-4 left-4 z-20">
+          <button
+            onClick={() => setShowDebugInfo(!showDebugInfo)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-lg transition-all ${
+              showDebugInfo
+                ? 'bg-white/20 border border-white/30'
+                : 'bg-black/40 border border-white/10 hover:bg-black/60'
+            }`}
+          >
+            <FiInfo className="text-white" />
+            {!showDebugInfo && (
+              <span className={`text-sm font-medium ${metadata.cached ? 'text-green-400' : 'text-yellow-400'}`}>
+                {metadata.cached ? 'Cached' : `${(metadata.generationTimeMs / 1000).toFixed(1)}s`}
+              </span>
+            )}
+          </button>
+
+          {showDebugInfo && (
+            <div className="mt-2 p-3 bg-black/80 backdrop-blur-lg rounded-lg border border-white/20 text-sm space-y-1 min-w-[200px]">
+              <div className="text-white font-medium truncate">{metadata.songTitle}</div>
+              <div className="text-gray-400">
+                Key: <span className="text-white">{metadata.key.toUpperCase()}</span>
+                {metadata.clef === 'bass' && <span className="text-gray-500 ml-1">(bass)</span>}
+              </div>
+              <div className="text-gray-400">
+                Status:{' '}
+                <span className={metadata.cached ? 'text-green-400' : 'text-yellow-400'}>
+                  {metadata.cached ? 'Cached' : 'Generated'}
+                </span>
+              </div>
+              <div className="text-gray-400">
+                Time: <span className="text-white">{metadata.generationTimeMs}ms</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

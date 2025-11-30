@@ -19,13 +19,23 @@ const KEYS = [
 
 interface GenerateModalProps {
   songTitle: string;
+  defaultKey?: string;
+  defaultClef?: string;
   onClose: () => void;
   onGenerated: (url: string) => void;
 }
 
-export function GenerateModal({ songTitle, onClose, onGenerated }: GenerateModalProps) {
-  const [selectedKey, setSelectedKey] = useState('c');
-  const [clef, setClef] = useState<'treble' | 'bass'>('treble');
+export function GenerateModal({
+  songTitle,
+  defaultKey = 'c',
+  defaultClef = 'treble',
+  onClose,
+  onGenerated,
+}: GenerateModalProps) {
+  const [selectedKey, setSelectedKey] = useState(defaultKey);
+  const [clef, setClef] = useState<'treble' | 'bass'>(
+    defaultClef === 'bass' ? 'bass' : 'treble'
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);

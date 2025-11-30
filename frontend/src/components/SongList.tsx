@@ -1,15 +1,14 @@
-import type { SongSummary, Variation, InstrumentType } from '@/types/catalog';
+import type { SongSummary } from '@/types/catalog';
 import { SongListItem } from './SongListItem';
+import type { PdfMetadata } from '../App';
 
 interface SongListProps {
   songs: SongSummary[];
-  instrument: InstrumentType;
   searchQuery: string;
-  onSelectVariation: (variation: Variation) => void;
-  onOpenPdfUrl: (url: string) => void;
+  onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
 }
 
-export function SongList({ songs, instrument, searchQuery, onSelectVariation, onOpenPdfUrl }: SongListProps) {
+export function SongList({ songs, searchQuery, onOpenPdfUrl }: SongListProps) {
 
   if (songs.length === 0) {
     return (
@@ -39,8 +38,6 @@ export function SongList({ songs, instrument, searchQuery, onSelectVariation, on
           <SongListItem
             key={`${song.title}-${index}`}
             song={song}
-            instrument={instrument}
-            onSelectVariation={onSelectVariation}
             onOpenPdfUrl={onOpenPdfUrl}
           />
         ))}
