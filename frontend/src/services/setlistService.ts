@@ -19,6 +19,21 @@ export const setlistService = {
     return data || [];
   },
 
+  // Get a single setlist by ID
+  async getSetlist(id: string): Promise<Setlist | null> {
+    const { data, error } = await supabase
+      .from('setlists')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      throw error;
+    }
+    return data;
+  },
+
   // Get a single setlist with its items
   async getSetlistWithItems(id: string): Promise<SetlistWithItems | null> {
     const { data: setlist, error: setlistError } = await supabase

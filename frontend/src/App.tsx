@@ -12,6 +12,7 @@ import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
+import { setlistService } from './services/setlistService';
 import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
 
 export interface PdfMetadata {
@@ -130,6 +131,33 @@ function App() {
       }
     };
   }, [hasMore, isFetching]);
+
+  // Handle URL params for deep linking
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const setlistId = params.get('setlist');
+
+    if (setlistId && user && instrument) {
+      setlistService.getSetlist(setlistId).then(setlist => {
+        if (setlist) {
+          setActiveSetlist(setlist);
+        }
+      }).catch(err => {
+        console.error('Failed to load setlist from URL:', err);
+      });
+    }
+  }, [user, instrument]);
+
+  // Update URL when setlist changes
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeSetlist) {
+      url.searchParams.set('setlist', activeSetlist.id);
+    } else {
+      url.searchParams.delete('setlist');
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, [activeSetlist]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
