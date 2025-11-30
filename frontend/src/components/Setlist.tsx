@@ -20,7 +20,7 @@ const SETLIST = [
   { title: "Alright Okay You Win", key: "c", clef: "treble" },
   { title: "Almost Blue", key: "f", clef: "treble" },
   { title: "Black Coffee", key: "c", clef: "treble" },
-  { title: "Is You Is or Is You Ain't My Baby", key: "a", clef: "treble" },
+  { title: "Is You Is or Is You Ain't (Ma' Baby)", key: "a", clef: "treble" },
   { title: "Dream a Little Dream of Me", key: "c", clef: "treble" },
   { title: "C'est Si Bon", key: "ef", clef: "treble" },
   { title: "The In Crowd", key: "d", clef: "treble" },
