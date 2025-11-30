@@ -1,27 +1,22 @@
-# Session Handoff - Nov 30, 2025 (Evening)
+# Session Handoff - Nov 30, 2025 (Late Evening)
 
 ## Completed This Session
 
-**Editable Setlists (Phase 1):**
-- Replaced hardcoded setlist with Supabase-backed setlists
-- `SetlistManager.tsx`: view, create, delete user setlists
-- `SetlistViewer.tsx`: view songs, remove items, prefetch PDFs
-- Supabase service layer (`setlistService.ts`) + React Query hooks
-- Fixed RLS policy to allow inserts (needed `WITH CHECK`)
+**Public Setlists & Shareable URLs:**
+- Added `public` column to setlists table (shared with all logged-in users)
+- Added `concert_key` column to setlist_items (override default key per song)
+- Shareable URLs: `pianohouseproject.org?setlist={id}`
+- "Copy Link" button in SetlistViewer header
+- URL updates as you navigate (browser back button works)
+- "Shared" badge on public setlists in SetlistManager
 
-**PDF Download Button:**
-- Download icon in PDF viewer header
-- Generates filename from song title and key (e.g., "Blue Bossa - C.pdf")
+**Restored December Gig Setlist:**
+- Recovered 16-song setlist from git history
+- Inserted into Supabase with specific concert keys
+- Fixed 5 song title mismatches with catalog
 
-**Instrument Label Feature:**
-- Settings → "Instrument Label" (e.g., "Trumpet in Bb")
-- Appears in PDF subtitle when generating
-- Cached separately in S3: `{song}-{key}-{clef}-{instrument-slug}.pdf`
-- Backend `/api/v2/generate` accepts optional `instrument` param
-
-**Supabase Auth Fix:**
-- Updated Site URL to `https://pianohouseproject.org` (was localhost)
-- Email confirmation links now work correctly
+**Key Insight:**
+Setlists store songs + concert keys, not PDFs. Each user sees charts rendered for their own instrument (transposition + clef). A bass player sees bass clef, a trumpet player sees Bb transposition, etc.
 
 ---
 
@@ -34,10 +29,13 @@
 **What Works:**
 - Supabase email/password auth
 - 735 songs with dynamic PDF generation in any key
-- Editable setlists (create, delete, remove songs)
+- Public setlists (viewable/editable by all logged-in users)
+- Private setlists (owner only)
+- Shareable setlist URLs with deep linking
+- Concert key per setlist item (override default)
 - Instrument label on PDFs (set in Settings)
 - PDF download button
-- All instrument filters (C, Bb, Eb, Bass)
+- All instruments (C, Bb, Eb transpositions + treble/bass clef)
 - Search with infinite scroll
 - iPad-optimized PDF viewer
 - S3 caching (~7s new, <200ms cached)
@@ -48,31 +46,33 @@
 | Component | Purpose |
 |-----------|---------|
 | `AuthGate.tsx` | Supabase sign in/up |
-| `SetlistManager.tsx` | List/create/delete setlists |
-| `SetlistViewer.tsx` | View setlist, remove songs, prefetch |
+| `SetlistManager.tsx` | List/create/delete setlists, shows "Shared" badge |
+| `SetlistViewer.tsx` | View setlist, remove songs, prefetch, copy link |
 | `PDFViewer.tsx` | PDF display with download, setlist nav |
-| `SettingsMenu.tsx` | Instrument label, logout |
+| `SettingsMenu.tsx` | Instrument selection, logout |
 
 **Supabase Tables:**
-- `setlists`: id, user_id, name, created_at, updated_at
-- `setlist_items`: id, setlist_id, song_title, variation_filename, position, notes, created_at
-- RLS policies: users can only CRUD their own setlists/items
+- `setlists`: id, user_id, name, **public**, created_at, updated_at
+- `setlist_items`: id, setlist_id, song_title, **concert_key**, position, notes, created_at
+- RLS policies: users can CRUD own setlists + public setlists
 
 ---
 
-## What's Left for Editable Setlists
+## What's Left
 
 **Phase 2 - Add Songs:**
 - "Add to Setlist" button on song cards
-- `AddToSetlistModal.tsx` - pick which setlist
+- `AddToSetlistModal.tsx` - pick which setlist + key
 
 **Phase 3 - Reorder:**
 - Drag-to-reorder songs within setlist
 - Use `@dnd-kit/core` or similar
 
-**Phase 4 - Sharing:**
-- Share setlist with other users
-- `setlist_shares` table (setlist_id, shared_with_user_id, permission)
+**Future Ideas:**
+- Toggle public/private on existing setlists
+- Favorites (auditable, searchable)
+- Random setlist generator
+- Offline/cached PDFs for gigs
 
 ---
 
@@ -97,12 +97,10 @@
 
 ---
 
-## Technical Debt / Future Work
+## Technical Debt
 
 - [ ] No test suite
-- [ ] Large JS bundle (~890KB) - could code-split
-- [ ] Review catalog/filename architecture for extensibility
-- [ ] Add songs to setlist from browse view (Phase 2)
-- [ ] Drag-to-reorder (Phase 3)
-- [ ] Setlist sharing (Phase 4)
+- [ ] Large JS bundle (~895KB) - could code-split
+- [ ] Add songs to setlist from browse view
+- [ ] Drag-to-reorder
 - [ ] Admin panel to view registered users
