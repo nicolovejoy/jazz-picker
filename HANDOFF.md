@@ -1,6 +1,19 @@
-# Session Handoff - Nov 29, 2025
+# Session Handoff - Nov 30, 2025
 
 ## Completed This Session
+
+**Supabase Auth:**
+- Replaced password gate with Supabase email/password auth
+- Custom AuthGate component (works with React 19)
+- Sign up, sign in, forgot password flows
+- Schema: `setlists` and `setlist_items` tables with RLS
+- Supabase project: `qikzqyfrmrhabsfiuyag`
+
+**Setlist Prefetching:**
+- All PDFs prefetch in background when setlist opens (batches of 4)
+- Instant song switching once cached
+- Visual indicators: yellow = loading, green "Ready" = cached
+- Arrow keys navigate between songs at first/last page
 
 **Auto-Refresh Catalog (GitHub Actions + OIDC):**
 - Added OIDC identity provider to AWS (Terraform) - GitHub Actions can now assume IAM roles without long-lived credentials
@@ -119,15 +132,17 @@
 
 # Future Work
 
-## Phase 2: User Accounts
-- Enables per-user setlists and preferences
-- Options: Supabase Auth, Clerk, Auth0
-- Would replace current shared password
+## Phase 2: User Accounts ✅ (partial)
+- Supabase Auth implemented (email/password)
+- Tables ready: `setlists`, `setlist_items` with RLS
+- Next: build UI for creating/editing setlists
+- Future: admin panel to view registered users, OAuth (Google/GitHub)
 
 ## Dynamic Setlists
 - Currently hardcoded in `Setlist.tsx`
-- Future: editable setlists, drag to reorder
-- Requires user accounts for persistence
+- Future: editable setlists stored in Supabase, drag to reorder
+- Smart prefetch: when loading setlist, generate missing PDFs in background
+- Priority queue: clicked song generates first, then expand outward
 
 ## Auto-Refresh Catalog ✅
 Implemented via GitHub Action in Eric's `neonscribe/lilypond-lead-sheets` repo:
