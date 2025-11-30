@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { PasswordGate } from './components/PasswordGate';
 import { Setlist } from './components/Setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
@@ -18,6 +19,7 @@ export interface PdfMetadata {
 }
 
 const STORAGE_KEY = 'jazz-picker-instrument';
+const AUTH_STORAGE_KEY = 'jazz-picker-auth';
 
 function getStoredInstrument(): InstrumentType | null {
   try {
@@ -31,7 +33,16 @@ function getStoredInstrument(): InstrumentType | null {
   return null;
 }
 
+function isAuthenticated(): boolean {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 function App() {
+  const [authenticated, setAuthenticated] = useState(isAuthenticated);
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -42,6 +53,24 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const LIMIT = 50;
+
+  const handleAuthenticated = useCallback(() => {
+    setAuthenticated(true);
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    } catch {
+      // localStorage not available
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setAuthenticated(false);
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+      // localStorage not available
+    }
+  }, []);
 
   const queryClient = useQueryClient();
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -171,6 +200,11 @@ function App() {
     }
   }, [allSongs]);
 
+  // Show password gate if not authenticated
+  if (!authenticated) {
+    return <PasswordGate onAuthenticated={handleAuthenticated} />;
+  }
+
   // Show welcome screen if no instrument selected
   if (!instrument) {
     return <WelcomeScreen onSelectInstrument={handleInstrumentChange} />;
@@ -187,6 +221,7 @@ function App() {
         onEnterPress={handleEnterPress}
         onResetInstrument={handleResetInstrument}
         onOpenSetlist={() => setShowSetlist(true)}
+        onLogout={handleLogout}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">

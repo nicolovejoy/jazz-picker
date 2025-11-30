@@ -4,9 +4,10 @@ interface SettingsMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onResetInstrument?: () => void;
+  onLogout?: () => void;
 }
 
-export function SettingsMenu({ isOpen, onClose, onResetInstrument }: SettingsMenuProps) {
+export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout }: SettingsMenuProps) {
   if (!isOpen) return null;
 
   // Get build timestamp in PST
@@ -100,17 +101,30 @@ export function SettingsMenu({ isOpen, onClose, onResetInstrument }: SettingsMen
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
                 Preferences
               </h3>
-              {onResetInstrument && (
-                <button
-                  onClick={() => {
-                    onResetInstrument();
-                    onClose();
-                  }}
-                  className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-mcm text-white text-sm text-left transition-colors"
-                >
-                  Change my instrument
-                </button>
-              )}
+              <div className="space-y-2">
+                {onResetInstrument && (
+                  <button
+                    onClick={() => {
+                      onResetInstrument();
+                      onClose();
+                    }}
+                    className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-mcm text-white text-sm text-left transition-colors"
+                  >
+                    Change my instrument
+                  </button>
+                )}
+                {onLogout && (
+                  <button
+                    onClick={() => {
+                      onLogout();
+                      onClose();
+                    }}
+                    className="w-full px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-mcm text-red-300 text-sm text-left transition-colors"
+                  >
+                    Log out
+                  </button>
+                )}
+              </div>
             </section>
           </div>
 
