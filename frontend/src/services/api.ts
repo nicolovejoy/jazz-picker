@@ -1,4 +1,4 @@
-import type { SongListResponse, SongDetail } from '@/types/catalog';
+import type { SongListResponse, Transposition, Clef } from '@/types/catalog';
 
 // In production, use the Fly.io backend directly. In dev, use Vite's proxy.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
@@ -10,52 +10,42 @@ export interface GenerateResponse {
   generation_time_ms: number;
 }
 
-export interface CachedKey {
-  key: string;
-  clef: string;
-}
-
 export interface CachedKeysResponse {
   default_key: string;
-  default_clef: string;
-  cached_keys: CachedKey[];
+  cached_concert_keys: string[];
 }
 
 export const api = {
   async getSongsV2(
     limit = 50,
     offset = 0,
-    query = '',
-    instrument = 'All'
+    query = ''
   ): Promise<SongListResponse> {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
       q: query,
-      instrument,
     });
     const response = await fetch(`${API_BASE}/v2/songs?${params}`);
     if (!response.ok) throw new Error('Failed to fetch songs');
     return response.json();
   },
 
-  async getSongV2(title: string): Promise<SongDetail> {
-    const response = await fetch(`${API_BASE}/v2/songs/${encodeURIComponent(title)}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch song details');
-    }
-    return response.json();
-  },
-
   async generatePDF(
     song: string,
-    key: string,
-    clef: 'treble' | 'bass' = 'treble',
-    instrument?: string
+    concertKey: string,
+    transposition: Transposition,
+    clef: Clef,
+    instrumentLabel?: string
   ): Promise<GenerateResponse> {
-    const body: Record<string, string> = { song, key, clef };
-    if (instrument) {
-      body.instrument = instrument;
+    const body: Record<string, string> = {
+      song,
+      concert_key: concertKey,
+      transposition,
+      clef,
+    };
+    if (instrumentLabel) {
+      body.instrument_label = instrumentLabel;
     }
 
     const response = await fetch(`${API_BASE}/v2/generate`, {
@@ -72,9 +62,17 @@ export const api = {
     return response.json();
   },
 
-  async getCachedKeys(songTitle: string): Promise<CachedKeysResponse> {
+  async getCachedKeys(
+    songTitle: string,
+    transposition: Transposition,
+    clef: Clef
+  ): Promise<CachedKeysResponse> {
+    const params = new URLSearchParams({
+      transposition,
+      clef,
+    });
     const response = await fetch(
-      `${API_BASE}/v2/songs/${encodeURIComponent(songTitle)}/cached`
+      `${API_BASE}/v2/songs/${encodeURIComponent(songTitle)}/cached?${params}`
     );
     if (!response.ok) {
       throw new Error('Failed to fetch cached keys');

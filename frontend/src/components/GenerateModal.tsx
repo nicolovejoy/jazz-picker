@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { getInstrumentLabel } from './SettingsMenu';
+import { formatKey, concertToWritten, type Instrument } from '@/types/catalog';
 
-// All 12 keys in circle of fifths order
-const KEYS = [
+// All 12 concert keys in circle of fifths order
+const CONCERT_KEYS = [
   { value: 'c', label: 'C' },
   { value: 'g', label: 'G' },
   { value: 'd', label: 'D' },
@@ -21,27 +21,33 @@ const KEYS = [
 
 interface GenerateModalProps {
   songTitle: string;
-  defaultKey?: string;
-  defaultClef?: string;
+  defaultConcertKey?: string;
+  instrument: Instrument;
   onClose: () => void;
   onGenerated: (url: string) => void;
 }
 
 export function GenerateModal({
   songTitle,
-  defaultKey = 'c',
-  defaultClef = 'treble',
+  defaultConcertKey = 'c',
+  instrument,
   onClose,
   onGenerated,
 }: GenerateModalProps) {
   const queryClient = useQueryClient();
-  const [selectedKey, setSelectedKey] = useState(defaultKey);
-  const [clef, setClef] = useState<'treble' | 'bass'>(
-    defaultClef === 'bass' ? 'bass' : 'treble'
-  );
+  const [selectedConcertKey, setSelectedConcertKey] = useState(defaultConcertKey);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Get written key for display (for transposing instruments)
+  const getWrittenKeyDisplay = (concertKey: string) => {
+    if (instrument.transposition === 'C') {
+      return formatKey(concertKey);
+    }
+    const writtenKey = concertToWritten(concertKey, instrument.transposition);
+    return `${formatKey(writtenKey)} (Concert ${formatKey(concertKey)})`;
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -54,7 +60,13 @@ export function GenerateModal({
     }, 500);
 
     try {
-      const result = await api.generatePDF(songTitle, selectedKey, clef, getInstrumentLabel());
+      const result = await api.generatePDF(
+        songTitle,
+        selectedConcertKey,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label
+      );
       clearInterval(progressInterval);
       setProgress(100);
 
@@ -93,16 +105,26 @@ export function GenerateModal({
 
         {!isGenerating ? (
           <>
-            {/* Key Selection */}
-            <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Key</label>
+            {/* Instrument info */}
+            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-sm text-blue-300">
+                Generating for <span className="font-medium">{instrument.label}</span>
+                {instrument.clef === 'bass' && ' (bass clef)'}
+              </p>
+            </div>
+
+            {/* Concert Key Selection */}
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-2">
+                {instrument.transposition === 'C' ? 'Key' : 'Concert Key'}
+              </label>
               <div className="grid grid-cols-6 gap-2">
-                {KEYS.map(key => (
+                {CONCERT_KEYS.map(key => (
                   <button
                     key={key.value}
-                    onClick={() => setSelectedKey(key.value)}
+                    onClick={() => setSelectedConcertKey(key.value)}
                     className={`py-2 text-sm rounded-lg border transition-all ${
-                      selectedKey === key.value
+                      selectedConcertKey === key.value
                         ? 'bg-blue-500 border-blue-400 text-white'
                         : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
                     }`}
@@ -111,33 +133,11 @@ export function GenerateModal({
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Clef Selection */}
-            <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-2">Clef</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setClef('treble')}
-                  className={`flex-1 py-2 text-sm rounded-lg border transition-all ${
-                    clef === 'treble'
-                      ? 'bg-blue-500 border-blue-400 text-white'
-                      : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                  }`}
-                >
-                  Treble
-                </button>
-                <button
-                  onClick={() => setClef('bass')}
-                  className={`flex-1 py-2 text-sm rounded-lg border transition-all ${
-                    clef === 'bass'
-                      ? 'bg-emerald-500 border-emerald-400 text-white'
-                      : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                  }`}
-                >
-                  Bass
-                </button>
-              </div>
+              {instrument.transposition !== 'C' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Written key: {getWrittenKeyDisplay(selectedConcertKey)}
+                </p>
+              )}
             </div>
 
             {error && (

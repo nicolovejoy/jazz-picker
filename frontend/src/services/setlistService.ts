@@ -99,7 +99,6 @@ export const setlistService = {
       .insert({
         setlist_id: input.setlist_id,
         song_title: input.song_title,
-        variation_filename: input.variation_filename || null,
         notes: input.notes || null,
         position: nextPosition,
       })

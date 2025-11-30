@@ -1,14 +1,31 @@
-import type { InstrumentType } from '@/types/catalog';
+import { INSTRUMENTS, type Instrument } from '@/types/catalog';
 
 interface WelcomeScreenProps {
-  onSelectInstrument: (instrument: InstrumentType) => void;
+  onSelectInstrument: (instrument: Instrument) => void;
 }
 
-const instruments: { value: InstrumentType; label: string; description: string; icon: string }[] = [
-  { value: 'C', label: 'Concert Pitch', description: 'Piano, Guitar, Vocals, Flute', icon: '🎹' },
-  { value: 'Bb', label: 'Bb Instruments', description: 'Trumpet, Tenor Sax, Clarinet', icon: '🎺' },
-  { value: 'Eb', label: 'Eb Instruments', description: 'Alto Sax, Bari Sax', icon: '🎷' },
-  { value: 'Bass', label: 'Bass Clef', description: 'Bass, Trombone, Cello', icon: '🎸' },
+// Group instruments by transposition for display
+const instrumentGroups = [
+  {
+    label: 'Concert Pitch (C)',
+    icon: '🎹',
+    instruments: INSTRUMENTS.filter(i => i.transposition === 'C' && i.clef === 'treble'),
+  },
+  {
+    label: 'Bb Instruments',
+    icon: '🎺',
+    instruments: INSTRUMENTS.filter(i => i.transposition === 'Bb'),
+  },
+  {
+    label: 'Eb Instruments',
+    icon: '🎷',
+    instruments: INSTRUMENTS.filter(i => i.transposition === 'Eb'),
+  },
+  {
+    label: 'Bass Clef',
+    icon: '🎸',
+    instruments: INSTRUMENTS.filter(i => i.clef === 'bass'),
+  },
 ];
 
 export function WelcomeScreen({ onSelectInstrument }: WelcomeScreenProps) {
@@ -26,40 +43,32 @@ export function WelcomeScreen({ onSelectInstrument }: WelcomeScreenProps) {
         </div>
 
         {/* Instrument Selection */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p className="text-center text-gray-300 text-sm uppercase tracking-wide mb-4">
             What do you play?
           </p>
 
-          {instruments.map((inst) => (
-            <button
-              key={inst.value}
-              onClick={() => onSelectInstrument(inst.value)}
-              className="w-full bg-white/8 backdrop-blur-sm rounded-mcm p-5 border border-white/10 hover:border-blue-400 hover:bg-white/12 transition-all text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">{inst.icon}</span>
-                <div>
-                  <h3 className="text-lg font-medium text-white group-hover:text-blue-300 transition-colors">
-                    {inst.label}
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    {inst.description}
-                  </p>
-                </div>
+          {instrumentGroups.map((group) => (
+            <div key={group.label} className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">{group.icon}</span>
+                <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
+                  {group.label}
+                </h3>
               </div>
-            </button>
+              <div className="flex flex-wrap gap-2">
+                {group.instruments.map((inst) => (
+                  <button
+                    key={inst.id}
+                    onClick={() => onSelectInstrument(inst)}
+                    className="px-4 py-2 bg-white/10 hover:bg-blue-500/30 border border-white/20 hover:border-blue-400 rounded-lg text-white hover:text-blue-200 transition-all text-sm font-medium"
+                  >
+                    {inst.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
-        </div>
-
-        {/* Browse All option */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => onSelectInstrument('All')}
-            className="text-gray-500 hover:text-gray-300 text-sm underline underline-offset-2 transition-colors"
-          >
-            Browse all charts without filtering
-          </button>
         </div>
       </div>
     </div>

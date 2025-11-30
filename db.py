@@ -58,56 +58,23 @@ def get_total_songs():
         return cursor.fetchone()[0]
 
 
-def get_total_variations():
-    """Get total number of variations."""
-    with get_connection() as conn:
-        cursor = conn.execute("SELECT COUNT(*) FROM variations")
-        return cursor.fetchone()[0]
-
-
-def search_songs(query='', instrument_filter='All', limit=50, offset=0):
+def search_songs(query='', limit=50, offset=0):
     """
-    Search songs with optional filtering.
-    Returns list of song dicts with variation counts.
+    Search songs by title.
+    Returns list of song dicts and total count.
     """
     with get_connection() as conn:
-        # Build the query based on filters
         params = []
 
-        # Base query - join songs with variations to filter and count
-        base_query = """
-            SELECT
-                s.id,
-                s.title,
-                s.core_files,
-                COUNT(v.id) as variation_count
-            FROM songs s
-            LEFT JOIN variations v ON s.id = v.song_id
-        """
+        # Base query
+        base_query = "SELECT id, title, default_key FROM songs"
 
-        # Build WHERE clause
-        where_clauses = []
-
+        # Build WHERE clause for search
         if query:
-            where_clauses.append("LOWER(s.title) LIKE ?")
+            base_query += " WHERE LOWER(title) LIKE ?"
             params.append(f"%{query.lower()}%")
 
-        if instrument_filter != 'All':
-            if instrument_filter == 'C':
-                where_clauses.append(
-                    "(v.variation_type LIKE '%Standard%' OR v.variation_type LIKE '%Alto%' OR v.variation_type LIKE '%Baritone%')"
-                )
-            elif instrument_filter == 'Bb':
-                where_clauses.append("v.variation_type LIKE '%Bb Instrument%'")
-            elif instrument_filter == 'Eb':
-                where_clauses.append("v.variation_type LIKE '%Eb Instrument%'")
-            elif instrument_filter == 'Bass':
-                where_clauses.append("v.variation_type = 'Bass'")
-
-        if where_clauses:
-            base_query += " WHERE " + " AND ".join(where_clauses)
-
-        base_query += " GROUP BY s.id, s.title ORDER BY s.title"
+        base_query += " ORDER BY title"
 
         # Add pagination
         base_query += " LIMIT ? OFFSET ?"
@@ -118,21 +85,17 @@ def search_songs(query='', instrument_filter='All', limit=50, offset=0):
         for row in cursor.fetchall():
             songs.append({
                 'title': row['title'],
-                'variation_count': row['variation_count'],
-                'available_instruments': [],  # We'll compute this if needed
+                'default_key': row['default_key'],
             })
 
         # Get total count (without pagination)
-        count_query = """
-            SELECT COUNT(DISTINCT s.id)
-            FROM songs s
-            LEFT JOIN variations v ON s.id = v.song_id
-        """
-        if where_clauses:
-            count_query += " WHERE " + " AND ".join(where_clauses)
+        count_query = "SELECT COUNT(*) FROM songs"
+        if query:
+            count_query += " WHERE LOWER(title) LIKE ?"
+            count_params = [f"%{query.lower()}%"]
+        else:
+            count_params = []
 
-        # Remove limit/offset params for count query
-        count_params = params[:-2] if params else []
         cursor = conn.execute(count_query, count_params)
         total = cursor.fetchone()[0]
 
@@ -140,11 +103,10 @@ def search_songs(query='', instrument_filter='All', limit=50, offset=0):
 
 
 def get_song_by_title(title):
-    """Get a song by title, including its variations."""
+    """Get a song by title."""
     with get_connection() as conn:
-        # Get song
         cursor = conn.execute(
-            "SELECT id, title, core_files FROM songs WHERE title = ?",
+            "SELECT id, title, default_key, core_files FROM songs WHERE title = ?",
             (title,)
         )
         row = cursor.fetchone()
@@ -152,45 +114,28 @@ def get_song_by_title(title):
         if not row:
             return None
 
-        song = {
+        return {
             'id': row['id'],
             'title': row['title'],
+            'default_key': row['default_key'],
             'core_files': json.loads(row['core_files']) if row['core_files'] else [],
         }
-
-        # Get variations
-        cursor = conn.execute("""
-            SELECT
-                id, filename, display_name, key, instrument,
-                variation_type, voice_range, pdf_path
-            FROM variations
-            WHERE song_id = ?
-        """, (row['id'],))
-
-        song['variations'] = [dict(r) for r in cursor.fetchall()]
-
-        return song
 
 
 def get_song_default_key(title):
     """
-    Get the default key and clef for a song.
+    Get the default concert key for a song.
     Returns (key, clef) tuple, or ('c', 'treble') if not found.
+    Clef is always 'treble' - bass clef is determined by user's instrument setting.
     """
     with get_connection() as conn:
-        cursor = conn.execute("""
-            SELECT v.key, v.variation_type
-            FROM songs s
-            JOIN variations v ON s.id = v.song_id
-            WHERE s.title = ? AND v.variation_type = 'Standard Key'
-            LIMIT 1
-        """, (title,))
-
+        cursor = conn.execute(
+            "SELECT default_key FROM songs WHERE title = ?",
+            (title,)
+        )
         row = cursor.fetchone()
-        if row:
-            key = row['key'].rstrip(",'") if row['key'] else 'c'
-            # Standard Key is always treble
-            return key, 'treble'
+        if row and row['default_key']:
+            return row['default_key'], 'treble'
 
         return 'c', 'treble'
 
@@ -206,3 +151,13 @@ def get_core_files(title):
         if row and row['core_files']:
             return json.loads(row['core_files'])
         return []
+
+
+def song_exists(title):
+    """Check if a song exists in the catalog."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT 1 FROM songs WHERE title = ? LIMIT 1",
+            (title,)
+        )
+        return cursor.fetchone() is not None

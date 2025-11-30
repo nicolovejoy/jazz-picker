@@ -34,8 +34,8 @@ const queryClient = new QueryClient({
 // Prefetch songs immediately on app load (before password gate)
 // This way the data is ready when the user finishes authentication
 queryClient.prefetchQuery({
-  queryKey: ['songs', 50, 0, '', 'All'],
-  queryFn: () => api.getSongsV2(50, 0, '', 'All'),
+  queryKey: ['songs', 50, 0, ''],
+  queryFn: () => api.getSongsV2(50, 0, ''),
 });
 
 createRoot(document.getElementById('root')!).render(

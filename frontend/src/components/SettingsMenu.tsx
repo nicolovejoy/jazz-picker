@@ -1,47 +1,16 @@
-import { useState, useEffect } from 'react';
 import { FiX, FiSettings } from 'react-icons/fi';
-
-const INSTRUMENT_LABEL_KEY = 'jazz-picker-instrument-label';
+import { INSTRUMENTS, type Instrument } from '@/types/catalog';
 
 interface SettingsMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onResetInstrument?: () => void;
+  currentInstrument: Instrument;
+  onInstrumentChange: (instrument: Instrument) => void;
   onLogout?: () => void;
   onOpenAbout?: () => void;
 }
 
-export function getInstrumentLabel(): string {
-  try {
-    return localStorage.getItem(INSTRUMENT_LABEL_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
-export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout, onOpenAbout }: SettingsMenuProps) {
-  const [instrumentLabel, setInstrumentLabel] = useState('');
-
-  // Load saved value when menu opens
-  useEffect(() => {
-    if (isOpen) {
-      setInstrumentLabel(getInstrumentLabel());
-    }
-  }, [isOpen]);
-
-  const handleInstrumentLabelChange = (value: string) => {
-    setInstrumentLabel(value);
-    try {
-      if (value) {
-        localStorage.setItem(INSTRUMENT_LABEL_KEY, value);
-      } else {
-        localStorage.removeItem(INSTRUMENT_LABEL_KEY);
-      }
-    } catch {
-      // localStorage not available
-    }
-  };
-
+export function SettingsMenu({ isOpen, onClose, currentInstrument, onInstrumentChange, onLogout, onOpenAbout }: SettingsMenuProps) {
   if (!isOpen) return null;
 
   // Get build timestamp in PST
@@ -130,38 +99,32 @@ export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout, onO
               </div>
             </section>
 
-            {/* Preferences */}
+            {/* Instrument */}
             <section>
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Preferences
+                My Instrument
               </h3>
               <div className="space-y-4">
-                {/* Instrument Label */}
                 <label className="block">
-                  <span className="text-white text-sm">Instrument Label</span>
                   <span className="text-gray-500 text-xs block mb-1.5">
-                    Shows on PDF subtitle (e.g., "Trumpet in Bb")
+                    PDFs will be transposed for your instrument
                   </span>
-                  <input
-                    type="text"
-                    value={instrumentLabel}
-                    onChange={(e) => handleInstrumentLabelChange(e.target.value)}
-                    placeholder="e.g., Trumpet in Bb"
-                    className="w-full px-3 py-2 bg-black/30 border border-white/20 rounded-mcm text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  />
+                  <select
+                    value={currentInstrument.id}
+                    onChange={(e) => {
+                      const inst = INSTRUMENTS.find(i => i.id === e.target.value);
+                      if (inst) onInstrumentChange(inst);
+                    }}
+                    className="w-full px-3 py-2.5 bg-black/30 border border-white/20 rounded-mcm text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                  >
+                    {INSTRUMENTS.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.label} ({inst.transposition}{inst.clef === 'bass' ? ', bass clef' : ''})
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
-                {onResetInstrument && (
-                  <button
-                    onClick={() => {
-                      onResetInstrument();
-                      onClose();
-                    }}
-                    className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-mcm text-white text-sm text-left transition-colors"
-                  >
-                    Change my instrument
-                  </button>
-                )}
                 {onLogout && (
                   <button
                     onClick={() => {

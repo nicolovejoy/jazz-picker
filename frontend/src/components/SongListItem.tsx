@@ -2,75 +2,65 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { GenerateModal } from './GenerateModal';
-import { getInstrumentLabel } from './SettingsMenu';
-import type { SongSummary } from '@/types/catalog';
+import { formatKey, concertToWritten, type SongSummary, type Instrument } from '@/types/catalog';
 import type { PdfMetadata } from '../App';
-
-// Convert LilyPond key notation to readable format
-function formatKey(lilypondKey: string): string {
-  if (!lilypondKey) return '';
-
-  // Remove octave markers (commas and apostrophes)
-  const cleanKey = lilypondKey.replace(/[,']+$/, '');
-
-  const noteMap: Record<string, string> = {
-    'c': 'C', 'cs': 'C♯', 'cf': 'C♭',
-    'd': 'D', 'ds': 'D♯', 'df': 'D♭',
-    'e': 'E', 'es': 'E♯', 'ef': 'E♭',
-    'f': 'F', 'fs': 'F♯', 'ff': 'F♭',
-    'g': 'G', 'gs': 'G♯', 'gf': 'G♭',
-    'a': 'A', 'as': 'A♯', 'af': 'A♭',
-    'b': 'B', 'bs': 'B♯', 'bf': 'B♭',
-  };
-
-  return noteMap[cleanKey] || cleanKey.toUpperCase();
-}
 
 interface SongListItemProps {
   song: SongSummary;
+  instrument: Instrument;
   onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
 }
 
-export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
+export function SongListItem({ song, instrument, onOpenPdfUrl }: SongListItemProps) {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
 
-  // Fetch cached keys info
+  // Fetch cached concert keys for this song + user's transposition
   const { data: cachedInfo } = useQuery({
-    queryKey: ['cachedKeys', song.title],
-    queryFn: () => api.getCachedKeys(song.title),
+    queryKey: ['cachedKeys', song.title, instrument.transposition, instrument.clef],
+    queryFn: () => api.getCachedKeys(song.title, instrument.transposition, instrument.clef),
     staleTime: 60000, // Cache for 1 minute
   });
 
-  const defaultKey = cachedInfo?.default_key || 'c';
-  const defaultClef = cachedInfo?.default_clef || 'treble';
-  const cachedKeys = cachedInfo?.cached_keys || [];
+  const defaultConcertKey = cachedInfo?.default_key || song.default_key || 'c';
+  const cachedConcertKeys = cachedInfo?.cached_concert_keys || [];
 
   // Check if default key is cached
-  const isDefaultCached = cachedKeys.some(
-    (ck) => ck.key === defaultKey && ck.clef === defaultClef
-  );
+  const isDefaultCached = cachedConcertKeys.includes(defaultConcertKey);
 
   // Get other cached keys (not the default)
-  const otherCachedKeys = cachedKeys.filter(
-    (ck) => !(ck.key === defaultKey && ck.clef === defaultClef)
-  );
+  const otherCachedKeys = cachedConcertKeys.filter((k) => k !== defaultConcertKey);
 
   // Any cached version exists?
-  const hasCachedVersion = cachedKeys.length > 0;
+  const hasCachedVersion = cachedConcertKeys.length > 0;
 
-  const handleKeyClick = async (key: string, clef: string, isCached: boolean) => {
+  // Format key for display - show written key for transposing instruments
+  const displayKey = (concertKey: string) => {
+    if (instrument.transposition === 'C') {
+      return formatKey(concertKey);
+    }
+    const writtenKey = concertToWritten(concertKey, instrument.transposition);
+    return formatKey(writtenKey);
+  };
+
+  const handleKeyClick = async (concertKey: string, isCached: boolean) => {
     if (isCached) {
       // Fetch the cached PDF directly
       setIsGenerating(true);
-      setGeneratingKey(key);
+      setGeneratingKey(concertKey);
       try {
-        const result = await api.generatePDF(song.title, key, clef as 'treble' | 'bass', getInstrumentLabel());
+        const result = await api.generatePDF(
+          song.title,
+          concertKey,
+          instrument.transposition,
+          instrument.clef,
+          instrument.label
+        );
         onOpenPdfUrl(result.url, {
           songTitle: song.title,
-          key,
-          clef,
+          key: concertKey,
+          clef: instrument.clef,
           cached: result.cached,
           generationTimeMs: result.generation_time_ms,
         });
@@ -109,15 +99,15 @@ export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
           <div className="flex flex-wrap gap-2 items-center">
             {/* Default key button */}
             <button
-              onClick={() => handleKeyClick(defaultKey, defaultClef, isDefaultCached)}
+              onClick={() => handleKeyClick(defaultConcertKey, isDefaultCached)}
               disabled={isGenerating}
               className={`px-3 py-1 text-sm rounded-md border transition-all flex items-center gap-1.5 ${
                 isDefaultCached
                   ? 'bg-green-500/20 border-green-500/40 text-green-300 hover:bg-green-500/30 hover:border-green-400'
                   : 'bg-white/5 border-white/20 text-gray-400 hover:bg-white/10 hover:border-white/30'
-              } ${isGenerating && generatingKey === defaultKey ? 'opacity-50' : ''}`}
+              } ${isGenerating && generatingKey === defaultConcertKey ? 'opacity-50' : ''}`}
             >
-              {isGenerating && generatingKey === defaultKey ? (
+              {isGenerating && generatingKey === defaultConcertKey ? (
                 <div className="animate-spin rounded-full h-3 w-3 border-b border-current" />
               ) : isDefaultCached ? (
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -128,25 +118,20 @@ export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
                   />
                 </svg>
               ) : null}
-              <span>{formatKey(defaultKey)}</span>
-              {defaultClef === 'bass' && (
-                <span className="text-xs opacity-60">bass</span>
-              )}
+              <span>{displayKey(defaultConcertKey)}</span>
             </button>
 
             {/* Other cached keys */}
-            {otherCachedKeys.map((ck) => (
+            {otherCachedKeys.map((concertKey) => (
               <button
-                key={`${ck.key}-${ck.clef}`}
-                onClick={() => handleKeyClick(ck.key, ck.clef, true)}
+                key={concertKey}
+                onClick={() => handleKeyClick(concertKey, true)}
                 disabled={isGenerating}
-                className={`px-2 py-1 text-xs rounded-md border transition-all flex items-center gap-1 ${
-                  ck.clef === 'bass'
-                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
-                    : 'bg-blue-500/20 border-blue-500/40 text-blue-300 hover:bg-blue-500/30'
-                } ${isGenerating && generatingKey === ck.key ? 'opacity-50' : ''}`}
+                className={`px-2 py-1 text-xs rounded-md border transition-all flex items-center gap-1 bg-blue-500/20 border-blue-500/40 text-blue-300 hover:bg-blue-500/30 ${
+                  isGenerating && generatingKey === concertKey ? 'opacity-50' : ''
+                }`}
               >
-                {isGenerating && generatingKey === ck.key && (
+                {isGenerating && generatingKey === concertKey && (
                   <div className="animate-spin rounded-full h-2.5 w-2.5 border-b border-current" />
                 )}
                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -156,8 +141,7 @@ export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>{formatKey(ck.key)}</span>
-                {ck.clef === 'bass' && <span className="opacity-60">B</span>}
+                <span>{displayKey(concertKey)}</span>
               </button>
             ))}
           </div>
@@ -178,8 +162,8 @@ export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
       {showGenerateModal && (
         <GenerateModal
           songTitle={song.title}
-          defaultKey={defaultKey}
-          defaultClef={defaultClef}
+          defaultConcertKey={defaultConcertKey}
+          instrument={instrument}
           onClose={() => setShowGenerateModal(false)}
           onGenerated={handleGenerated}
         />

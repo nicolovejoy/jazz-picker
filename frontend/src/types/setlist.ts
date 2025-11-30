@@ -12,7 +12,6 @@ export interface SetlistItem {
   id: string;
   setlist_id: string;
   song_title: string;
-  variation_filename: string | null;
   position: number;
   notes: string | null;
   created_at: string;
@@ -27,7 +26,6 @@ export interface CreateSetlistInput {
 export interface AddSetlistItemInput {
   setlist_id: string;
   song_title: string;
-  variation_filename?: string;
   notes?: string;
 }
 

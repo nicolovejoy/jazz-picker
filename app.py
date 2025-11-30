@@ -25,7 +25,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Constants for validation
 MAX_LIMIT = 200
-VALID_INSTRUMENTS = {'All', 'C', 'Bb', 'Eb', 'Bass'}
 
 # Database
 DB_FILE = 'catalog.db'
@@ -199,7 +198,6 @@ def get_local_ip():
 def index():
     """API root - provides information about available endpoints."""
     total_songs = db.get_total_songs()
-    total_variations = db.get_total_variations()
 
     return jsonify({
         'name': 'Jazz Picker API',
@@ -207,15 +205,14 @@ def index():
         'description': 'Browse and search Eric\'s jazz lead sheet collection',
         'catalog': {
             'total_songs': total_songs,
-            'total_variations': total_variations,
         },
         'endpoints': {
             'health': '/health',
-            'songs_v2': '/api/v2/songs?limit=20&offset=0&instrument=All',
-            'song_details': '/api/v2/songs/{title}',
+            'songs_v2': '/api/v2/songs?limit=20&offset=0&q=',
+            'cached_keys': '/api/v2/songs/{title}/cached',
             'generate': '/api/v2/generate',
         },
-        'frontend': 'https://jazz-picker.pages.dev'
+        'frontend': 'https://pianohouseproject.org'
     })
 
 
@@ -223,12 +220,10 @@ def index():
 def health():
     """Health check endpoint for deployment platforms."""
     total_songs = db.get_total_songs()
-    total_variations = db.get_total_variations()
 
     return jsonify({
         'status': 'healthy',
         'total_songs': total_songs,
-        'total_variations': total_variations,
         's3_enabled': USE_S3,
         's3_configured': s3_client is not None
     }), 200
@@ -254,14 +249,9 @@ def get_songs_v2():
         return jsonify({'error': 'Offset must be non-negative'}), 400
 
     query = request.args.get('q', '')
-    instrument_filter = request.args.get('instrument', 'All')
-
-    # Validate filters
-    if instrument_filter not in VALID_INSTRUMENTS:
-        return jsonify({'error': f'Invalid instrument. Must be one of: {", ".join(VALID_INSTRUMENTS)}'}), 400
 
     # Query database
-    songs, total = db.search_songs(query, instrument_filter, limit, offset)
+    songs, total = db.search_songs(query, limit, offset)
 
     # Check ETag - if client has current version, return 304
     if check_etag(db_etag):
@@ -273,45 +263,10 @@ def get_songs_v2():
         'total': total,
         'limit': limit,
         'offset': offset,
-        'instrument': instrument_filter,
     }))
 
     # Add caching headers (5 minutes for song lists)
     return add_cache_headers(response, max_age=300, etag=db_etag)
-
-
-@app.route('/api/v2/songs/<path:song_title>')
-@requires_auth
-def get_song_v2(song_title):
-    """API v2: Get specific song details."""
-    song = db.get_song_by_title(song_title)
-
-    if not song:
-        return jsonify({'error': 'Song not found'}), 404
-
-    # Check ETag - if client has current version, return 304
-    if check_etag(db_etag):
-        return make_response('', 304)
-
-    # Transform variations for v2
-    variations = []
-    for var in song['variations']:
-        variations.append({
-            'id': var.get('filename', '').replace('.ly', ''),
-            'display_name': var.get('display_name', ''),
-            'key': var.get('key', ''),
-            'instrument': var.get('instrument', ''),
-            'variation_type': var.get('variation_type', ''),
-            'filename': var.get('filename', '')
-        })
-
-    response = make_response(jsonify({
-        'title': song_title,
-        'variations': variations
-    }))
-
-    # Add caching headers (10 minutes for song details)
-    return add_cache_headers(response, max_age=600, etag=db_etag)
 
 
 # LilyPond generation constants
@@ -319,6 +274,40 @@ LILYPOND_DATA_DIR = Path('lilypond-data')
 GENERATED_DIR = LILYPOND_DATA_DIR / 'Generated'  # Inside lilypond-data for correct relative paths
 VALID_KEYS = {'c', 'cs', 'df', 'd', 'ds', 'ef', 'e', 'f', 'fs', 'gf', 'g', 'gs', 'af', 'a', 'as', 'bf', 'b'}
 VALID_CLEFS = {'treble', 'bass'}
+VALID_TRANSPOSITIONS = {'C', 'Bb', 'Eb'}
+
+# Key list for transposition math (chromatic scale)
+KEYS_CHROMATIC = ['c', 'cs', 'd', 'ef', 'e', 'f', 'fs', 'g', 'af', 'a', 'bf', 'b']
+
+# Transposition intervals (semitones up from concert pitch to written pitch)
+TRANSPOSITION_INTERVALS = {
+    'C': 0,   # Concert pitch
+    'Bb': 2,  # Up a major 2nd
+    'Eb': 9,  # Up a major 6th
+}
+
+
+def concert_to_written(concert_key, transposition):
+    """
+    Convert concert key to written key for a given transposition.
+    Example: concert_to_written('ef', 'Bb') => 'f'
+    """
+    # Normalize key
+    key = concert_key.lower().strip()
+
+    # Handle enharmonic equivalents for lookup
+    enharmonic_map = {'df': 'cs', 'gf': 'fs', 'ds': 'ef', 'as': 'bf', 'gs': 'af'}
+    normalized = enharmonic_map.get(key, key)
+
+    try:
+        concert_index = KEYS_CHROMATIC.index(normalized)
+    except ValueError:
+        return concert_key  # Unknown key, return as-is
+
+    interval = TRANSPOSITION_INTERVALS.get(transposition, 0)
+    written_index = (concert_index + interval) % 12
+
+    return KEYS_CHROMATIC[written_index]
 
 
 def slugify(text):
@@ -350,28 +339,37 @@ whatClef = "{clef}"
 @requires_auth
 def get_cached_keys(song_title):
     """
-    Get list of cached PDF keys for a song.
+    Get list of cached concert keys for a song, filtered by transposition.
+
+    Query params:
+        transposition: C, Bb, or Eb (required)
 
     Returns:
     {
-        "default_key": "g",          // Original key (stripped of octave markers)
-        "default_clef": "treble",    // Original clef
-        "cached_keys": [             // Keys that are already cached in S3
-            {"key": "c", "clef": "treble"},
-            {"key": "g", "clef": "bass"}
-        ]
+        "default_key": "g",              // Default concert key
+        "cached_concert_keys": ["c", "g"]  // Concert keys cached for this transposition
     }
     """
+    # Get transposition from query params
+    transposition = request.args.get('transposition', 'C')
+    if transposition not in VALID_TRANSPOSITIONS:
+        return jsonify({'error': f'Invalid transposition. Must be one of: {", ".join(VALID_TRANSPOSITIONS)}'}), 400
+
+    # Get clef based on transposition (bass clef for C+bass instruments handled by frontend)
+    clef = request.args.get('clef', 'treble')
+    if clef not in VALID_CLEFS:
+        clef = 'treble'
+
     # Get default key from database
-    default_key, default_clef = db.get_song_default_key(song_title)
+    default_key, _ = db.get_song_default_key(song_title)
 
     # Verify song exists
-    if not db.get_song_by_title(song_title):
+    if not db.song_exists(song_title):
         return jsonify({'error': f'Song not found: {song_title}'}), 404
 
-    cached_keys = []
+    cached_concert_keys = []
 
-    # Check S3 for cached versions
+    # Check S3 for cached versions matching this transposition
     if s3_client:
         slug = slugify(song_title)
         prefix = f"generated/{slug}-"
@@ -383,21 +381,25 @@ def get_cached_keys(song_title):
             )
 
             for obj in response.get('Contents', []):
-                # Parse key from filename: {slug}-{key}-{clef}.pdf
+                # Parse from filename: {slug}-{concert_key}-{transposition}-{clef}.pdf
                 filename = obj['Key'].replace(prefix, '').replace('.pdf', '')
-                parts = filename.rsplit('-', 1)
-                if len(parts) == 2:
-                    cached_keys.append({
-                        'key': parts[0],
-                        'clef': parts[1]
-                    })
+                parts = filename.split('-')
+                # Expected: [concert_key, transposition, clef]
+                if len(parts) >= 3:
+                    file_concert_key = parts[0]
+                    file_transposition = parts[1]
+                    file_clef = parts[2]
+
+                    # Filter by transposition and clef
+                    if file_transposition == transposition and file_clef == clef:
+                        cached_concert_keys.append(file_concert_key)
+
         except ClientError as e:
             print(f"⚠️  Error listing cached keys: {e}")
 
     return jsonify({
         'default_key': default_key,
-        'default_clef': default_clef,
-        'cached_keys': cached_keys
+        'cached_concert_keys': cached_concert_keys
     })
 
 
@@ -405,19 +407,20 @@ def get_cached_keys(song_title):
 @requires_auth
 def generate_pdf():
     """
-    Generate a PDF for any song in any key.
+    Generate a PDF for any song in any concert key.
 
     Request body:
     {
-        "song": "502 Blues",      // Song title
-        "key": "c",               // Target key (LilyPond notation)
-        "clef": "treble",         // "treble" or "bass"
-        "instrument": "Trumpet in Bb"  // Optional instrument subtitle
+        "song": "502 Blues",           // Song title
+        "concert_key": "eb",           // Concert key (what the audience hears)
+        "transposition": "Bb",         // Instrument transposition: C, Bb, or Eb
+        "clef": "treble",              // "treble" or "bass"
+        "instrument_label": "Trumpet"  // Optional label for PDF subtitle
     }
 
     Returns:
     {
-        "url": "https://s3.../generated/502-blues-c-treble.pdf",
+        "url": "https://s3.../502-blues-eb-Bb-treble.pdf",
         "cached": true/false,
         "generation_time_ms": 2340
     }
@@ -430,19 +433,23 @@ def generate_pdf():
         return jsonify({'error': 'Request body must be JSON'}), 400
 
     song_title = data.get('song')
-    target_key = data.get('key', '').lower()
+    concert_key = data.get('concert_key', '').lower()
+    transposition = data.get('transposition', 'C')
     clef = data.get('clef', 'treble').lower()
-    instrument = data.get('instrument', '').strip()
+    instrument_label = data.get('instrument_label', '').strip()
 
     # Validate inputs
     if not song_title:
         return jsonify({'error': 'Missing required field: song'}), 400
 
-    if not target_key:
-        return jsonify({'error': 'Missing required field: key'}), 400
+    if not concert_key:
+        return jsonify({'error': 'Missing required field: concert_key'}), 400
 
-    if target_key not in VALID_KEYS:
-        return jsonify({'error': f'Invalid key. Must be one of: {", ".join(sorted(VALID_KEYS))}'}), 400
+    if concert_key not in VALID_KEYS:
+        return jsonify({'error': f'Invalid concert_key. Must be one of: {", ".join(sorted(VALID_KEYS))}'}), 400
+
+    if transposition not in VALID_TRANSPOSITIONS:
+        return jsonify({'error': f'Invalid transposition. Must be one of: {", ".join(VALID_TRANSPOSITIONS)}'}), 400
 
     if clef not in VALID_CLEFS:
         return jsonify({'error': f'Invalid clef. Must be one of: {", ".join(VALID_CLEFS)}'}), 400
@@ -455,13 +462,12 @@ def generate_pdf():
     # Use the first core file (most songs have exactly one)
     core_file = core_files[0]
 
-    # Generate S3 key for this variation
+    # Calculate written key for LilyPond
+    written_key = concert_to_written(concert_key, transposition)
+
+    # Generate S3 key: {slug}-{concert_key}-{transposition}-{clef}.pdf
     slug = slugify(song_title)
-    if instrument:
-        instrument_slug = slugify(instrument)
-        s3_key = f"generated/{slug}-{target_key}-{clef}-{instrument_slug}.pdf"
-    else:
-        s3_key = f"generated/{slug}-{target_key}-{clef}.pdf"
+    s3_key = f"generated/{slug}-{concert_key}-{transposition}-{clef}.pdf"
 
     # Check if already cached in S3
     if s3_client:
@@ -487,14 +493,11 @@ def generate_pdf():
     # Create generated directory if needed
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Generate wrapper file
-    wrapper_content = generate_wrapper_content(core_file, target_key, clef, instrument)
+    # Generate wrapper file (use written_key for LilyPond, instrument_label for subtitle)
+    wrapper_content = generate_wrapper_content(core_file, written_key, clef, instrument_label)
 
-    # Include instrument in filename if present
-    if instrument:
-        file_base = f"{slug}-{target_key}-{clef}-{instrument_slug}"
-    else:
-        file_base = f"{slug}-{target_key}-{clef}"
+    # Local filename matches S3 key format
+    file_base = f"{slug}-{concert_key}-{transposition}-{clef}"
 
     wrapper_filename = f"{file_base}.ly"
     wrapper_path = GENERATED_DIR / wrapper_filename

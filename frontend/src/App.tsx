@@ -12,8 +12,7 @@ import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
-import { getInstrumentLabel } from './components/SettingsMenu';
-import type { InstrumentType, SongSummary } from '@/types/catalog';
+import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
 
 export interface PdfMetadata {
   songTitle: string;
@@ -30,13 +29,14 @@ export interface SetlistNavigation {
   onNextSong: () => void;
 }
 
-const STORAGE_KEY = 'jazz-picker-instrument';
+const STORAGE_KEY = 'jazz-picker-instrument-id';
 
-function getStoredInstrument(): InstrumentType | null {
+function getStoredInstrument(): Instrument | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && ['C', 'Bb', 'Eb', 'Bass', 'All'].includes(stored)) {
-      return stored as InstrumentType;
+    if (stored) {
+      const instrument = getInstrumentById(stored);
+      if (instrument) return instrument;
     }
   } catch {
     // localStorage not available
@@ -47,7 +47,7 @@ function getStoredInstrument(): InstrumentType | null {
 function App() {
   const { user, loading, signOut } = useAuth();
   const storedInstrument = getStoredInstrument();
-  const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
+  const [instrument, setInstrument] = useState<Instrument | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
   const [showSetlistManager, setShowSetlistManager] = useState(false);
@@ -67,31 +67,29 @@ function App() {
     limit: LIMIT,
     offset: page * LIMIT,
     query: searchQuery,
-    instrument: instrument || 'All',
   });
 
   // Pre-fetch next page
   useEffect(() => {
-    if (data && hasMore && !isFetching && instrument) {
+    if (data && hasMore && !isFetching) {
       const nextPage = page + 1;
       const nextOffset = nextPage * LIMIT;
-      const inst = instrument || 'All';
 
       // Only pre-fetch if there's potentially more data
       if (nextOffset < data.total) {
         queryClient.prefetchQuery({
-          queryKey: ['songs', LIMIT, nextOffset, searchQuery, inst],
-          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery, inst),
+          queryKey: ['songs', LIMIT, nextOffset, searchQuery],
+          queryFn: () => api.getSongsV2(LIMIT, nextOffset, searchQuery),
         });
       }
     }
-  }, [data, page, hasMore, isFetching, searchQuery, instrument, queryClient]);
+  }, [data, page, hasMore, isFetching, searchQuery, queryClient]);
 
-  // Reset songs when filters change
+  // Reset songs when search changes
   useEffect(() => {
     setPage(0);
     setAllSongs([]);
-  }, [searchQuery, instrument]);
+  }, [searchQuery]);
 
   // Accumulate songs as pages load
   useEffect(() => {
@@ -137,19 +135,10 @@ function App() {
     setSearchQuery(query);
   }, []);
 
-  const handleInstrumentChange = useCallback((inst: InstrumentType) => {
+  const handleInstrumentChange = useCallback((inst: Instrument) => {
     setInstrument(inst);
     try {
-      localStorage.setItem(STORAGE_KEY, inst);
-    } catch {
-      // localStorage not available
-    }
-  }, []);
-
-  const handleResetInstrument = useCallback(() => {
-    setInstrument(null);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY, inst.id);
     } catch {
       // localStorage not available
     }
@@ -161,33 +150,32 @@ function App() {
   }, []);
 
   const handleEnterPress = useCallback(async () => {
-    // Only handle if exactly 1 song in results
-    if (allSongs.length !== 1) return;
+    // Only handle if exactly 1 song in results and we have an instrument
+    if (allSongs.length !== 1 || !instrument) return;
 
     const song = allSongs[0];
 
-    // Fetch cached info and generate PDF in default key
+    // Generate PDF in default concert key for user's instrument
     try {
-      const cachedInfo = await api.getCachedKeys(song.title);
-      const clef = cachedInfo.default_clef === 'bass' ? 'bass' : 'treble';
       const result = await api.generatePDF(
         song.title,
-        cachedInfo.default_key,
-        clef,
-        getInstrumentLabel()
+        song.default_key,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label
       );
       setPdfUrl(result.url);
       setPdfMetadata({
         songTitle: song.title,
-        key: cachedInfo.default_key,
-        clef,
+        key: song.default_key,
+        clef: instrument.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
       });
     } catch (error) {
       console.error('Failed to open song:', error);
     }
-  }, [allSongs]);
+  }, [allSongs, instrument]);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -217,7 +205,6 @@ function App() {
         onInstrumentChange={handleInstrumentChange}
         onSearch={handleSearch}
         onEnterPress={handleEnterPress}
-        onResetInstrument={handleResetInstrument}
         onOpenSetlist={() => setShowSetlistManager(true)}
         onLogout={signOut}
         onOpenAbout={() => setShowAbout(true)}
@@ -238,6 +225,7 @@ function App() {
             <SongList
               songs={allSongs}
               searchQuery={searchQuery}
+              instrument={instrument}
               onOpenPdfUrl={handleOpenPdfUrl}
             />
 
@@ -270,6 +258,7 @@ function App() {
       {activeSetlist && (
         <SetlistViewer
           setlist={activeSetlist}
+          instrument={instrument}
           onOpenPdfUrl={handleOpenPdfUrl}
           onSetlistNav={setSetlistNav}
           onBack={() => setActiveSetlist(null)}

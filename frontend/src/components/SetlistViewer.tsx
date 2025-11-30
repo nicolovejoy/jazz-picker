@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowLeft, FiTrash2 } from 'react-icons/fi';
 import { api } from '@/services/api';
 import { useSetlist, useRemoveSetlistItem } from '@/hooks/useSetlists';
-import { getInstrumentLabel } from './SettingsMenu';
+import { formatKey, type Instrument } from '@/types/catalog';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Setlist, SetlistItem } from '@/types/setlist';
 
 interface SetlistViewerProps {
   setlist: Setlist;
+  instrument: Instrument;
   onOpenPdfUrl: (url: string, metadata?: PdfMetadata) => void;
   onSetlistNav: (nav: SetlistNavigation | null) => void;
   onBack: () => void;
@@ -18,19 +19,12 @@ interface CachedPdf {
   metadata: PdfMetadata;
 }
 
-// Resolved key/clef for each item (fetched from API)
+// Resolved concert key for each item
 interface ResolvedSongInfo {
-  key: string;
-  clef: 'treble' | 'bass';
+  concertKey: string;
 }
 
-const KEY_DISPLAY: Record<string, string> = {
-  'c': 'C', 'cs': 'C#', 'df': 'Db', 'd': 'D', 'ds': 'D#', 'ef': 'Eb',
-  'e': 'E', 'f': 'F', 'fs': 'F#', 'gf': 'Gb', 'g': 'G', 'gs': 'G#',
-  'af': 'Ab', 'a': 'A', 'as': 'A#', 'bf': 'Bb', 'b': 'B'
-};
-
-export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: SetlistViewerProps) {
+export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav, onBack }: SetlistViewerProps) {
   const [loading, setLoading] = useState<number | null>(null);
   const [prefetchStatus, setPrefetchStatus] = useState<Record<number, 'pending' | 'loading' | 'done' | 'error'>>({});
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
@@ -64,15 +58,20 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
             setPrefetchStatus(prev => ({ ...prev, [index]: 'loading' }));
 
             try {
-              // Get the default key/clef for this song
-              const cachedInfo = await api.getCachedKeys(item.song_title);
-              const key = cachedInfo.default_key;
-              const clef = cachedInfo.default_clef === 'bass' ? 'bass' : 'treble';
+              // Get the default concert key for this song
+              const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+              const concertKey = cachedInfo.default_key;
 
               // Store resolved info for display
-              setResolvedInfo(prev => ({ ...prev, [index]: { key, clef } }));
+              setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 
-              const result = await api.generatePDF(item.song_title, key, clef, getInstrumentLabel());
+              const result = await api.generatePDF(
+                item.song_title,
+                concertKey,
+                instrument.transposition,
+                instrument.clef,
+                instrument.label
+              );
 
               const response = await fetch(result.url);
               const blob = await response.blob();
@@ -82,8 +81,8 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
                 blobUrl,
                 metadata: {
                   songTitle: item.song_title,
-                  key,
-                  clef,
+                  key: concertKey,
+                  clef: instrument.clef,
                   cached: result.cached,
                   generationTimeMs: result.generation_time_ms,
                 },
@@ -106,7 +105,7 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
         URL.revokeObjectURL(cached.blobUrl);
       });
     };
-  }, [items]);
+  }, [items, instrument]);
 
   const loadSong = useCallback(async (index: number) => {
     if (index < 0 || index >= items.length) return;
@@ -124,14 +123,19 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
     setLoading(index);
 
     try {
-      // Get the default key/clef for this song
-      const cachedInfo = await api.getCachedKeys(item.song_title);
-      const key = cachedInfo.default_key;
-      const clef = cachedInfo.default_clef === 'bass' ? 'bass' : 'treble';
+      // Get the default concert key for this song
+      const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+      const concertKey = cachedInfo.default_key;
 
-      setResolvedInfo(prev => ({ ...prev, [index]: { key, clef } }));
+      setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 
-      const result = await api.generatePDF(item.song_title, key, clef, getInstrumentLabel());
+      const result = await api.generatePDF(
+        item.song_title,
+        concertKey,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label
+      );
 
       const response = await fetch(result.url);
       const blob = await response.blob();
@@ -139,8 +143,8 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
 
       const metadata: PdfMetadata = {
         songTitle: item.song_title,
-        key,
-        clef,
+        key: concertKey,
+        clef: instrument.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
       };
@@ -154,7 +158,7 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
     } finally {
       setLoading(null);
     }
-  }, [items, onOpenPdfUrl]);
+  }, [items, instrument, onOpenPdfUrl]);
 
   // Update navigation callbacks when currentIndex changes
   useEffect(() => {
@@ -250,7 +254,7 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
                     <span className="text-gray-500 text-sm w-6">{index + 1}</span>
                     <span className="flex-1 text-white font-medium">{item.song_title}</span>
                     {info && (
-                      <span className="text-gray-400 text-sm">{KEY_DISPLAY[info.key] || info.key}</span>
+                      <span className="text-gray-400 text-sm">{formatKey(info.concertKey)}</span>
                     )}
                     {loading === index ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent" />

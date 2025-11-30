@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import type { InstrumentType } from '@/types/catalog';
+import type { Instrument } from '@/types/catalog';
 import { FiSearch, FiX, FiMenu } from 'react-icons/fi';
 import { SettingsMenu } from './SettingsMenu';
 
 interface HeaderProps {
   totalSongs: number;
-  instrument: InstrumentType;
+  instrument: Instrument;
   searchQuery: string;
-  onInstrumentChange: (instrument: InstrumentType) => void;
+  onInstrumentChange: (instrument: Instrument) => void;
   onSearch: (query: string) => void;
   onEnterPress: () => void;
-  onResetInstrument?: () => void;
   onOpenSetlist?: () => void;
   onLogout?: () => void;
   onOpenAbout?: () => void;
@@ -23,7 +22,6 @@ export function Header({
   onInstrumentChange,
   onSearch,
   onEnterPress,
-  onResetInstrument,
   onOpenSetlist,
   onLogout,
   onOpenAbout,
@@ -90,26 +88,17 @@ export function Header({
         </div>
       </div>
 
-      {/* Instrument Filter */}
-      <div className="max-w-md mx-auto">
-        <label
-          htmlFor="instrument"
-          className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5"
+      {/* Current Instrument Display */}
+      <div className="max-w-md mx-auto text-center">
+        <span
+          className="inline-block px-4 py-2 bg-blue-500/20 border border-blue-400/50 rounded-mcm text-blue-300 text-sm cursor-pointer hover:bg-blue-500/30 transition-colors"
+          onClick={() => setIsSettingsOpen(true)}
+          title="Click to change instrument in Settings"
         >
-          Instrument
-        </label>
-        <select
-          id="instrument"
-          value={instrument}
-          onChange={(e) => onInstrumentChange(e.target.value as InstrumentType)}
-          className="w-full px-3 py-2.5 text-sm md:text-base bg-black/30 border border-blue-400/50 rounded-mcm text-white focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 cursor-pointer transition-all"
-        >
-          <option value="C">C (Piano, Guitar, Vocals)</option>
-          <option value="Bb">Bb (Trumpet, Tenor Sax, Clarinet)</option>
-          <option value="Eb">Eb (Alto Sax, Bari Sax)</option>
-          <option value="Bass">Bass Clef (Bass, Trombone)</option>
-          <option value="All">All Charts</option>
-        </select>
+          {instrument.label}
+          {instrument.transposition !== 'C' && ` (${instrument.transposition})`}
+          {instrument.clef === 'bass' && ' • Bass Clef'}
+        </span>
       </div>
     </header>
 
@@ -117,7 +106,8 @@ export function Header({
     <SettingsMenu
       isOpen={isSettingsOpen}
       onClose={() => setIsSettingsOpen(false)}
-      onResetInstrument={onResetInstrument}
+      currentInstrument={instrument}
+      onInstrumentChange={onInstrumentChange}
       onLogout={onLogout}
       onOpenAbout={onOpenAbout}
     />

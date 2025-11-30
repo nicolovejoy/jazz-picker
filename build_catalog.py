@@ -4,14 +4,10 @@ Build a catalog of all available lead sheets from the Wrappers directory.
 
 This script scans all .ly files in the Wrappers directory and extracts:
 - Song title
-- Key
-- Variation type (Standard, Alto Voice, Baritone Voice, Bass, Bb, Eb, etc.)
+- Default concert key (from Standard Key variation)
 - Core file reference
-- Expected PDF output path
 
-Output: 
-- catalog.json (for backwards compatibility)
-- catalog.db (SQLite database)
+Output: catalog.db (SQLite database)
 """
 
 import os
@@ -23,54 +19,11 @@ from collections import defaultdict
 from datetime import datetime
 
 # Regex patterns for parsing wrapper files
-SONG_PATTERN = re.compile(r'\\song\{([^}]+)\}\{"([^"]+)"\}')
-INSTRUMENT_PATTERN = re.compile(r'instrument\s*=\s*"([^"]+)"')
 WHAT_KEY_PATTERN = re.compile(r'whatKey\s*=\s*([a-z,\'"]+)')
-WHAT_CLEF_PATTERN = re.compile(r'whatClef\s*=\s*"([^"]+)"')
 INCLUDE_CORE_PATTERN = re.compile(r'\\include\s+"\.\./Core/([^"]+)"')
 
 # Filename pattern: {Title} - Ly - {Key} {Variation}.ly
 FILENAME_PATTERN = re.compile(r'^(.+?) - Ly - (.+?)\.ly$')
-
-
-def construct_pdf_path(filename, key_and_variation):
-    """Construct the PDF path based on filename pattern."""
-    # Remove .ly extension
-    base_name = filename.replace('.ly', '')
-
-    # Determine category based on key_and_variation
-    if 'Bass Line for Standard' in key_and_variation:
-        category = 'Standard/Bass Line'
-    elif 'Guitar Solo for Standard' in key_and_variation:
-        category = 'Standard/Guitar Solo'
-    elif 'Bass for Standard' in key_and_variation or 'Bass High for Standard' in key_and_variation or 'Bass Low for Standard' in key_and_variation:
-        category = 'Standard/Bass'
-    elif 'Bass for Alto Voice' in key_and_variation:
-        category = 'Alto Voice/Bass'
-    elif 'for Bb for Alto Voice' in key_and_variation or 'for Bb High for Alto Voice' in key_and_variation or 'for Bb Low for Alto Voice' in key_and_variation:
-        category = 'Alto Voice/Bb'
-    elif 'Bass for Baritone Voice' in key_and_variation:
-        category = 'Baritone Voice/Bass'
-    elif 'for Bb for Baritone Voice' in key_and_variation or 'for Bb High for Baritone Voice' in key_and_variation or 'for Bb Low for Baritone Voice' in key_and_variation:
-        category = 'Baritone Voice/Bb'
-    elif 'for Bb for Standard' in key_and_variation or 'for Bb High for Standard' in key_and_variation or 'for Bb Low for Standard' in key_and_variation:
-        category = 'Standard/Bb'
-    elif 'for Eb for Standard' in key_and_variation:
-        category = 'Standard/Eb'
-    elif 'for Eb for Alto Voice' in key_and_variation:
-        category = 'Alto Voice/Eb'
-    elif 'for Eb for Baritone Voice' in key_and_variation:
-        category = 'Baritone Voice/Eb'
-    elif 'Standard' in key_and_variation:
-        category = 'Standard'
-    elif 'Alto Voice' in key_and_variation:
-        category = 'Alto Voice'
-    elif 'Baritone Voice' in key_and_variation:
-        category = 'Baritone Voice'
-    else:
-        category = 'Others'
-
-    return f"../{category}/{base_name}"
 
 
 def parse_wrapper_file(filepath):
@@ -80,75 +33,32 @@ def parse_wrapper_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Extract metadata using regex
-    song_match = SONG_PATTERN.search(content)
-    instrument_match = INSTRUMENT_PATTERN.search(content)
-    key_match = WHAT_KEY_PATTERN.search(content)
-    clef_match = WHAT_CLEF_PATTERN.search(content)
-    core_match = INCLUDE_CORE_PATTERN.search(content)
-
-    # Parse filename for additional context
+    # Parse filename for title and variation info
     filename_match = FILENAME_PATTERN.match(filename)
-
     if not filename_match:
         return None
 
     file_title, key_and_variation = filename_match.groups()
 
+    # Extract key and core file from content
+    key_match = WHAT_KEY_PATTERN.search(content)
+    core_match = INCLUDE_CORE_PATTERN.search(content)
+
     metadata = {
-        'filename': filename,
-        'filepath': str(filepath),
         'title': file_title,
         'key_and_variation': key_and_variation,
     }
 
-    # Always construct pdf_path (even if no \song{} comment)
-    metadata['pdf_path'] = construct_pdf_path(filename, key_and_variation)
-
-    # If \song{} comment exists, use its display_name (otherwise construct from filename)
-    if song_match:
-        metadata['display_name'] = song_match.group(1)
-    else:
-        # Construct display name from filename
-        # Extract just the key from key_and_variation for cleaner display
-        key_part = key_and_variation.split()[0] if key_and_variation else ''
-        metadata['display_name'] = f"{file_title} - {key_part}"
-
-    if instrument_match:
-        metadata['instrument'] = instrument_match.group(1)
-
     if key_match:
-        metadata['key'] = key_match.group(1).strip()
-
-    if clef_match:
-        metadata['clef'] = clef_match.group(1)
+        # Strip octave markers (commas and apostrophes)
+        metadata['key'] = key_match.group(1).strip().rstrip(",'")
 
     if core_match:
         metadata['core_file'] = core_match.group(1)
 
-    # Determine variation type from key_and_variation
-    variation_type = 'Unknown'
-    voice_range = None
-    
-    if 'Standard' in key_and_variation:
-        if 'Bass for Standard' in key_and_variation:
-            variation_type = 'Bass'
-        elif 'for Bb' in key_and_variation:
-            variation_type = 'Bb Instrument'
-        elif 'for Eb' in key_and_variation:
-            variation_type = 'Eb Instrument'
-        else:
-            variation_type = 'Standard Key'
-        voice_range = 'Standard Key'
-    elif 'Alto Voice' in key_and_variation:
-        variation_type = 'Alto Voice'
-        voice_range = 'Alto Voice'
-    elif 'Baritone Voice' in key_and_variation:
-        variation_type = 'Baritone Voice'
-        voice_range = 'Baritone Voice'
-
-    metadata['variation_type'] = variation_type
-    metadata['voice_range'] = voice_range
+    # Determine if this is a Standard Key variation (used for default key)
+    is_standard = 'Standard' in key_and_variation and 'for Bb' not in key_and_variation and 'for Eb' not in key_and_variation and 'Bass for' not in key_and_variation
+    metadata['is_standard_key'] = is_standard
 
     return metadata
 
@@ -157,44 +67,25 @@ def init_database(db_path='catalog.db'):
     """Initialize SQLite database with schema."""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Drop existing tables (fresh start each time)
-    cursor.execute('DROP TABLE IF EXISTS variations')
+    cursor.execute('DROP TABLE IF EXISTS variations')  # Remove legacy table
     cursor.execute('DROP TABLE IF EXISTS songs')
     cursor.execute('DROP TABLE IF EXISTS metadata')
-    
-    # Songs table
+
+    # Songs table - simplified, just title + default key + core files
     cursor.execute('''
         CREATE TABLE songs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT UNIQUE NOT NULL,
+            default_key TEXT DEFAULT 'c',
             core_files TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     cursor.execute('CREATE INDEX idx_songs_title ON songs(title)')
-    
-    # Variations table
-    cursor.execute('''
-        CREATE TABLE variations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            song_id INTEGER NOT NULL,
-            filename TEXT NOT NULL,
-            display_name TEXT NOT NULL,
-            key TEXT,
-            instrument TEXT,
-            variation_type TEXT,
-            voice_range TEXT,
-            pdf_path TEXT NOT NULL,
-            FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
-        )
-    ''')
-    
-    cursor.execute('CREATE INDEX idx_variations_song_id ON variations(song_id)')
-    cursor.execute('CREATE INDEX idx_variations_instrument ON variations(instrument)')
-    cursor.execute('CREATE INDEX idx_variations_voice_range ON variations(voice_range)')
-    
+
     # Metadata table
     cursor.execute('''
         CREATE TABLE metadata (
@@ -202,53 +93,9 @@ def init_database(db_path='catalog.db'):
             value TEXT
         )
     ''')
-    
+
     conn.commit()
     return conn
-
-
-def save_to_database(catalog, db_path='catalog.db'):
-    """Save catalog to SQLite database."""
-    conn = init_database(db_path)
-    cursor = conn.cursor()
-    
-    # Save metadata
-    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
-                   ('total_songs', str(catalog['metadata']['total_songs'])))
-    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
-                   ('total_files', str(catalog['metadata']['total_files'])))
-    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)', 
-                   ('generated', catalog['metadata']['generated']))
-    
-    # Save songs and variations
-    for song_title, song_data in catalog['songs'].items():
-        # Insert song
-        cursor.execute(
-            'INSERT INTO songs (title, core_files) VALUES (?, ?)',
-            (song_title, json.dumps(song_data['core_files']))
-        )
-        song_id = cursor.lastrowid
-        
-        # Insert variations
-        for variation in song_data['variations']:
-            cursor.execute('''
-                INSERT INTO variations 
-                (song_id, filename, display_name, key, instrument, variation_type, voice_range, pdf_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                song_id,
-                variation['filename'],
-                variation['display_name'],
-                variation.get('key'),
-                variation.get('instrument'),
-                variation.get('variation_type'),
-                variation.get('voice_range'),
-                variation['pdf_path']
-            ))
-    
-    conn.commit()
-    conn.close()
-    print(f"Database saved to {db_path}")
 
 
 def build_catalog(wrappers_dir='lilypond-data/Wrappers'):
@@ -259,62 +106,64 @@ def build_catalog(wrappers_dir='lilypond-data/Wrappers'):
         print(f"Error: {wrappers_dir} directory not found")
         return None
 
-    catalog = {
-        'metadata': {
-            'total_files': 0,
-            'total_songs': 0,
-            'generated': None,
-        },
-        'songs': {},  # keyed by song title
-        'variations': [],  # flat list of all variations
-    }
-
-    songs_dict = defaultdict(lambda: {
+    # Collect song data
+    songs = defaultdict(lambda: {
         'title': '',
+        'default_key': 'c',
         'core_files': set(),
-        'variations': []
     })
 
     # Scan all .ly files in Wrappers
     wrapper_files = list(wrappers_path.glob('*.ly'))
-    catalog['metadata']['total_files'] = len(wrapper_files)
-
     print(f"Scanning {len(wrapper_files)} wrapper files...")
 
     for filepath in wrapper_files:
         metadata = parse_wrapper_file(filepath)
         if metadata:
             song_title = metadata['title']
+            songs[song_title]['title'] = song_title
 
-            # Add to songs dictionary
-            songs_dict[song_title]['title'] = song_title
             if 'core_file' in metadata:
-                songs_dict[song_title]['core_files'].add(metadata['core_file'])
-            songs_dict[song_title]['variations'].append(metadata)
+                songs[song_title]['core_files'].add(metadata['core_file'])
 
-            # Add to flat variations list
-            catalog['variations'].append(metadata)
+            # Use Standard Key variation for default key
+            if metadata.get('is_standard_key') and 'key' in metadata:
+                songs[song_title]['default_key'] = metadata['key']
 
-    # Convert songs_dict to regular dict and convert sets to lists
-    for song_title, song_data in songs_dict.items():
-        catalog['songs'][song_title] = {
-            'title': song_data['title'],
-            'core_files': sorted(list(song_data['core_files'])),
-            'variations': sorted(song_data['variations'],
-                               key=lambda x: (x['variation_type'], x.get('key', '')))
-        }
-
-    catalog['metadata']['total_songs'] = len(catalog['songs'])
-    catalog['metadata']['generated'] = datetime.now().isoformat()
-
-    return catalog
+    return {
+        'songs': songs,
+        'total_files': len(wrapper_files),
+        'total_songs': len(songs),
+    }
 
 
-def save_catalog(catalog, output_file='catalog.json'):
-    """Save the catalog to a JSON file."""
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(catalog, f, indent=2, ensure_ascii=False)
-    print(f"Catalog saved to {output_file}")
+def save_to_database(catalog, db_path='catalog.db'):
+    """Save catalog to SQLite database."""
+    conn = init_database(db_path)
+    cursor = conn.cursor()
+
+    # Save metadata
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)',
+                   ('total_songs', str(catalog['total_songs'])))
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)',
+                   ('total_files', str(catalog['total_files'])))
+    cursor.execute('INSERT INTO metadata (key, value) VALUES (?, ?)',
+                   ('generated', datetime.now().isoformat()))
+
+    # Save songs
+    for song_title, song_data in catalog['songs'].items():
+        cursor.execute(
+            'INSERT INTO songs (title, default_key, core_files) VALUES (?, ?, ?)',
+            (
+                song_title,
+                song_data['default_key'],
+                json.dumps(sorted(list(song_data['core_files'])))
+            )
+        )
+
+    conn.commit()
+    conn.close()
+    print(f"Database saved to {db_path}")
 
 
 def print_summary(catalog):
@@ -322,16 +171,12 @@ def print_summary(catalog):
     print("\n" + "="*60)
     print("CATALOG SUMMARY")
     print("="*60)
-    print(f"Total wrapper files: {catalog['metadata']['total_files']}")
-    print(f"Total unique songs: {catalog['metadata']['total_songs']}")
-    print(f"Generated: {catalog['metadata']['generated']}")
+    print(f"Total wrapper files: {catalog['total_files']}")
+    print(f"Total unique songs: {catalog['total_songs']}")
     print("\nSample songs:")
 
     for i, (title, data) in enumerate(list(catalog['songs'].items())[:10]):
-        print(f"\n{i+1}. {title}")
-        print(f"   Variations: {len(data['variations'])}")
-        variation_types = set(v['variation_type'] for v in data['variations'])
-        print(f"   Types: {', '.join(sorted(variation_types))}")
+        print(f"  {i+1}. {title} (key: {data['default_key']})")
 
 
 if __name__ == '__main__':
@@ -339,11 +184,9 @@ if __name__ == '__main__':
     catalog = build_catalog()
 
     if catalog:
-        save_catalog(catalog)
         save_to_database(catalog)
         print_summary(catalog)
         print("\n✓ Catalog built successfully!")
-        print("  → catalog.json (JSON format)")
         print("  → catalog.db (SQLite database)")
     else:
         print("\n✗ Failed to build catalog")

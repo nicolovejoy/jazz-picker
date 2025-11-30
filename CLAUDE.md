@@ -80,6 +80,162 @@ By default, the frontend uses the deployed backend (https://jazz-picker.fly.dev)
 2. Update `frontend/vite.config.ts` proxy target to `http://localhost:5001`
 3. Run frontend: `cd frontend && npm run dev`
 
+## Transposition Model (Key Concepts)
+
+Understanding how keys and transpositions work is essential for this codebase.
+
+### Terminology
+
+| Term | Definition | Example |
+|------|------------|---------|
+| **Concert Key** | The key the audience hears. The "real" key. Always stored in DB/API/S3. | "Let's play in concert Eb" |
+| **Written Key** | What appears on the chart for a specific instrument | Trumpet chart shows "F" |
+| **Transposition** | The instrument category: C, Bb, Eb, or Bass | Trumpet is "Bb" |
+
+### The Math
+
+```
+Written Key = Concert Key transposed UP by the instrument's interval
+
+Concert Eb:
+├─ C instruments (piano, guitar, bass):    Eb (written) — no transposition
+├─ Bb instruments (trumpet, tenor sax):    F  (written) — up a major 2nd
+└─ Eb instruments (alto sax, bari sax):    C  (written) — up a major 6th
+```
+
+### Band Example
+
+If a band wants to play "Blue Bossa" in **concert Cm**, everyone plays together but sees different charts:
+
+| Player | Instrument | Transposition | Written Key | Clef |
+|--------|------------|---------------|-------------|------|
+| Piano | C | - | Cm | Treble |
+| Trumpet | Bb | +M2 | Dm | Treble |
+| Alto Sax | Eb | +M6 | Am | Treble |
+| Bass | C | - | Cm | Bass |
+
+---
+
+## User Experience Design
+
+### User Setup
+1. User signs up, picks instrument from fixed list (Trumpet, Alto Sax, Piano, etc.)
+2. Instrument determines transposition and clef automatically
+3. No separate instrument filter in header - user's instrument is the single source of truth
+
+### Fixed Instrument List
+
+```typescript
+const INSTRUMENTS = [
+  { id: 'piano',       label: 'Piano',       transposition: 'C',  clef: 'treble' },
+  { id: 'guitar',      label: 'Guitar',      transposition: 'C',  clef: 'treble' },
+  { id: 'trumpet',     label: 'Trumpet',     transposition: 'Bb', clef: 'treble' },
+  { id: 'clarinet',    label: 'Clarinet',    transposition: 'Bb', clef: 'treble' },
+  { id: 'tenor-sax',   label: 'Tenor Sax',   transposition: 'Bb', clef: 'treble' },
+  { id: 'soprano-sax', label: 'Soprano Sax', transposition: 'Bb', clef: 'treble' },
+  { id: 'alto-sax',    label: 'Alto Sax',    transposition: 'Eb', clef: 'treble' },
+  { id: 'bari-sax',    label: 'Bari Sax',    transposition: 'Eb', clef: 'treble' },
+  { id: 'bass',        label: 'Bass',        transposition: 'C',  clef: 'bass' },
+  { id: 'trombone',    label: 'Trombone',    transposition: 'C',  clef: 'bass' },
+];
+```
+
+### Browsing Songs
+- User sees list of all 735 songs
+- Search by title
+- No instrument filter dropdown (removed)
+- Header shows current instrument with hover hint: "Change in Settings"
+
+### Song Card Display
+- Song title
+- Key pills showing **concert keys** that are cached for user's transposition
+- Plus button to generate in custom concert key
+- Default key comes from catalog (original key of the tune)
+
+### Song Card Interactions
+| Click Target | Action |
+|--------------|--------|
+| Song title | Load PDF in default concert key |
+| Cached key pill | Load PDF in that concert key |
+| Plus button | Open key picker to generate in custom concert key |
+
+### Key Display (PDF Header, Key Picker)
+| User's Transposition | Display for Concert Eb |
+|----------------------|------------------------|
+| C (Piano) | `Eb` |
+| Bb (Trumpet) | `F for Trumpet (Concert Eb)` |
+| Eb (Alto Sax) | `C for Alto Sax (Concert Eb)` |
+
+Format for transposing instruments: `{written_key} for {instrument_label} (Concert {concert_key})`
+
+### Setlists
+- Store song title + concert key
+- Each band member sees their own transposition
+- Shareable (future feature)
+
+---
+
+## S3 Cache Structure
+
+All PDFs are dynamically generated and cached in S3.
+
+### Naming Convention
+
+```
+{song-slug}-{concert-key}-{transposition}-{clef}.pdf
+```
+
+**Examples:**
+- `a-felicidade-a-C-treble.pdf` (Concert A, for piano)
+- `a-felicidade-a-Bb-treble.pdf` (Concert A, for trumpet)
+- `a-felicidade-a-Eb-treble.pdf` (Concert A, for alto sax)
+- `blue-bossa-eb-Bb-treble.pdf` (Concert Eb, for trumpet)
+- `autumn-leaves-g-C-bass.pdf` (Concert G, for bass)
+
+### Query Pattern
+
+To find cached concert keys for a song + transposition:
+```
+Prefix: {song-slug}-
+Filter: files matching *-{transposition}-{clef}.pdf
+Extract: concert key from filename
+```
+
+---
+
+## Data Model
+
+### Storage & API Convention
+
+- **Catalog** stores song title + default concert key
+- **Setlists** store song title + concert key
+- **API** always uses concert key
+- **S3 filenames** encode concert key + transposition + clef
+- **Frontend** calculates written key for display based on user's instrument
+
+### Generate Endpoint
+
+```json
+POST /api/v2/generate
+{
+  "song": "502 Blues",
+  "concert_key": "eb",
+  "transposition": "Bb",
+  "clef": "treble",
+  "instrument_label": "Trumpet"  // optional, for PDF subtitle
+}
+
+Response: {
+  "url": "https://s3.../502-blues-eb-Bb-treble.pdf",
+  "cached": true/false,
+  "generation_time_ms": 7500
+}
+```
+
+Backend calculates written key and passes to LilyPond.
+
+---
+
 ## Architecture
 
 ### High-Level Structure
@@ -87,31 +243,22 @@ By default, the frontend uses the deployed backend (https://jazz-picker.fly.dev)
 ```
 Frontend (React) → Backend API (Flask) → S3 PDFs
                                       ↓
-                              catalog.json (metadata)
+                              catalog.db (SQLite)
 ```
 
 ### Backend (`app.py`)
 
 **Key Responsibilities:**
-- Serve paginated song lists with filtering (API v2)
-- Provide song detail with all variations
-- Generate S3 presigned URLs for PDFs (15min expiration)
-- Optional basic auth
+- Serve paginated song list with search
+- Return cached keys for a song (queries S3)
+- Generate PDFs dynamically via LilyPond
+- Cache generated PDFs in S3
 
 **API Endpoints:**
-- `GET /api/v2/songs?limit=50&offset=0&q=search&instrument=C` - Paginated song list
-- `GET /api/v2/songs/:title` - Song detail with variations
-- `GET /pdf/:filename` - Returns S3 presigned URL as JSON
-- `POST /api/v2/generate` - Generate PDF in any key (see below)
+- `GET /api/v2/songs?limit=50&offset=0&q=search` - Paginated song list
+- `GET /api/v2/songs/:title/cached` - Get default key + cached concert keys from S3
+- `POST /api/v2/generate` - Generate PDF (see Data Model section above)
 - `GET /health` - Health check
-
-**Generate Endpoint:**
-```json
-POST /api/v2/generate
-{"song": "502 Blues", "key": "d", "clef": "treble"}
-
-Response: {"url": "https://s3.../generated/...", "cached": true/false, "generation_time_ms": 7500}
-```
 
 **Environment Variables:**
 - `USE_S3=true` - Enable S3 integration
@@ -124,7 +271,7 @@ Response: {"url": "https://s3.../generated/...", "cached": true/false, "generati
 1. Downloads `catalog.db` (SQLite) from S3 on startup
 2. Falls back to local file if S3 unavailable
 3. Uses `db.py` module for all database queries
-4. Catalog contains ~735 songs with metadata for ~4366 variations
+4. Catalog contains ~735 songs with title + default concert key
 
 ### Frontend (`frontend/src/`)
 
@@ -135,13 +282,14 @@ Response: {"url": "https://s3.../generated/...", "cached": true/false, "generati
 - Custom hooks for data fetching
 
 **Key Components:**
-- `App.tsx` - Main application orchestrator with infinite scroll, filters, search
-- `PasswordGate.tsx` - Password prompt (shown first, before any other content)
-- `WelcomeScreen.tsx` - Instrument selection screen
-- `Header.tsx` - Navigation with filters (Instrument + Singer Range)
+- `App.tsx` - Main application orchestrator with infinite scroll and search
+- `AuthGate.tsx` - Supabase sign in/up
+- `WelcomeScreen.tsx` - Instrument selection (from fixed list)
+- `Header.tsx` - Search bar, current instrument display
 - `SongList.tsx` - Renders list of songs
-- `SongListItem.tsx` - Individual song item with smart navigation (auto-open single variations, Enter key)
-- `Setlist.tsx` - Hardcoded gig setlist with cached status indicators
+- `SongListItem.tsx` - Song card with key pills and generate button
+- `SetlistManager.tsx` - List/create/delete setlists
+- `SetlistViewer.tsx` - View setlist songs, prefetch PDFs
 - `PDFViewer.tsx` - iPad-optimized PDF viewer with:
   - Clean mode with auto-hide nav (2s timeout)
   - Portrait: single page | Landscape: side-by-side
@@ -149,56 +297,50 @@ Response: {"url": "https://s3.../generated/...", "cached": true/false, "generati
   - Keyboard shortcuts (arrows, F for fullscreen, Esc)
   - Setlist navigation (swipe L/R at first/last page to change songs)
   - Safe area support for iOS PWA mode
-- `SettingsMenu.tsx` - Global user preferences + logout
+- `SettingsMenu.tsx` - Change instrument, logout
 
 **State Management:**
-- React Query for server data (songs, song details, PDF URLs)
-- React `useState` for UI state (filters, search, selected variation)
-- LocalStorage for user preferences
+- React Query for server data (songs, cached keys, PDF URLs)
+- React `useState` for UI state (search query)
+- LocalStorage for user instrument preference
 - Smart prefetching: next page of songs loaded ahead of user scroll
 
 **API Service (`services/api.ts`):**
-- Centralized API client
-- Handles both JSON responses and S3 presigned URLs
-- Error handling with user-friendly messages
+- `getSongsV2()` - Paginated song list with search
+- `getCachedKeys()` - Default key + cached concert keys for a song
+- `generatePDF()` - Generate/fetch PDF
 
 **Types (`types/catalog.ts`):**
-- `SongSummary`, `SongDetail`, `Variation` - Data models
-- `InstrumentType`: 'C' | 'Bb' | 'Eb' | 'Bass' | 'All'
+- `SongSummary` - title, default_key, default_clef
+- `InstrumentType`: 'C' | 'Bb' | 'Eb' | 'Bass'
 
 ### Catalog Generation (`build_catalog.py`)
 
 Scans `lilypond-data/Wrappers/*.ly` files and extracts:
-- Song title, key, instrument, clef
-- Variation type (Standard, Alto Voice, Baritone Voice, Bass, Bb, Eb)
+- Song title
+- Default concert key
 - Core file reference
-- Expected PDF output path
 
 Outputs:
-- `catalog.json` - Full catalog (5.7MB, backwards compatible)
-- `catalog.db` - SQLite database (1.3MB, for future use)
+- `catalog.db` - SQLite database with songs table
 
 **Important Logic:**
 - 729/735 songs have 1 core file
 - 6 songs have 2 core files (alternative keys, guitar solos, bass lines)
-- PDF paths constructed based on variation type to correct S3 category folder
 
 ### Data Flow
 
 **Song Browsing:**
-1. User applies filters/search in Header
-2. App resets to page 0, fetches first 50 songs via API v2
+1. User searches in Header
+2. App fetches songs via API
 3. React Query prefetches next page as user scrolls
 4. Intersection Observer triggers page increment when scroll reaches bottom
-5. Songs accumulate in `allSongs` state array
 
 **PDF Viewing:**
-1. User selects variation from SongListItem
-2. Frontend calls `/pdf/:filename` endpoint
-3. Backend generates S3 presigned URL (15min TTL)
-4. Backend returns JSON `{"url": "https://s3...", "expires_at": "..."}`
-5. PDFViewer fetches PDF from presigned URL using react-pdf
-6. Auto-hide navigation activates after 2s of inactivity
+1. User taps song title or key pill
+2. Frontend calls `/api/v2/generate` with song + concert key + user's transposition
+3. Backend checks S3 cache, generates if needed, returns presigned URL
+4. PDFViewer fetches and displays PDF
 
 ## Important Implementation Details
 
@@ -206,13 +348,7 @@ Outputs:
 - Uses `IntersectionObserver` to detect scroll position
 - Prefetches next page when user approaches bottom (threshold: 0.1)
 - Accumulates songs across pages in state array
-- Resets on filter/search change
-
-### Smart Navigation in Song List
-- If song has exactly 1 variation: auto-opens PDF viewer
-- If song has multiple variations: shows variation list
-- Enter key navigates into song/variation
-- Escape key navigates back
+- Resets on search change
 
 ### PDF Viewer Modes
 - **Portrait**: Single-page view, swipe vertical
@@ -221,20 +357,14 @@ Outputs:
 - **Keyboard**: Arrow keys (next/prev page), F (fullscreen), Esc (exit)
 - **Touch**: Pinch zoom, swipe gestures, tap top 20% to toggle nav
 
-### Filter Logic
-- **Instrument Filter**: Filters variations by instrument type (C, Bb, Eb, Bass)
-- Voice variations are separate from instrument filters
-
 ### S3 Integration
-- PDFs stored in folders: `Standard/`, `Alto-Voice/`, `Baritone-Voice/`, etc.
+- All PDFs are dynamically generated and cached
+- Naming: `{song-slug}-{concert-key}-{transposition}-{clef}.pdf`
 - Presigned URLs expire after 15 minutes
-- Backend handles URL generation transparently
-- Frontend receives presigned URL as JSON response
+- Backend handles cache check + generation + URL generation
 
 ### Authentication
-- **Frontend**: Password gate (`PasswordGate.tsx`) with shared password
-- Auth state stored in localStorage (`jazz-picker-auth`)
-- Logout available in Settings menu
+- **Frontend**: Supabase auth (`AuthGate.tsx`)
 - **Backend**: Optional basic auth (disabled by default, controlled via `REQUIRE_AUTH`)
 
 ## Infrastructure
@@ -277,6 +407,7 @@ fly apps restart jazz-picker
 
 - **Don't over-engineer for cost savings** - S3 storage is very cheap. Optimize for developer velocity and user experience first. Only optimize for cost when actual costs become a problem.
 - **Keep it simple** - Avoid premature abstractions and over-architecting.
+- **Ask before assuming** - When uncertain about current behavior, data sources, or user intent, ask clarifying questions rather than making assumptions. This is especially important when dealing with state that may have changed (caches, database content, S3 files).
 
 ## Known Issues & Context
 
