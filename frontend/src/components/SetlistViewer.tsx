@@ -58,9 +58,12 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
             setPrefetchStatus(prev => ({ ...prev, [index]: 'loading' }));
 
             try {
-              // Get the default concert key for this song
-              const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
-              const concertKey = cachedInfo.default_key;
+              // Use stored concert_key if available, otherwise fetch default
+              let concertKey = item.concert_key;
+              if (!concertKey) {
+                const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+                concertKey = cachedInfo.default_key;
+              }
 
               // Store resolved info for display
               setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
@@ -123,9 +126,12 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
     setLoading(index);
 
     try {
-      // Get the default concert key for this song
-      const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
-      const concertKey = cachedInfo.default_key;
+      // Use stored concert_key if available, otherwise fetch default
+      let concertKey = item.concert_key;
+      if (!concertKey) {
+        const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+        concertKey = cachedInfo.default_key;
+      }
 
       setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 

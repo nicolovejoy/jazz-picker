@@ -4,6 +4,7 @@ export interface Setlist {
   id: string;
   user_id: string;
   name: string;
+  public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -12,6 +13,7 @@ export interface SetlistItem {
   id: string;
   setlist_id: string;
   song_title: string;
+  concert_key: string | null;
   position: number;
   notes: string | null;
   created_at: string;
@@ -26,6 +28,7 @@ export interface CreateSetlistInput {
 export interface AddSetlistItemInput {
   setlist_id: string;
   song_title: string;
+  concert_key?: string;
   notes?: string;
 }
 
