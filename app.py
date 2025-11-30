@@ -330,7 +330,7 @@ def slugify(text):
     return text.strip('-')
 
 
-def generate_wrapper_content(core_file, target_key, clef, instrument_label):
+def generate_wrapper_content(core_file, target_key, clef):
     """Generate LilyPond wrapper file content."""
     return f'''%% -*- Mode: LilyPond -*-
 
@@ -338,7 +338,7 @@ def generate_wrapper_content(core_file, target_key, clef, instrument_label):
 
 \\include "english.ly"
 
-instrument = "{instrument_label}"
+instrument = ""
 whatKey = {target_key}
 whatClef = "{clef}"
 
@@ -482,8 +482,7 @@ def generate_pdf():
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate wrapper file
-    instrument_label = f"{target_key.upper()} Key ({clef})"
-    wrapper_content = generate_wrapper_content(core_file, target_key, clef, instrument_label)
+    wrapper_content = generate_wrapper_content(core_file, target_key, clef)
 
     wrapper_filename = f"{slug}-{target_key}-{clef}.ly"
     wrapper_path = GENERATED_DIR / wrapper_filename
