@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.tsx';
+import { api } from './services/api';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
 // pdfjs-dist 5.x uses URL.parse() which was only added in Safari 18 (Sept 2024).
@@ -27,6 +28,13 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+});
+
+// Prefetch songs immediately on app load (before password gate)
+// This way the data is ready when the user finishes authentication
+queryClient.prefetchQuery({
+  queryKey: ['songs', 50, 0, '', 'All'],
+  queryFn: () => api.getSongsV2(50, 0, '', 'All'),
 });
 
 createRoot(document.getElementById('root')!).render(
