@@ -36,25 +36,26 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
   // Calculate optimal scale based on viewport height and width
   const calculateOptimalScale = () => {
     const isLandscapeNow = window.innerWidth > window.innerHeight;
-    
+
     // Standard letter size PDF page: 8.5" x 11" at 72 DPI = 612 x 792 pixels
     const standardPageWidth = 612;
     const standardPageHeight = 792;
-    
+
     // Account for header and padding
     const availableHeight = window.innerHeight - 140;
     const availableWidth = window.innerWidth; // Use full width, no padding
-    
+
     // Calculate scale based on height
     const heightScale = availableHeight / standardPageHeight;
-    
+
     // In landscape mode, consider width for 2 pages side-by-side
     if (isLandscapeNow) {
       const widthScale = availableWidth / (standardPageWidth * 2 + 4); // 2 pages + small gap
-      return Math.min(Math.max(Math.min(heightScale, widthScale), 0.8), 3.0);
+      // Add 4% boost to default size
+      return Math.min(Math.max(Math.min(heightScale, widthScale) * 1.04, 0.8), 3.0);
     } else {
-      // Portrait mode: just use height scale
-      return Math.min(Math.max(heightScale, 0.8), 3.0);
+      // Portrait mode: just use height scale, add 4% boost
+      return Math.min(Math.max(heightScale * 1.04, 0.8), 3.0);
     }
   };
 
