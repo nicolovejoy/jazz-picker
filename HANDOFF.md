@@ -1,32 +1,11 @@
-# Session Handoff - Nov 29, 2025
+# Session Handoff - Nov 30, 2025
 
 ## Completed This Session
 
-**LilyPond PDF Generation - Full Stack:**
-- Fixed S3 upload (missing IAM `s3:PutObject` permission)
-- Added Terraform IaC in `infrastructure/`
-- Built frontend UI: plus button, key selector modal, progress bar
-- Generation works end-to-end (~7s new, <200ms cached)
-
-**Infrastructure as Code:**
-- Created `infrastructure/` with Terraform
-- Manages S3 bucket, IAM user, read/write policies
-- Write permissions scoped to `generated/*` prefix only
-
-## In Progress - Not Yet Deployed
-
-**PDF margin fix** (in `app.py`, not deployed):
-- Generated PDFs have left edge cut off ("Shorter" shows as "horter")
-- Added `left-margin = 15\mm` to wrapper generation
-- Need to: deploy backend, clear `generated/` folder in S3, test
-
-```python
-# Change in generate_wrapper_content() - app.py:664-668
-\\paper {{
-  left-margin = 15\\mm
-  right-margin = 10\\mm
-}}
-```
+**Fixed PDF margin cutoff issue:**
+- Root cause: LilyPond version mismatch (apt provides 2.24, Eric's code requires 2.25)
+- Solution: Updated Dockerfile.prod to download LilyPond 2.25.30 from GitLab releases
+- Removed incorrect `\paper` block workaround from wrapper generation (wrappers should match Eric's format exactly)
 
 ## Current State
 
@@ -37,23 +16,39 @@
 **What Works:**
 - All instrument filters (C, Bb, Eb, Bass)
 - Search with infinite scroll
-- PDF viewer
-- Dynamic PDF generation with frontend UI
+- PDF viewer (iPad-optimized)
+- Dynamic PDF generation in any key with frontend UI
 - S3 caching of generated PDFs
+- Proper PDF margins (LilyPond 2.25 fix)
 
-**What Needs Testing:**
-- PDF margin fix after deploy
+## Infrastructure
 
-## Next Steps
+**Backend (Fly.io):**
+- Flask API with LilyPond 2.25.30
+- Downloads development version binary at build time
+- 2 workers, 120s timeout for PDF generation
 
-1. Deploy backend: `fly deploy`
-2. Clear S3 cache: delete `generated/` folder contents
-3. Test PDF generation - left margin should be fixed
-4. Commit if working
+**AWS (Terraform-managed):**
+- S3 bucket: `jazz-picker-pdfs`
+- IAM user: `jazz-picker-api` with read + write (`generated/` only) permissions
 
 ## Key Files
 
-- `app.py:655-675` - Wrapper generation with margin fix (not deployed)
+- `Dockerfile.prod` - LilyPond 2.25 installation
+- `app.py:655-668` - Wrapper generation (matches Eric's format)
 - `infrastructure/main.tf` - Terraform AWS resources
 - `frontend/src/components/GenerateModal.tsx` - Key selector UI
-- `frontend/src/components/SongListItem.tsx` - Plus button integration
+
+## Notes
+
+- Eric's lilypond-data requires LilyPond 2.25 (development branch) due to syntax like `\normal-weight` and `\musicLength`
+- Wrappers must match Eric's exact format - no extra `\paper` blocks
+- `lilypond-data/` is a symlink to Eric's Dropbox - don't modify those files
+
+## Action Required
+
+**S3 PDFs deleted:** Alto-Voice/, Baritone-Voice/, Others/ folders were deleted from S3. Need to re-sync pre-built PDFs from Eric's source or re-run `./sync_pdfs_to_s3.sh`.
+
+## TODO
+
+- [ ] Surface cached/generated indicator in frontend UI (show when PDF is from cache vs freshly generated)

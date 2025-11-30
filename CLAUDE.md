@@ -256,6 +256,8 @@ terraform apply
 
 3. **Database Migration**: Transitioning from `catalog.json` to SQLite. Backend still reads JSON.
 
+4. **LilyPond Version**: Eric's lilypond-data requires LilyPond 2.25 (development branch). The Dockerfile downloads it from GitLab releases. Debian/Ubuntu apt only provides 2.24.
+
 ## Common Patterns
 
 ### Adding a New API Endpoint

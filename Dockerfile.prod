@@ -5,11 +5,13 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including LilyPond
+# Install system dependencies and LilyPond 2.25 (development version required by lilypond-data)
 RUN apt-get update && apt-get install -y \
     --no-install-recommends \
-    lilypond \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -L https://gitlab.com/lilypond/lilypond/-/releases/v2.25.30/downloads/lilypond-2.25.30-linux-x86_64.tar.gz | tar xz -C /opt \
+    && ln -s /opt/lilypond-2.25.30/bin/lilypond /usr/local/bin/lilypond
 
 # Copy requirements first (for better caching)
 COPY requirements.txt .

@@ -655,17 +655,10 @@ def slugify(text):
 def generate_wrapper_content(core_file, target_key, clef, instrument_label):
     """Generate LilyPond wrapper file content."""
     return f'''%% -*- Mode: LilyPond -*-
-%% Auto-generated wrapper for dynamic key transposition
 
 \\version "2.24.0"
 
 \\include "english.ly"
-
-%% Ensure adequate margins for PDF rendering
-\\paper {{
-  left-margin = 15\\mm
-  right-margin = 10\\mm
-}}
 
 instrument = "{instrument_label}"
 whatKey = {target_key}
