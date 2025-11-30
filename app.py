@@ -507,7 +507,7 @@ def generate_pdf():
 
         # Run LilyPond from lilypond-data directory so includes resolve correctly
         result = subprocess.run(
-            ['lilypond', '-o', f'Generated/{slug}-{target_key}-{clef}', f'Generated/{wrapper_filename}'],
+            ['lilypond', '-o', f'Generated/{file_base}', f'Generated/{wrapper_filename}'],
             cwd=str(LILYPOND_DATA_DIR),
             capture_output=True,
             text=True,
