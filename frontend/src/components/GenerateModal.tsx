@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 
 // All 12 keys in circle of fifths order
@@ -32,6 +33,7 @@ export function GenerateModal({
   onClose,
   onGenerated,
 }: GenerateModalProps) {
+  const queryClient = useQueryClient();
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [clef, setClef] = useState<'treble' | 'bass'>(
     defaultClef === 'bass' ? 'bass' : 'treble'
@@ -54,6 +56,9 @@ export function GenerateModal({
       const result = await api.generatePDF(songTitle, selectedKey, clef);
       clearInterval(progressInterval);
       setProgress(100);
+
+      // Invalidate cached keys so the card updates
+      queryClient.invalidateQueries({ queryKey: ['cachedKeys', songTitle] });
 
       // Brief pause to show 100%
       setTimeout(() => {
