@@ -63,7 +63,33 @@ These fields are no longer used and can be removed from `build_catalog.py`:
 - `variation.filename`
 - `variation.filepath`
 
+## Known Issues (Next Session)
+
+**Variation display is broken:**
+- Catalog still shows old variations (Bb, Eb, Alto Voice keys, etc.)
+- These are meaningless now since any key can be generated
+- Clicking some variations causes "Invalid key" error (key format mismatch)
+
+**Root cause:** The catalog was designed for pre-built PDFs with specific transpositions. Now that we generate on-demand, the UX should change.
+
+## Next Steps
+
+1. **Simplify song display:**
+   - Each song should show just the song title (no key variations)
+   - Remove variation buttons entirely
+   - Clicking a song opens GenerateModal to pick key + clef
+
+2. **Update catalog structure:**
+   - Remove variations array from songs (or simplify to just metadata)
+   - Keep only: title, core_files, original_key (for default selection)
+   - Run `build_catalog.py` with new structure
+
+3. **Fix key format:**
+   - Some catalog keys have octave markers (e.g., `bf,` instead of `bf`)
+   - Strip these in frontend or fix in catalog
+
+4. **Future: Setlists with pre-generation**
+
 ## TODO
 
 - [ ] Surface cached/generated indicator in frontend UI
-- [ ] Build setlist feature with pre-generation
