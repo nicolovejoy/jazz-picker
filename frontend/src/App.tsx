@@ -5,8 +5,10 @@ import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthGate } from './components/AuthGate';
-import { Setlist } from './components/Setlist';
+import { SetlistManager } from './components/SetlistManager';
+import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
+import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
@@ -47,7 +49,8 @@ function App() {
   const [instrument, setInstrument] = useState<InstrumentType | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
-  const [showSetlist, setShowSetlist] = useState(false);
+  const [showSetlistManager, setShowSetlistManager] = useState(false);
+  const [activeSetlist, setActiveSetlist] = useState<Setlist | null>(null);
   const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
   const [showAbout, setShowAbout] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,7 +216,7 @@ function App() {
         onSearch={handleSearch}
         onEnterPress={handleEnterPress}
         onResetInstrument={handleResetInstrument}
-        onOpenSetlist={() => setShowSetlist(true)}
+        onOpenSetlist={() => setShowSetlistManager(true)}
         onLogout={signOut}
         onOpenAbout={() => setShowAbout(true)}
       />
@@ -255,11 +258,19 @@ function App() {
         )}
       </main>
 
-      {showSetlist && (
-        <Setlist
+      {showSetlistManager && !activeSetlist && (
+        <SetlistManager
+          onSelectSetlist={(setlist) => setActiveSetlist(setlist)}
+          onClose={() => setShowSetlistManager(false)}
+        />
+      )}
+
+      {activeSetlist && (
+        <SetlistViewer
+          setlist={activeSetlist}
           onOpenPdfUrl={handleOpenPdfUrl}
           onSetlistNav={setSetlistNav}
-          onClose={() => setShowSetlist(false)}
+          onBack={() => setActiveSetlist(null)}
         />
       )}
 
