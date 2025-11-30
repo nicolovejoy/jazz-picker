@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/services/api';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 
@@ -12,6 +12,11 @@ interface SetlistSong {
   title: string;
   key: string;
   clef: string;
+}
+
+interface CachedPdf {
+  blobUrl: string;
+  metadata: PdfMetadata;
 }
 
 const SETLIST: SetlistSong[] = [
@@ -41,32 +46,68 @@ const KEY_DISPLAY: Record<string, string> = {
 
 export function Setlist({ onOpenPdfUrl, onSetlistNav, onClose }: SetlistProps) {
   const [loading, setLoading] = useState<number | null>(null);
-  const [cachedStatus, setCachedStatus] = useState<Record<number, boolean>>({});
+  const [prefetchStatus, setPrefetchStatus] = useState<Record<number, 'pending' | 'loading' | 'done' | 'error'>>({});
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
-  // Check cached status for all songs on mount
+  // In-memory cache of PDF blobs
+  const pdfCache = useRef<Record<number, CachedPdf>>({});
+
+  // Prefetch all PDFs in background on mount
   useEffect(() => {
-    const checkCachedStatus = async () => {
-      const status: Record<number, boolean> = {};
+    const prefetchAll = async () => {
+      // Initialize all as pending
+      const initialStatus: Record<number, 'pending' | 'loading' | 'done' | 'error'> = {};
+      SETLIST.forEach((_, i) => { initialStatus[i] = 'pending'; });
+      setPrefetchStatus(initialStatus);
 
-      await Promise.all(
-        SETLIST.map(async (song, index) => {
-          try {
-            const cached = await api.getCachedKeys(song.title);
-            const isCached = cached.cached_keys.some(
-              (k) => k.key === song.key && k.clef === song.clef
-            );
-            status[index] = isCached;
-          } catch {
-            status[index] = false;
-          }
-        })
-      );
+      // Prefetch in parallel (but not all at once - batch of 4)
+      const batchSize = 4;
+      for (let i = 0; i < SETLIST.length; i += batchSize) {
+        const batch = SETLIST.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (song, batchIndex) => {
+            const index = i + batchIndex;
+            setPrefetchStatus(prev => ({ ...prev, [index]: 'loading' }));
 
-      setCachedStatus(status);
+            try {
+              // Get presigned URL
+              const result = await api.generatePDF(song.title, song.key, song.clef as 'treble' | 'bass');
+
+              // Fetch the actual PDF blob
+              const response = await fetch(result.url);
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob);
+
+              // Cache it
+              pdfCache.current[index] = {
+                blobUrl,
+                metadata: {
+                  songTitle: song.title,
+                  key: song.key,
+                  clef: song.clef,
+                  cached: result.cached,
+                  generationTimeMs: result.generation_time_ms,
+                },
+              };
+
+              setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
+            } catch (err) {
+              console.error(`Failed to prefetch ${song.title}:`, err);
+              setPrefetchStatus(prev => ({ ...prev, [index]: 'error' }));
+            }
+          })
+        );
+      }
     };
 
-    checkCachedStatus();
+    prefetchAll();
+
+    // Cleanup blob URLs on unmount
+    return () => {
+      Object.values(pdfCache.current).forEach(cached => {
+        URL.revokeObjectURL(cached.blobUrl);
+      });
+    };
   }, []);
 
   // Load a song by index and open the PDF
@@ -74,19 +115,37 @@ export function Setlist({ onOpenPdfUrl, onSetlistNav, onClose }: SetlistProps) {
     if (index < 0 || index >= SETLIST.length) return;
 
     const song = SETLIST[index];
-    setLoading(index);
     setCurrentIndex(index);
+
+    // Check if already in cache - instant load!
+    const cached = pdfCache.current[index];
+    if (cached) {
+      onOpenPdfUrl(cached.blobUrl, cached.metadata);
+      return;
+    }
+
+    // Not in cache yet - fetch it
+    setLoading(index);
 
     try {
       const result = await api.generatePDF(song.title, song.key, song.clef as 'treble' | 'bass');
-      setCachedStatus((prev) => ({ ...prev, [index]: true }));
-      onOpenPdfUrl(result.url, {
+
+      // Fetch and cache the blob
+      const response = await fetch(result.url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const metadata: PdfMetadata = {
         songTitle: song.title,
         key: song.key,
         clef: song.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
-      });
+      };
+
+      pdfCache.current[index] = { blobUrl, metadata };
+      setPrefetchStatus((prev) => ({ ...prev, [index]: 'done' }));
+      onOpenPdfUrl(blobUrl, metadata);
     } catch (err) {
       console.error('Failed to load:', err);
       alert(`Could not load "${song.title}". Check if it exists in the catalog.`);
@@ -148,17 +207,23 @@ export function Setlist({ onOpenPdfUrl, onSetlistNav, onClose }: SetlistProps) {
               className={`w-full p-4 rounded-lg border text-left flex items-center gap-4 transition-all ${
                 loading === index
                   ? 'bg-blue-500/20 border-blue-500/50'
-                  : cachedStatus[index]
+                  : prefetchStatus[index] === 'done'
                   ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 hover:border-green-500/50'
+                  : prefetchStatus[index] === 'loading'
+                  ? 'bg-yellow-500/5 border-yellow-500/20'
                   : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
               }`}
             >
               <span className="text-gray-500 text-sm w-6">{index + 1}</span>
               <span className="flex-1 text-white font-medium">{song.title}</span>
               <span className="text-gray-400 text-sm">{KEY_DISPLAY[song.key] || song.key}</span>
-              {loading === index && (
+              {loading === index ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent" />
-              )}
+              ) : prefetchStatus[index] === 'loading' ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-400/50 border-t-transparent" />
+              ) : prefetchStatus[index] === 'done' ? (
+                <span className="text-green-400 text-xs">Ready</span>
+              ) : null}
             </button>
           ))}
         </div>
