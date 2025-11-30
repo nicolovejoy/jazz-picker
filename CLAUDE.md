@@ -408,6 +408,7 @@ fly apps restart jazz-picker
 - **Don't over-engineer for cost savings** - S3 storage is very cheap. Optimize for developer velocity and user experience first. Only optimize for cost when actual costs become a problem.
 - **Keep it simple** - Avoid premature abstractions and over-architecting.
 - **Ask before assuming** - When uncertain about current behavior, data sources, or user intent, ask clarifying questions rather than making assumptions. This is especially important when dealing with state that may have changed (caches, database content, S3 files).
+- **Test in prod** - This is an experimental project with limited users. Don't hesitate to deploy to production for testing. We prefer fast iteration over careful staging. If the user asks "how can I test this?", remind them we're happy to break prod.
 
 ## Known Issues & Context
 
