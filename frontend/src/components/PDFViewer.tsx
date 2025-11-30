@@ -548,6 +548,19 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
           )}
         </div>
       )}
+
+      {/* Setlist Position Indicator */}
+      {setlistNav && (
+        <div className="absolute bottom-4 right-4 z-20">
+          <div className="px-4 py-2 bg-black/60 backdrop-blur-lg rounded-lg border border-blue-500/30">
+            <span className="text-blue-400 font-medium">
+              {setlistNav.currentIndex + 1}
+            </span>
+            <span className="text-gray-400 mx-1">/</span>
+            <span className="text-gray-300">{setlistNav.totalSongs}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
