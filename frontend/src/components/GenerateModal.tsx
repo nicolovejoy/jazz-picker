@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
+import { getInstrumentLabel } from './SettingsMenu';
 
 // All 12 keys in circle of fifths order
 const KEYS = [
@@ -53,7 +54,7 @@ export function GenerateModal({
     }, 500);
 
     try {
-      const result = await api.generatePDF(songTitle, selectedKey, clef);
+      const result = await api.generatePDF(songTitle, selectedKey, clef, getInstrumentLabel());
       clearInterval(progressInterval);
       setProgress(100);
 

@@ -12,6 +12,7 @@ import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
+import { getInstrumentLabel } from './components/SettingsMenu';
 import type { InstrumentType, SongSummary } from '@/types/catalog';
 
 export interface PdfMetadata {
@@ -172,7 +173,8 @@ function App() {
       const result = await api.generatePDF(
         song.title,
         cachedInfo.default_key,
-        clef
+        clef,
+        getInstrumentLabel()
       );
       setPdfUrl(result.url);
       setPdfMetadata({

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowLeft, FiTrash2 } from 'react-icons/fi';
 import { api } from '@/services/api';
 import { useSetlist, useRemoveSetlistItem } from '@/hooks/useSetlists';
+import { getInstrumentLabel } from './SettingsMenu';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Setlist, SetlistItem } from '@/types/setlist';
 
@@ -71,7 +72,7 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
               // Store resolved info for display
               setResolvedInfo(prev => ({ ...prev, [index]: { key, clef } }));
 
-              const result = await api.generatePDF(item.song_title, key, clef);
+              const result = await api.generatePDF(item.song_title, key, clef, getInstrumentLabel());
 
               const response = await fetch(result.url);
               const blob = await response.blob();
@@ -130,7 +131,7 @@ export function SetlistViewer({ setlist, onOpenPdfUrl, onSetlistNav, onBack }: S
 
       setResolvedInfo(prev => ({ ...prev, [index]: { key, clef } }));
 
-      const result = await api.generatePDF(item.song_title, key, clef);
+      const result = await api.generatePDF(item.song_title, key, clef, getInstrumentLabel());
 
       const response = await fetch(result.url);
       const blob = await response.blob();

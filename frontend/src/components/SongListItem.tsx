@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { GenerateModal } from './GenerateModal';
+import { getInstrumentLabel } from './SettingsMenu';
 import type { SongSummary } from '@/types/catalog';
 import type { PdfMetadata } from '../App';
 
@@ -65,7 +66,7 @@ export function SongListItem({ song, onOpenPdfUrl }: SongListItemProps) {
       setIsGenerating(true);
       setGeneratingKey(key);
       try {
-        const result = await api.generatePDF(song.title, key, clef as 'treble' | 'bass');
+        const result = await api.generatePDF(song.title, key, clef as 'treble' | 'bass', getInstrumentLabel());
         onOpenPdfUrl(result.url, {
           songTitle: song.title,
           key,

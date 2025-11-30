@@ -330,7 +330,7 @@ def slugify(text):
     return text.strip('-')
 
 
-def generate_wrapper_content(core_file, target_key, clef):
+def generate_wrapper_content(core_file, target_key, clef, instrument=""):
     """Generate LilyPond wrapper file content."""
     return f'''%% -*- Mode: LilyPond -*-
 
@@ -338,7 +338,7 @@ def generate_wrapper_content(core_file, target_key, clef):
 
 \\include "english.ly"
 
-instrument = ""
+instrument = "{instrument}"
 whatKey = {target_key}
 whatClef = "{clef}"
 
@@ -411,7 +411,8 @@ def generate_pdf():
     {
         "song": "502 Blues",      // Song title
         "key": "c",               // Target key (LilyPond notation)
-        "clef": "treble"          // "treble" or "bass"
+        "clef": "treble",         // "treble" or "bass"
+        "instrument": "Trumpet in Bb"  // Optional instrument subtitle
     }
 
     Returns:
@@ -431,6 +432,7 @@ def generate_pdf():
     song_title = data.get('song')
     target_key = data.get('key', '').lower()
     clef = data.get('clef', 'treble').lower()
+    instrument = data.get('instrument', '').strip()
 
     # Validate inputs
     if not song_title:
@@ -455,7 +457,11 @@ def generate_pdf():
 
     # Generate S3 key for this variation
     slug = slugify(song_title)
-    s3_key = f"generated/{slug}-{target_key}-{clef}.pdf"
+    if instrument:
+        instrument_slug = slugify(instrument)
+        s3_key = f"generated/{slug}-{target_key}-{clef}-{instrument_slug}.pdf"
+    else:
+        s3_key = f"generated/{slug}-{target_key}-{clef}.pdf"
 
     # Check if already cached in S3
     if s3_client:
@@ -482,11 +488,17 @@ def generate_pdf():
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate wrapper file
-    wrapper_content = generate_wrapper_content(core_file, target_key, clef)
+    wrapper_content = generate_wrapper_content(core_file, target_key, clef, instrument)
 
-    wrapper_filename = f"{slug}-{target_key}-{clef}.ly"
+    # Include instrument in filename if present
+    if instrument:
+        file_base = f"{slug}-{target_key}-{clef}-{instrument_slug}"
+    else:
+        file_base = f"{slug}-{target_key}-{clef}"
+
+    wrapper_filename = f"{file_base}.ly"
     wrapper_path = GENERATED_DIR / wrapper_filename
-    pdf_path = GENERATED_DIR / f"{slug}-{target_key}-{clef}.pdf"
+    pdf_path = GENERATED_DIR / f"{file_base}.pdf"
 
     try:
         # Write wrapper file

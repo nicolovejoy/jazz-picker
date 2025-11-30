@@ -50,12 +50,18 @@ export const api = {
   async generatePDF(
     song: string,
     key: string,
-    clef: 'treble' | 'bass' = 'treble'
+    clef: 'treble' | 'bass' = 'treble',
+    instrument?: string
   ): Promise<GenerateResponse> {
+    const body: Record<string, string> = { song, key, clef };
+    if (instrument) {
+      body.instrument = instrument;
+    }
+
     const response = await fetch(`${API_BASE}/v2/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ song, key, clef }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

@@ -11,6 +11,8 @@ Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets,
 
 The project serves ~735 songs with multiple variations per song (different keys, instruments, voice ranges) from Eric's lilypond lead sheets repository.
 
+**Important**: This repo is only for the Jazz Picker web app. Eric maintains the LilyPond source files in a separate repo (`neonscribe/lilypond-lead-sheets`). We don't modify his LilyPond workflow - we only consume the output.
+
 ## Development Commands
 
 ### Backend Development
@@ -270,6 +272,11 @@ python3 build_catalog.py
 aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
 fly apps restart jazz-picker
 ```
+
+## Development Philosophy
+
+- **Don't over-engineer for cost savings** - S3 storage is very cheap. Optimize for developer velocity and user experience first. Only optimize for cost when actual costs become a problem.
+- **Keep it simple** - Avoid premature abstractions and over-architecting.
 
 ## Known Issues & Context
 
