@@ -6,6 +6,7 @@ import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { PasswordGate } from './components/PasswordGate';
 import { Setlist } from './components/Setlist';
+import { AboutPage } from './components/AboutPage';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
 import type { InstrumentType, SongSummary } from '@/types/catalog';
@@ -56,6 +57,7 @@ function App() {
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
   const [showSetlist, setShowSetlist] = useState(false);
   const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
+  const [showAbout, setShowAbout] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -230,6 +232,7 @@ function App() {
         onResetInstrument={handleResetInstrument}
         onOpenSetlist={() => setShowSetlist(true)}
         onLogout={handleLogout}
+        onOpenAbout={() => setShowAbout(true)}
       />
 
       <main className="container mx-auto px-4 py-8 pb-24">
@@ -287,6 +290,10 @@ function App() {
             setPdfMetadata(null);
           }}
         />
+      )}
+
+      {showAbout && (
+        <AboutPage onClose={() => setShowAbout(false)} />
       )}
     </div>
   );

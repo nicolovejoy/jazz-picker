@@ -5,9 +5,10 @@ interface SettingsMenuProps {
   onClose: () => void;
   onResetInstrument?: () => void;
   onLogout?: () => void;
+  onOpenAbout?: () => void;
 }
 
-export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout }: SettingsMenuProps) {
+export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout, onOpenAbout }: SettingsMenuProps) {
   if (!isOpen) return null;
 
   // Get build timestamp in PST
@@ -133,12 +134,22 @@ export function SettingsMenu({ isOpen, onClose, onResetInstrument, onLogout }: S
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
               About
             </h3>
-            <div className="text-sm space-y-1">
-              <p className="text-white font-medium">Jazz Picker</p>
-              <p className="text-gray-400">Version 2.0.0</p>
+            <div className="text-sm space-y-2">
+              <p className="text-white font-medium">Jazz Picker v2.1</p>
               <p className="text-gray-500 text-xs">
                 Built: {buildDate} PST
               </p>
+              {onOpenAbout && (
+                <button
+                  onClick={() => {
+                    onOpenAbout();
+                    onClose();
+                  }}
+                  className="text-blue-400 hover:text-blue-300 text-sm underline underline-offset-2"
+                >
+                  About & Install Guide
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ interface HeaderProps {
   onResetInstrument?: () => void;
   onOpenSetlist?: () => void;
   onLogout?: () => void;
+  onOpenAbout?: () => void;
 }
 
 export function Header({
@@ -25,6 +26,7 @@ export function Header({
   onResetInstrument,
   onOpenSetlist,
   onLogout,
+  onOpenAbout,
 }: HeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -117,6 +119,7 @@ export function Header({
       onClose={() => setIsSettingsOpen(false)}
       onResetInstrument={onResetInstrument}
       onLogout={onLogout}
+      onOpenAbout={onOpenAbout}
     />
     </>
   );

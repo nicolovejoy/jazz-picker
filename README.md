@@ -4,6 +4,11 @@ A modern web interface for browsing and viewing jazz lead sheets, optimized for 
 
 **Source charts:** [neonscribe/lilypond-lead-sheets](https://github.com/neonscribe/lilypond-lead-sheets) (Eric's LilyPond collection)
 
+## Live URLs
+
+- **Frontend:** https://pianohouseproject.org
+- **Backend API:** https://jazz-picker.fly.dev
+
 ## Quick Start
 
 ### 1. Backend (Flask)
@@ -20,11 +25,6 @@ npm install
 npm run dev
 # Runs on http://localhost:5173
 ```
-
-## Live URLs
-
-- **Frontend:** https://frontend-phi-khaki-43.vercel.app/
-- **Backend API:** https://jazz-picker.fly.dev
 
 ## Deployment
 

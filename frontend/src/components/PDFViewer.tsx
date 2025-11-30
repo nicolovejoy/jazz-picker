@@ -344,12 +344,16 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
   const canNavigate = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      {/* Header - slides down when showNav is true */}
+    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
+      {/* Safe area spacer - always visible behind header */}
+      <div className="flex-shrink-0 bg-black" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+
+      {/* Header - absolutely positioned, slides up when hidden */}
       <div
-        className={`bg-white/10 backdrop-blur-lg px-2 py-2 flex items-center justify-between border-b border-white/10 transition-transform duration-300 ${
+        className={`absolute left-0 right-0 bg-white/10 backdrop-blur-lg px-2 py-2 flex items-center justify-between border-b border-white/10 transition-transform duration-300 z-10 ${
           showNav ? 'translate-y-0' : '-translate-y-full'
         }`}
+        style={{ top: 'env(safe-area-inset-top, 0px)' }}
         onTouchStart={onHeaderTouchStart}
         onTouchEnd={onHeaderTouchEnd}
       >

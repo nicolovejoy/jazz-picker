@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
 - **Backend**: Flask API (Python) deployed on Fly.io
-- **Frontend**: React + TypeScript + Vite application (local development, Cloudflare Pages planned)
+- **Frontend**: React + TypeScript + Vite application deployed on Vercel
 - **Storage**: AWS S3 for PDFs, SQLite catalog (downloaded from S3 on startup)
 
 The project serves ~735 songs with multiple variations per song (different keys, instruments, voice ranges) from Eric's lilypond lead sheets repository.
@@ -134,15 +134,20 @@ Response: {"url": "https://s3.../generated/...", "cached": true/false, "generati
 
 **Key Components:**
 - `App.tsx` - Main application orchestrator with infinite scroll, filters, search
+- `PasswordGate.tsx` - Password prompt (shown first, before any other content)
+- `WelcomeScreen.tsx` - Instrument selection screen
 - `Header.tsx` - Navigation with filters (Instrument + Singer Range)
 - `SongList.tsx` - Renders list of songs
 - `SongListItem.tsx` - Individual song item with smart navigation (auto-open single variations, Enter key)
+- `Setlist.tsx` - Hardcoded gig setlist with cached status indicators
 - `PDFViewer.tsx` - iPad-optimized PDF viewer with:
   - Clean mode with auto-hide nav (2s timeout)
   - Portrait: single page | Landscape: side-by-side
   - Pinch zoom (0.3x-5x), swipe gestures
   - Keyboard shortcuts (arrows, F for fullscreen, Esc)
-- `SettingsMenu.tsx` - Global user preferences
+  - Setlist navigation (swipe L/R at first/last page to change songs)
+  - Safe area support for iOS PWA mode
+- `SettingsMenu.tsx` - Global user preferences + logout
 
 **State Management:**
 - React Query for server data (songs, song details, PDF URLs)
@@ -225,10 +230,10 @@ Outputs:
 - Frontend receives presigned URL as JSON response
 
 ### Authentication
-- Optional basic auth (disabled by default)
-- Controlled via `REQUIRE_AUTH` environment variable
-- Uses standard HTTP Basic Authentication
-- Currently no frontend login UI (API-level only)
+- **Frontend**: Password gate (`PasswordGate.tsx`) with shared password
+- Auth state stored in localStorage (`jazz-picker-auth`)
+- Logout available in Settings menu
+- **Backend**: Optional basic auth (disabled by default, controlled via `REQUIRE_AUTH`)
 
 ## Infrastructure
 
