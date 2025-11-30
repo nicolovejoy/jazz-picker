@@ -46,9 +46,12 @@ export const setlistService = {
 
   // Create a new setlist
   async createSetlist(input: CreateSetlistInput): Promise<Setlist> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { data, error } = await supabase
       .from('setlists')
-      .insert({ name: input.name })
+      .insert({ name: input.name, user_id: user.id })
       .select()
       .single();
 

@@ -46,7 +46,7 @@ export function Header({
               onClick={onOpenSetlist}
               className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-mcm transition-colors text-green-300 font-medium"
             >
-              Gig Setlist
+              Setlists
             </button>
           ) : <div />}
           <button
