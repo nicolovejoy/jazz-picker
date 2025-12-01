@@ -13,11 +13,12 @@ Uses deployed backend at https://jazz-picker.fly.dev via Vite proxy.
 
 ## Features
 
-- **Song Browser:** Search, infinite scroll, instrument-aware key display
+- **4-Context Navigation:** Browse, Spin the Dial, Setlist, More (settings)
+- **Song Browser:** Search, infinite scroll, hover/long-press actions
 - **Setlists:** Create, share (public/private), deep-linkable URLs
-- **PDF Viewer:** iPad-optimized with auto-hide nav, pinch zoom, swipe gestures, landscape side-by-side view
+- **PDF Viewer:** iPad-optimized with auto-hide nav, pinch zoom, swipe gestures
 - **Multi-instrument:** Each user sees charts in their instrument's transposition + clef
-- **PWA Support:** Add to home screen for app-like experience
+- **PWA Support:** Full-screen mode, add to home screen
 
 ## Tech Stack
 
@@ -28,17 +29,29 @@ React 19, TypeScript, Tailwind CSS, React Query, Supabase, react-pdf, Vite
 ```
 src/
 ├── components/
-│   ├── Header.tsx          # Search + instrument display
-│   ├── SongList.tsx        # Song browser with key pills
+│   ├── BottomNav.tsx       # 4-context navigation
+│   ├── Header.tsx          # Slim header with search
+│   ├── SongList.tsx        # Song grid (1/2/3 columns)
+│   ├── SongListItem.tsx    # Card with hover/long-press actions
+│   ├── AddToSetlistModal.tsx
 │   ├── SetlistManager.tsx  # List/create/delete setlists
-│   ├── SetlistViewer.tsx   # View setlist, copy link, prefetch
+│   ├── SetlistViewer.tsx   # View setlist, prefetch PDFs
 │   ├── PDFViewer.tsx       # iPad-optimized viewer
-│   └── SettingsMenu.tsx    # Instrument selection
+│   └── GenerateModal.tsx   # Custom key picker
 ├── services/
 │   ├── api.ts              # Backend API client
 │   └── setlistService.ts   # Supabase setlist operations
 ├── hooks/                  # React Query hooks
 ├── contexts/               # Auth context
 ├── types/                  # TypeScript types
-└── App.tsx                 # Main app with URL routing
+└── App.tsx                 # Context switching, routing
 ```
+
+## Contexts
+
+| Context | Description |
+|---------|-------------|
+| Browse | Search songs, view PDFs, add to setlist |
+| Spin | Random song practice (placeholder) |
+| Setlist | View/edit setlists, perform mode |
+| More | Settings, about, sign out |

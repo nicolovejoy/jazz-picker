@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
-import { BottomNav } from './components/BottomNav';
+import { BottomNav, type AppContext } from './components/BottomNav';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -53,7 +53,7 @@ function App() {
   const [instrument, setInstrument] = useState<Instrument | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
-  const [activeTab, setActiveTab] = useState<'songs' | 'setlists' | 'settings'>('songs');
+  const [activeContext, setActiveContext] = useState<AppContext>('browse');
   const [activeSetlist, setActiveSetlist] = useState<Setlist | null>(null);
   const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
   const [showAbout, setShowAbout] = useState(false);
@@ -144,7 +144,7 @@ function App() {
       setlistService.getSetlist(setlistId).then(setlist => {
         if (setlist) {
           setActiveSetlist(setlist);
-          setActiveTab('setlists');
+          setActiveContext('setlist');
         }
       }).catch(err => {
         console.error('Failed to load setlist from URL:', err);
@@ -229,24 +229,19 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-16">
-      {/* Header only shows on Songs tab */}
-      {activeTab === 'songs' && (
+    <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-20">
+      {/* Header only shows on Browse context */}
+      {activeContext === 'browse' && (
         <Header
-          totalSongs={data?.total || 0}
-          instrument={instrument}
           searchQuery={searchQuery}
-          onInstrumentChange={handleInstrumentChange}
           onSearch={handleSearch}
           onEnterPress={handleEnterPress}
-          onLogout={signOut}
-          onOpenAbout={() => setShowAbout(true)}
         />
       )}
 
-      <main className={`container mx-auto px-4 ${activeTab === 'songs' ? 'py-8' : 'py-4'}`}>
-        {/* Songs Tab */}
-        {activeTab === 'songs' && (
+      <main className={`container mx-auto px-4 ${activeContext === 'browse' ? 'pt-20 pb-4' : 'py-4'}`}>
+        {/* Browse Context */}
+        {activeContext === 'browse' && (
           <>
             {isError ? (
               <div className="text-center py-20 text-red-400">
@@ -287,8 +282,19 @@ function App() {
           </>
         )}
 
-        {/* Setlists Tab */}
-        {activeTab === 'setlists' && (
+        {/* Spin Context (Placeholder) */}
+        {activeContext === 'spin' && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="text-6xl mb-4">🎲</div>
+            <h2 className="text-2xl font-bold mb-2">Spin the Dial</h2>
+            <p className="text-gray-400 max-w-xs">
+              Random song practice mode. Coming soon.
+            </p>
+          </div>
+        )}
+
+        {/* Setlist Context */}
+        {activeContext === 'setlist' && (
           <>
             {activeSetlist ? (
               <SetlistViewer
@@ -301,51 +307,50 @@ function App() {
             ) : (
               <SetlistManager
                 onSelectSetlist={(setlist) => setActiveSetlist(setlist)}
-                onClose={() => setActiveTab('songs')} // Fallback, though nav handles switching
+                onClose={() => setActiveContext('browse')}
               />
             )}
           </>
         )}
 
-        {/* Settings Tab (Placeholder for now, reusing AboutPage content + Logout) */}
-        {activeTab === 'settings' && (
-          <div className="max-w-md mx-auto py-8 space-y-6">
-            <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-semibold mb-2">Instrument</h3>
-              <p className="text-gray-300 mb-4">Current: <span className="text-blue-400">{instrument.label}</span></p>
+        {/* Menu Context */}
+        {activeContext === 'menu' && (
+          <div className="max-w-md mx-auto py-8 space-y-4">
+            <h2 className="text-xl font-bold mb-6 text-gray-300">Settings & More</h2>
+
+            {/* Settings Section */}
+            <div className="space-y-2">
               <button
-                onClick={() => setInstrument(null)} // Triggers WelcomeScreen
-                className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-colors"
+                onClick={() => setInstrument(null)}
+                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
               >
-                Change Instrument
+                <span>Instrument</span>
+                <span className="text-blue-400">{instrument.label}</span>
+              </button>
+
+              <button
+                onClick={() => setShowAbout(true)}
+                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
+              >
+                <span>About</span>
+                <span className="text-gray-500">→</span>
               </button>
             </div>
 
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-semibold mb-2">Account</h3>
-              <p className="text-gray-300 mb-4">Signed in as {user.email}</p>
+            {/* Account Section */}
+            <div className="pt-4 border-t border-white/10">
+              <p className="text-sm text-gray-500 mb-3">{user.email}</p>
               <button
                 onClick={signOut}
-                className="w-full py-2 bg-red-600/80 hover:bg-red-500/80 rounded-lg text-white transition-colors"
+                className="w-full p-3 text-red-400 hover:bg-red-500/10 rounded border border-red-500/20 transition-colors"
               >
                 Sign Out
               </button>
             </div>
 
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <h3 className="text-lg font-semibold mb-2">About</h3>
-              <p className="text-gray-300 text-sm mb-4">
-                Jazz Picker v2.0<br/>
-                Piano House Project
-              </p>
-              <button
-                onClick={() => setShowAbout(true)}
-                className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-              >
-                View Credits
-              </button>
+            {/* Version Info */}
+            <div className="pt-4 text-center text-xs text-gray-600">
+              Jazz Picker v2.0 · Piano House Project
             </div>
           </div>
         )}
@@ -353,7 +358,7 @@ function App() {
 
       {/* Bottom Navigation - Always visible except in PDF Viewer */}
       {!pdfUrl && (
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeContext={activeContext} onContextChange={setActiveContext} />
       )}
 
       {pdfUrl && (

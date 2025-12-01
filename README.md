@@ -6,16 +6,17 @@ A modern web interface for browsing and viewing jazz lead sheets, optimized for 
 
 ## Live URLs
 
-- **Frontend:** https://pianohouseproject.org
+- **Frontend:** https://pianohouseproject.org (soon: jazzpick.pianohouseproject.org)
 - **Backend API:** https://jazz-picker.fly.dev
 
 ## Features
 
 - **735 songs** with dynamic PDF generation in any key
+- **4-context navigation** - Browse, Spin the Dial, Setlist, More
 - **Multi-instrument support** - charts render in your transposition + clef
 - **Shareable setlists** - public URLs, each band member sees their own parts
 - **iPad-optimized** - gesture controls, auto-hide UI, landscape side-by-side
-- **PWA support** - add to home screen for app-like experience
+- **PWA support** - full-screen mode, add to home screen
 
 ## Quick Start
 
@@ -43,11 +44,6 @@ npm run dev
 
 ## Documentation
 
-All documentation has been moved to the `docs/` directory.
-
 - **[CLAUDE.md](docs/CLAUDE.md)**: Comprehensive development reference
 - **[HANDOFF.md](docs/HANDOFF.md)**: Session notes and recent changes
-- **[UX_VISION.md](docs/UX_VISION.md)**: UX Vision & Strategy
-- **[LILYPOND_PLAN.md](docs/LILYPOND_PLAN.md)**: LilyPond integration plan
-- **[SCHEMA_PLAN.md](docs/SCHEMA_PLAN.md)**: Database schema plan
-- **[SQLITE_MIGRATION_PLAN.md](docs/SQLITE_MIGRATION_PLAN.md)**: SQLite migration plan
+- **[UX_VISION.md](docs/UX_VISION.md)**: Multi-context architecture vision

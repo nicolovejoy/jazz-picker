@@ -9,31 +9,46 @@
     --radius-minimal: 0.375rem; /* 6px */
   }
 
-  body {
-    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900;
-    @apply text-gray-100 min-h-screen;
-    @apply antialiased;
+  html, body {
+    height: 100%;
+    overflow: hidden;
   }
 
-  /* iOS PWA: Hide status bar and use full viewport */
-  @supports (-webkit-touch-callout: none) {
-    body {
-      /* Use viewport height that accounts for safe areas */
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-    }
-    
-    html {
-      height: -webkit-fill-available;
-    }
+  html {
+    height: -webkit-fill-available;
   }
-  
-  /* Standalone PWA mode adjustments */
+
+  body {
+    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900;
+    @apply text-gray-100;
+    @apply antialiased;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    /* Prevent overscroll/bounce on iOS */
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
+  }
+
+  #root {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Standalone PWA mode - true fullscreen */
   @media all and (display-mode: standalone) {
-    :root {
-      /* Account for notch/status bar on iOS */
-      --sat: env(safe-area-inset-top);
-      --sab: env(safe-area-inset-bottom);
+    body {
+      /* Content extends under status bar */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    /* Remove body padding since Header/BottomNav handle safe areas */
+    body {
+      padding: 0;
     }
   }
 }
