@@ -1,7 +1,10 @@
+import { Capacitor } from '@capacitor/core';
 import type { SongListResponse, Transposition, Clef } from '@/types/catalog';
 
-// In production, use the Fly.io backend directly. In dev, use Vite's proxy.
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+// Native app needs full URL. Web uses relative URLs (Vite proxy in dev, same origin in prod).
+const BACKEND_URL = Capacitor.isNativePlatform()
+  ? 'https://jazz-picker.fly.dev'
+  : (import.meta.env.VITE_BACKEND_URL || '');
 const API_BASE = `${BACKEND_URL}/api`;
 
 export interface GenerateResponse {
