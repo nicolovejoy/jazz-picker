@@ -179,11 +179,11 @@ class NativePDFViewController: UIViewController {
 
     @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {
         guard let document = pdfView.document,
-              let currentPage = pdfView.currentPage,
-              let pageIndex = document.index(for: currentPage) else {
+              let currentPage = pdfView.currentPage else {
             return
         }
 
+        let pageIndex = document.index(for: currentPage)
         let isFirstPage = pageIndex == 0
         let isLastPage = pageIndex == document.pageCount - 1
 

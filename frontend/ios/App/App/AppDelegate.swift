@@ -7,7 +7,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Register plugin after a brief delay to ensure bridge is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if let vc = self.window?.rootViewController as? CAPBridgeViewController {
+                vc.bridge?.registerPluginInstance(NativePDFPlugin())
+            }
+        }
         return true
     }
 
