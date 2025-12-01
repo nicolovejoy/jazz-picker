@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Capacitor } from '@capacitor/core';
 import { Header } from './components/Header';
 import { BottomNav, type AppContext } from './components/BottomNav';
 import { SongList } from './components/SongList';
@@ -10,6 +11,7 @@ import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
+import NativePDF from './plugins/NativePDF';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
@@ -176,7 +178,23 @@ function App() {
     }
   }, []);
 
-  const handleOpenPdfUrl = useCallback((url: string, metadata?: PdfMetadata) => {
+  const handleOpenPdfUrl = useCallback(async (url: string, metadata?: PdfMetadata) => {
+    // On native iOS, use the native PDF viewer
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await NativePDF.open({
+          url,
+          title: metadata?.songTitle,
+          key: metadata?.key,
+        });
+        return; // Native viewer handles everything
+      } catch (error) {
+        console.error('[App] Native PDF error, falling back to web:', error);
+        // Fall through to web viewer
+      }
+    }
+
+    // Web: use the React PDF viewer
     setPdfUrl(url);
     setPdfMetadata(metadata || null);
   }, []);

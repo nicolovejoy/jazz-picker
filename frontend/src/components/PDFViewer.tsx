@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiInfo, FiDownload } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 
 // Set up worker - use local import for Vite
@@ -19,7 +19,6 @@ interface PDFViewerProps {
 export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLandscape, setIsLandscape] = useState(
@@ -583,45 +582,6 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
         )}
       </div>
 
-      {/* Debug Info Badge */}
-      {metadata && (
-        <div className="absolute bottom-4 left-4 z-20">
-          <button
-            onClick={() => setShowDebugInfo(!showDebugInfo)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-lg transition-all ${
-              showDebugInfo
-                ? 'bg-white/20 border border-white/30'
-                : 'bg-black/40 border border-white/10 hover:bg-black/60'
-            }`}
-          >
-            <FiInfo className="text-white" />
-            {!showDebugInfo && (
-              <span className={`text-sm font-medium ${metadata.cached ? 'text-green-400' : 'text-yellow-400'}`}>
-                {metadata.cached ? 'Cached' : `${(metadata.generationTimeMs / 1000).toFixed(1)}s`}
-              </span>
-            )}
-          </button>
-
-          {showDebugInfo && (
-            <div className="mt-2 p-3 bg-black/80 backdrop-blur-lg rounded-lg border border-white/20 text-sm space-y-1 min-w-[200px]">
-              <div className="text-white font-medium truncate">{metadata.songTitle}</div>
-              <div className="text-gray-400">
-                Key: <span className="text-white">{metadata.key.toUpperCase()}</span>
-                {metadata.clef === 'bass' && <span className="text-gray-500 ml-1">(bass)</span>}
-              </div>
-              <div className="text-gray-400">
-                Status:{' '}
-                <span className={metadata.cached ? 'text-green-400' : 'text-yellow-400'}>
-                  {metadata.cached ? 'Cached' : 'Generated'}
-                </span>
-              </div>
-              <div className="text-gray-400">
-                Time: <span className="text-white">{metadata.generationTimeMs}ms</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Setlist Position Indicator */}
       {setlistNav && (
