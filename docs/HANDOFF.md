@@ -1,99 +1,110 @@
-# Session Handoff - Nov 30, 2025 (Night)
+# Session Handoff - Nov 30, 2025 (Late Night)
 
 ## Completed This Session
 
-**Multi-Context App Architecture:**
-- Shifted from single-hub (song list) to 4-context navigation
-- Bottom nav with: Browse, Spin (placeholder), Setlist, More
-- Each context is self-contained, nav is ubiquitous and minimal
+**Native iOS App via Capacitor:**
+- Added Capacitor to wrap React app as native iOS app
+- Created native Swift PDF viewer with PDFKit
+- Status bar now hides completely when viewing PDFs (the main goal!)
+- App deployed to TestFlight for beta testing
+- Bundle ID: `org.pianohouseproject.jazzpicker`
 
-**Header Redesign:**
-- Slim fixed header matching bottom nav style (h-14)
-- Layout: "Jazz Picker" (left) | Search bar 55% centered | Build date (right)
-- Auto-focus on search input
+**Native PDF Viewer Features:**
+- Full-screen mode with hidden status bar and home indicator
+- Auto-hiding controls (2s timeout)
+- Swipe gestures for setlist navigation
+- Native PDFKit rendering (smoother than PDF.js)
 
-**Song Card Improvements:**
-- Cleaner single-row layout: title + key pills
-- Tap card → opens PDF in default key
-- Hover (desktop) or long-press (touch) → reveals action buttons
-- Action buttons: Add to Setlist (+), Custom Key (♪)
-- Loading states: "Loading from cache..." or "Generating from LilyPond..."
-- Larger cards (~20% bigger), fewer per screen
-
-**PWA Fullscreen:**
-- `black-translucent` status bar style for true fullscreen
-- Safe area handling for notches
-- Fixed body prevents overscroll bounce
-
-**Menu Context:**
-- Cleaner settings page with instrument, about, sign out
-- Version info at bottom
+**Web App Improvements:**
+- Removed "cached" debug badge from PDF viewer bottom-left
+- API service detects native vs web and uses correct backend URL
 
 ---
 
 ## Current State
 
-**Live URLs:**
-- Frontend: https://pianohouseproject.org (soon: jazzpick.pianohouseproject.org)
-- Backend: https://jazz-picker.fly.dev
-
-**Navigation (Bottom Nav):**
-| Tab | Purpose |
-|-----|---------|
-| Browse | Search songs, view PDFs, add to setlist |
-| Spin | Random song mode (placeholder) |
-| Setlist | View/edit setlists |
-| More | Settings, about, sign out |
+**Distribution:**
+| Platform | URL/Method |
+|----------|------------|
+| Web | https://pianohouseproject.org |
+| iOS (TestFlight) | Jazz Picker app via TestFlight invite |
+| Backend API | https://jazz-picker.fly.dev |
 
 **What Works:**
-- 4-context navigation with bottom nav
-- Slim header with search
-- Song cards with hover/long-press actions
-- Add to Setlist modal
-- Setlist manager and viewer
-- Shareable setlist URLs
-- PDF viewer with setlist navigation
-- PWA fullscreen mode
-- Multi-instrument support
+- Native iOS app with true fullscreen PDF viewing
+- TestFlight distribution to testers
+- All existing web/PWA features
+- Automatic updates via TestFlight
+
+---
+
+## iOS Development Setup
+
+**Prerequisites:**
+- Xcode (from Mac App Store)
+- Apple Developer account ($99/year)
+- CocoaPods: `brew install ruby && gem install cocoapods`
+
+**Build & Run:**
+```bash
+cd frontend
+npm run build
+npx cap sync ios
+open ios/App/App.xcworkspace  # NOT .xcodeproj!
+# In Xcode: Select device, hit Play
+```
+
+**Deploy to TestFlight:**
+1. In Xcode: Select "Any iOS Device (arm64)"
+2. Product → Archive
+3. Distribute App → App Store Connect → Upload
+4. Wait ~15 min for processing
+5. Testers get automatic update notification
 
 ---
 
 ## What's Next
 
-**Priority (per UX_VISION.md):**
+**Priority:**
 1. Setlist Edit mode (drag-drop, search-to-add, key +/-)
 2. Spin the Dial context
-3. Browse → PDF navigation (arrows/swipe between songs)
-4. URL rename to jazzpick.pianohouseproject.org
+3. Native setlist navigation in PDF viewer (partially implemented)
+4. Offline/cached PDFs for gigs
 
-**Future Ideas:**
-- Offline/cached PDFs for gigs
-- Favorites (auditable, searchable)
-- Do Not Disturb mode for performances
+**iOS-Specific:**
+- Test setlist swipe navigation in native viewer
+- Consider native song list for even smoother scrolling
+- App Store submission (when ready for public release)
 
 ---
 
-## Key Files Changed
+## Key Files Added/Changed
 
 ```
-frontend/src/
-├── components/
-│   ├── BottomNav.tsx      # 4-context nav (browse, spin, setlist, menu)
-│   ├── Header.tsx         # Slim header with search
-│   ├── SongListItem.tsx   # Hover/long-press actions, loading states
-│   └── SongList.tsx       # 1-2 column layout
-├── App.tsx                # Context switching, Menu view
-└── index.css              # PWA fullscreen styles
-
-docs/
-└── UX_VISION.md           # Updated with multi-context architecture
+frontend/
+├── capacitor.config.ts           # Capacitor configuration
+├── ios/
+│   └── App/
+│       ├── App.xcworkspace       # Open this in Xcode!
+│       ├── App/
+│       │   ├── AppDelegate.swift      # Plugin registration
+│       │   ├── NativePDFPlugin.swift  # Capacitor bridge
+│       │   └── NativePDFViewController.swift  # Native PDF viewer
+│       ├── Podfile
+│       └── Podfile.lock
+├── src/
+│   ├── plugins/
+│   │   └── NativePDF.ts          # TypeScript plugin interface
+│   └── services/
+│       └── api.ts                # Native platform detection for API URL
 ```
 
 ---
 
 ## Technical Notes
 
-- `AppContext` type: `'browse' | 'spin' | 'setlist' | 'menu'`
-- Touch detection via `isTouch.current` ref to handle hover vs long-press
-- Build time hardcoded in Header (could be automated via Vite)
-- Cards use `cachedConcertKeys.includes()` to determine loading message
+- Plugin registration uses delayed dispatch in AppDelegate (0.5s) to ensure bridge is ready
+- Native viewer uses PDFKit with `usePageViewController` for smooth paging
+- `prefersStatusBarHidden` and `prefersHomeIndicatorAutoHidden` return true
+- Web viewer continues to work (fallback if native plugin fails)
+- API URL: Native app uses full `https://jazz-picker.fly.dev`, web uses relative URLs

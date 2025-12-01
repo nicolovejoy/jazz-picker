@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
 - **Backend**: Flask API (Python) deployed on Fly.io
 - **Frontend**: React + TypeScript + Vite application deployed on Vercel
+- **iOS App**: Native iOS app via Capacitor, distributed through TestFlight
 - **Storage**: AWS S3 for PDFs, SQLite catalog (downloaded from S3 on startup)
 
 The project serves ~735 songs with multiple variations per song (different keys, instruments, voice ranges) from Eric's lilypond lead sheets repository.
@@ -71,6 +72,35 @@ fly secrets set REQUIRE_AUTH=true
 fly secrets set AWS_ACCESS_KEY_ID=xxx
 fly secrets set AWS_SECRET_ACCESS_KEY=xxx
 ```
+
+### iOS Development (Capacitor)
+
+```bash
+cd frontend
+
+# Build web assets and sync to iOS
+npm run build
+npx cap sync ios
+
+# Open in Xcode (use .xcworkspace, NOT .xcodeproj!)
+open ios/App/App.xcworkspace
+
+# In Xcode:
+# - Select your device or "Any iOS Device (arm64)"
+# - Product → Run (for testing) or Product → Archive (for TestFlight)
+```
+
+**Prerequisites:**
+- Xcode (Mac App Store)
+- Apple Developer account ($99/year) for TestFlight
+- CocoaPods: `brew install ruby && gem install cocoapods`
+
+**TestFlight Deployment:**
+1. Select "Any iOS Device (arm64)" in Xcode
+2. Product → Archive
+3. Distribute App → App Store Connect → Upload
+4. Wait ~15 min for processing in App Store Connect
+5. Testers receive automatic update notifications
 
 ### Local Backend Development (Optional)
 
@@ -367,6 +397,37 @@ Outputs:
 - **Frontend**: Supabase auth (`AuthGate.tsx`)
 - **Backend**: Optional basic auth (disabled by default, controlled via `REQUIRE_AUTH`)
 
+### iOS Native App (Capacitor)
+
+The iOS app wraps the React frontend in a native shell, with a custom native PDF viewer for true fullscreen display.
+
+**Architecture:**
+```
+React App (WebView) ←→ Capacitor Bridge ←→ Native Swift Plugins
+```
+
+**Key Files:**
+- `frontend/capacitor.config.ts` - Capacitor configuration
+- `frontend/ios/App/App/AppDelegate.swift` - Plugin registration
+- `frontend/ios/App/App/NativePDFPlugin.swift` - Capacitor bridge for PDF viewer
+- `frontend/ios/App/App/NativePDFViewController.swift` - Native PDFKit viewer
+- `frontend/src/plugins/NativePDF.ts` - TypeScript interface for native plugin
+
+**Native PDF Viewer:**
+- Uses iOS PDFKit for smooth rendering
+- Hides status bar and home indicator (`prefersStatusBarHidden`)
+- Auto-hiding controls with 2s timeout
+- Swipe gestures for setlist navigation
+- Falls back to web viewer if native plugin unavailable
+
+**Platform Detection:**
+```typescript
+// In services/api.ts
+const BACKEND_URL = Capacitor.isNativePlatform()
+  ? 'https://jazz-picker.fly.dev'  // Native needs full URL
+  : '';                             // Web uses relative URLs
+```
+
 ## Infrastructure
 
 AWS resources are managed via Terraform in `infrastructure/`:
@@ -487,10 +548,21 @@ jazz-picker/
 │   ├── variables.tf
 │   └── outputs.tf
 └── frontend/
+    ├── capacitor.config.ts   # Capacitor configuration
+    ├── ios/                  # iOS native app (Capacitor)
+    │   └── App/
+    │       ├── App.xcworkspace  # Open this in Xcode!
+    │       ├── Podfile          # CocoaPods dependencies
+    │       └── App/
+    │           ├── AppDelegate.swift
+    │           ├── NativePDFPlugin.swift
+    │           └── NativePDFViewController.swift
     └── src/
         ├── App.tsx
         ├── components/
         ├── hooks/
+        ├── plugins/          # Capacitor plugin interfaces
+        │   └── NativePDF.ts
         ├── services/
         └── types/
 ```
