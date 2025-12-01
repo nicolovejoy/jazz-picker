@@ -26,7 +26,7 @@
 **Distribution:**
 | Platform | URL/Method |
 |----------|------------|
-| Web | https://pianohouseproject.org |
+| Web | https://jazzpicker.pianohouseproject.org |
 | iOS (TestFlight) | Jazz Picker app via TestFlight invite |
 | Backend API | https://jazz-picker.fly.dev |
 

@@ -26,10 +26,10 @@ export function AboutPage({ onClose }: AboutPageProps) {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">What is this?</h2>
             <p className="leading-relaxed">
-              Jazz Picker is a web app for browsing and viewing jazz lead sheets,
-              optimized for iPad music stands. It provides access to Eric's collection
-              of over 700 jazz standards, each available in multiple keys and for
-              different instruments (C, Bb, Eb, Bass clef).
+              Jazz Picker is an iPad-first web app for browsing and viewing jazz lead sheets
+              at the gig. It provides access to Eric's collection of over 735 jazz standards,
+              dynamically generated in any of the 12 concert keys for your specific instrument
+              and clef.
             </p>
           </section>
 
@@ -38,26 +38,43 @@ export function AboutPage({ onClose }: AboutPageProps) {
             <h2 className="text-lg font-semibold text-white mb-3">Features</h2>
             <ul className="space-y-2 list-disc list-inside">
               <li>Browse 735+ jazz standards</li>
-              <li>Generate charts in any key on demand</li>
-              <li>Filter by instrument (Concert, Bb, Eb, Bass)</li>
+              <li>Generate charts in any of the 12 concert keys on demand</li>
+              <li>Multi-instrument support (Piano, Trumpet, Alto Sax, Bass, and more)</li>
               <li>Search by song title</li>
-              <li>Gig setlist with swipe navigation</li>
+              <li>Create setlists for gigs with swipe navigation</li>
               <li>iPad-optimized PDF viewer with landscape side-by-side mode</li>
             </ul>
           </section>
 
+          {/* Native iOS App */}
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-3">Native iOS App (Recommended)</h2>
+            <p className="mb-4 leading-relaxed">
+              For the best experience with true fullscreen PDF viewing and hidden status bars,
+              join our TestFlight beta for the native iOS app.
+            </p>
+
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <p className="text-blue-300 mb-2 font-medium">🚀 Join TestFlight Beta</p>
+              <p className="text-sm text-gray-300">
+                Contact Nico for a TestFlight invite to get the native app with enhanced
+                iPad features and offline support.
+              </p>
+            </div>
+          </section>
+
           {/* Install as PWA */}
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">Install on iPad</h2>
+            <h2 className="text-lg font-semibold text-white mb-3">Add to Home Screen (Web)</h2>
             <p className="mb-4 leading-relaxed">
-              For the best experience, add Jazz Picker to your home screen.
-              This makes it work like a native app with full-screen viewing.
+              You can also use this web version as a progressive web app by adding it
+              to your home screen.
             </p>
 
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">1</span>
-                <p>Open <strong className="text-white">pianohouseproject.org</strong> in Safari</p>
+                <p>Open <strong className="text-white">jazzpicker.pianohouseproject.org</strong> in Safari</p>
               </div>
 
               <div className="flex gap-3">

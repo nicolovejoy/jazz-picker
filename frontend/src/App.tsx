@@ -11,6 +11,7 @@ import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
+import { WebBanner } from './components/WebBanner';
 import NativePDF from './plugins/NativePDF';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
@@ -64,6 +65,7 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
+  const [showWebBanner, setShowWebBanner] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -248,6 +250,9 @@ function App() {
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-20">
+      {/* Web Banner - shows only on web, dismissible */}
+      <WebBanner />
+
       {/* Header only shows on Browse context */}
       {activeContext === 'browse' && (
         <Header

@@ -212,7 +212,7 @@ def index():
             'cached_keys': '/api/v2/songs/{title}/cached',
             'generate': '/api/v2/generate',
         },
-        'frontend': 'https://pianohouseproject.org'
+        'frontend': 'https://jazzpicker.pianohouseproject.org'
     })
 
 

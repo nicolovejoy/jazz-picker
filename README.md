@@ -6,7 +6,7 @@ A modern web interface for browsing and viewing jazz lead sheets, optimized for 
 
 ## Live URLs
 
-- **Frontend:** https://pianohouseproject.org (soon: jazzpick.pianohouseproject.org)
+- **Frontend:** https://jazzpicker.pianohouseproject.org
 - **Backend API:** https://jazz-picker.fly.dev
 
 ## Features
