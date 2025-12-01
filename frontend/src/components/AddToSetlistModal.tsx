@@ -7,7 +7,7 @@ import type { SongSummary } from '@/types/catalog';
 interface AddToSetlistModalProps {
   song: SongSummary;
   onClose: () => void;
-  onAdded: () => void;
+  onAdded: (setlist: Setlist) => void;
 }
 
 export function AddToSetlistModal({ song, onClose, onAdded }: AddToSetlistModalProps) {
@@ -58,9 +58,10 @@ export function AddToSetlistModal({ song, onClose, onAdded }: AddToSetlistModalP
         song_title: song.title,
         concert_key: song.default_key
       });
-      // Show success state briefly
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onAdded();
+      const setlist = setlists.find(s => s.id === setlistId);
+      if (setlist) {
+        onAdded(setlist);
+      }
       onClose();
     } catch (error) {
       console.error('Failed to add song to setlist:', error);

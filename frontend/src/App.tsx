@@ -377,8 +377,9 @@ function App() {
         <AddToSetlistModal
           song={songToAdd}
           onClose={() => setSongToAdd(null)}
-          onAdded={() => {
-            // Optional: Show toast or feedback
+          onAdded={(setlist) => {
+            setActiveSetlist(setlist);
+            setActiveContext('setlist');
           }}
         />
       )}
