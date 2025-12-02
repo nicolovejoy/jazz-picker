@@ -178,15 +178,43 @@ function App() {
     }
   }, []);
 
+  // Use ref to access current setlistNav in callbacks without recreating handleOpenPdfUrl
+  const setlistNavRef = useRef(setlistNav);
+  useEffect(() => {
+    setlistNavRef.current = setlistNav;
+  }, [setlistNav]);
+
   const handleOpenPdfUrl = useCallback(async (url: string, metadata?: PdfMetadata) => {
     // On native iOS, use the native PDF viewer
     if (Capacitor.isNativePlatform()) {
       try {
+        const nav = setlistNavRef.current;
+
+        // Set up event listeners for setlist navigation before opening
+        let nextListener: { remove: () => void } | null = null;
+        let prevListener: { remove: () => void } | null = null;
+
+        if (nav) {
+          nextListener = await NativePDF.addListener('nextSong', () => {
+            nav.onNextSong();
+          });
+          prevListener = await NativePDF.addListener('prevSong', () => {
+            nav.onPrevSong();
+          });
+        }
+
         await NativePDF.open({
           url,
           title: metadata?.songTitle,
           key: metadata?.key,
+          setlistIndex: nav?.currentIndex,
+          setlistTotal: nav?.totalSongs,
         });
+
+        // Clean up listeners after viewer closes
+        nextListener?.remove();
+        prevListener?.remove();
+
         return; // Native viewer handles everything
       } catch (error) {
         console.error('[App] Native PDF error, falling back to web:', error);

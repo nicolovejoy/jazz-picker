@@ -47,20 +47,52 @@ class NativePDFViewController: UIViewController {
         return .all
     }
 
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: { _ in
+            self.updateDisplayMode(for: size)
+            self.updateScale()
+        })
+    }
+
+    // MARK: - Display Mode
+
+    private func updateDisplayMode(for size: CGSize? = nil) {
+        let targetSize = size ?? view.bounds.size
+        let isLandscape = targetSize.width > targetSize.height
+
+        if isLandscape {
+            // Two pages side-by-side in landscape
+            pdfView.displayMode = .twoUpContinuous
+        } else {
+            // Single page continuous allows horizontal swiping between pages
+            pdfView.displayMode = .singlePageContinuous
+        }
+    }
+
+    private func updateScale() {
+        guard pdfView.document != nil else { return }
+        // Scale up to fill screen (PDFs have margins we can crop into)
+        let baseFactor = pdfView.scaleFactorForSizeToFit
+        pdfView.scaleFactor = baseFactor * 1.05
+    }
+
     // MARK: - Setup
 
     private func setupUI() {
-        view.backgroundColor = .black
+        view.backgroundColor = .white
 
         // PDF View
         pdfView = PDFView()
         pdfView.translatesAutoresizingMaskIntoConstraints = false
-        pdfView.backgroundColor = .black
+        pdfView.backgroundColor = .white
         pdfView.autoScales = true
-        pdfView.displayMode = .singlePageContinuous
         pdfView.displayDirection = .horizontal
-        pdfView.usePageViewController(true, withViewOptions: nil)
+        pdfView.pageBreakMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         view.addSubview(pdfView)
+
+        // Set display mode based on current orientation
+        updateDisplayMode()
 
         NSLayoutConstraint.activate([
             pdfView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -120,6 +152,11 @@ class NativePDFViewController: UIViewController {
         tapGesture.numberOfTapsRequired = 1
         view.addGestureRecognizer(tapGesture)
 
+        // Swipe down to close
+        let downSwipe = UISwipeGestureRecognizer(target: self, action: #selector(closeTapped))
+        downSwipe.direction = .down
+        view.addGestureRecognizer(downSwipe)
+
         // Swipe gestures for setlist navigation
         if setlistIndex != nil {
             let leftSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
@@ -151,9 +188,7 @@ class NativePDFViewController: UIViewController {
                 DispatchQueue.main.async {
                     spinner.removeFromSuperview()
                     self?.pdfView.document = document
-
-                    // Auto-scale to fit
-                    self?.pdfView.scaleFactor = self?.pdfView.scaleFactorForSizeToFit ?? 1.0
+                    self?.updateScale()
                 }
             } else {
                 DispatchQueue.main.async {
