@@ -18,7 +18,11 @@ export function Header({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Skip auto-focus on touch devices (iPad, phones) to avoid keyboard popup
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    if (!isTouchDevice) {
+      inputRef.current?.focus();
+    }
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

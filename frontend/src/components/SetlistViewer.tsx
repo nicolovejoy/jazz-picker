@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowLeft, FiTrash2, FiLink, FiCheck } from 'react-icons/fi';
+import { Capacitor } from '@capacitor/core';
 import { api } from '@/services/api';
 import { useSetlist, useRemoveSetlistItem } from '@/hooks/useSetlists';
 import { formatKey, type Instrument } from '@/types/catalog';
@@ -16,6 +17,7 @@ interface SetlistViewerProps {
 
 interface CachedPdf {
   blobUrl: string;
+  originalUrl: string;  // S3 URL for native iOS (can't use blob URLs)
   metadata: PdfMetadata;
 }
 
@@ -77,12 +79,18 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                 instrument.label
               );
 
-              const response = await fetch(result.url);
-              const blob = await response.blob();
-              const blobUrl = URL.createObjectURL(blob);
+              // For native iOS, just store the S3 URL (PDFKit can't load blob URLs)
+              // For web, prefetch as blob for faster display
+              let blobUrl = '';
+              if (!Capacitor.isNativePlatform()) {
+                const response = await fetch(result.url);
+                const blob = await response.blob();
+                blobUrl = URL.createObjectURL(blob);
+              }
 
               pdfCache.current[index] = {
                 blobUrl,
+                originalUrl: result.url,
                 metadata: {
                   songTitle: item.song_title,
                   key: concertKey,
@@ -120,7 +128,9 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
     // Check cache first
     const cached = pdfCache.current[index];
     if (cached) {
-      onOpenPdfUrl(cached.blobUrl, cached.metadata);
+      // Use original S3 URL for native (PDFKit can't load blob URLs), blob for web
+      const url = Capacitor.isNativePlatform() ? cached.originalUrl : cached.blobUrl;
+      onOpenPdfUrl(url, cached.metadata);
       return;
     }
 
@@ -144,10 +154,6 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         instrument.label
       );
 
-      const response = await fetch(result.url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
       const metadata: PdfMetadata = {
         songTitle: item.song_title,
         key: concertKey,
@@ -156,9 +162,20 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         generationTimeMs: result.generation_time_ms,
       };
 
-      pdfCache.current[index] = { blobUrl, metadata };
+      // For native iOS, use S3 URL directly (PDFKit can't load blob URLs)
+      // For web, convert to blob for better caching
+      let blobUrl = '';
+      if (!Capacitor.isNativePlatform()) {
+        const response = await fetch(result.url);
+        const blob = await response.blob();
+        blobUrl = URL.createObjectURL(blob);
+      }
+
+      pdfCache.current[index] = { blobUrl, originalUrl: result.url, metadata };
       setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
-      onOpenPdfUrl(blobUrl, metadata);
+
+      const urlToOpen = Capacitor.isNativePlatform() ? result.url : blobUrl;
+      onOpenPdfUrl(urlToOpen, metadata);
     } catch (err) {
       console.error('Failed to load:', err);
       alert(`Could not load "${item.song_title}". Check if it exists in the catalog.`);
