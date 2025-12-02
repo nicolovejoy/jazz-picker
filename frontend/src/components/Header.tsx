@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 
-const BUILD_TIME = '2024-11-30 18:42';
+const BUILD_TIME = '2025-12-01';
 
 interface HeaderProps {
   searchQuery: string;
