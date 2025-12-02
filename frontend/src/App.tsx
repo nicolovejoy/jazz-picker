@@ -65,7 +65,6 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
-  const [showWebBanner, setShowWebBanner] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
