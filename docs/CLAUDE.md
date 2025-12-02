@@ -5,6 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
+
+**Primary Target: iPad Native App**
+The iPad native app must be gig-ready (used on stage at live performances). The web version just needs to work. When working on PDF viewing, prioritize `NativePDFViewController.swift` over the React `PDFViewer.tsx` component (web only).
 - **Backend**: Flask API (Python) deployed on Fly.io
 - **Frontend**: React + TypeScript + Vite application deployed on Vercel
 - **iOS App**: Native iOS app via Capacitor, distributed through TestFlight

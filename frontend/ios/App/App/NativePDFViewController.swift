@@ -73,9 +73,8 @@ class NativePDFViewController: UIViewController {
 
     private func updateScale() {
         guard pdfView.document != nil else { return }
-        // Scale up to fill screen (PDFs have margins we can crop into)
-        let baseFactor = pdfView.scaleFactorForSizeToFit
-        pdfView.scaleFactor = baseFactor * 1.05
+        // Use exact fit - crop bounds handle margin removal
+        pdfView.scaleFactor = pdfView.scaleFactorForSizeToFit
     }
 
     // MARK: - Setup
