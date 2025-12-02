@@ -1,4 +1,4 @@
-# Session Handoff - Nov 30, 2025 (Late Night)
+# Session Handoff - Dec 1, 2025
 
 ## Completed This Session
 
@@ -18,6 +18,9 @@
 **Web App Improvements:**
 - Removed "cached" debug badge from PDF viewer bottom-left
 - API service detects native vs web and uses correct backend URL
+- Dynamic build timestamp in header (to the minute)
+- TestFlight mention on login page
+- New subdomain: jazzpicker.pianohouseproject.org
 
 ---
 
@@ -35,6 +38,7 @@
 - TestFlight distribution to testers
 - All existing web/PWA features
 - Automatic updates via TestFlight
+- Dynamic build time in header
 
 ---
 
@@ -44,22 +48,30 @@
 - Xcode (from Mac App Store)
 - Apple Developer account ($99/year)
 - CocoaPods: `brew install ruby && gem install cocoapods`
+- Add pod to PATH: `export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"`
 
-**Build & Run:**
+**Build & Run on Device:**
 ```bash
 cd frontend
 npm run build
 npx cap sync ios
 open ios/App/App.xcworkspace  # NOT .xcodeproj!
-# In Xcode: Select device, hit Play
+# In Xcode: Select your iPad, hit Play
 ```
 
 **Deploy to TestFlight:**
-1. In Xcode: Select "Any iOS Device (arm64)"
+```bash
+cd frontend
+npm run build
+npx cap sync ios
+open ios/App/App.xcworkspace
+```
+Then in Xcode:
+1. Select "Any iOS Device (arm64)" from device dropdown
 2. Product → Archive
-3. Distribute App → App Store Connect → Upload
-4. Wait ~15 min for processing
-5. Testers get automatic update notification
+3. When Organizer opens: Distribute App → App Store Connect → Upload
+4. Wait ~15 min for processing in App Store Connect
+5. Testers get automatic update notification in TestFlight app
 
 ---
 
@@ -76,13 +88,17 @@ open ios/App/App.xcworkspace  # NOT .xcodeproj!
 - Consider native song list for even smoother scrolling
 - App Store submission (when ready for public release)
 
+**Pending:**
+- Eric's GitHub workflow failure (waiting for error details)
+
 ---
 
-## Key Files Added/Changed
+## Key Files
 
 ```
 frontend/
 ├── capacitor.config.ts           # Capacitor configuration
+├── vite.config.ts                # Build config (dynamic __BUILD_TIME__)
 ├── ios/
 │   └── App/
 │       ├── App.xcworkspace       # Open this in Xcode!
@@ -93,6 +109,9 @@ frontend/
 │       ├── Podfile
 │       └── Podfile.lock
 ├── src/
+│   ├── components/
+│   │   ├── Header.tsx            # Uses __BUILD_TIME__ for version display
+│   │   └── AuthGate.tsx          # Login page with TestFlight mention
 │   ├── plugins/
 │   │   └── NativePDF.ts          # TypeScript plugin interface
 │   └── services/
@@ -108,3 +127,4 @@ frontend/
 - `prefersStatusBarHidden` and `prefersHomeIndicatorAutoHidden` return true
 - Web viewer continues to work (fallback if native plugin fails)
 - API URL: Native app uses full `https://jazz-picker.fly.dev`, web uses relative URLs
+- Build time injected at build via Vite `define` in vite.config.ts
