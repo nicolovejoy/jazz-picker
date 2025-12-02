@@ -18,7 +18,15 @@ import time
 
 import db  # SQLite database module
 import json
-from crop_detector import detect_bounds
+
+# Crop detector is optional - may not be available in all environments
+try:
+    from crop_detector import detect_bounds
+    CROP_DETECTION_AVAILABLE = True
+except ImportError:
+    detect_bounds = None
+    CROP_DETECTION_AVAILABLE = False
+    print("⚠️  crop_detector not available - crop detection disabled")
 
 app = Flask(__name__)
 
@@ -545,14 +553,15 @@ def generate_pdf():
                 'details': error_text
             }), 500
 
-        # Detect crop bounds before uploading
+        # Detect crop bounds before uploading (if available)
         crop = None
-        try:
-            crop_bounds = detect_bounds(str(pdf_path))
-            if crop_bounds:
-                crop = crop_bounds.to_dict()
-        except Exception as e:
-            print(f"⚠️  Crop detection failed: {e}")
+        if CROP_DETECTION_AVAILABLE:
+            try:
+                crop_bounds = detect_bounds(str(pdf_path))
+                if crop_bounds:
+                    crop = crop_bounds.to_dict()
+            except Exception as e:
+                print(f"⚠️  Crop detection failed: {e}")
 
         # Upload to S3 if available
         if s3_client:
