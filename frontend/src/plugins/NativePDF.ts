@@ -1,12 +1,6 @@
 import { registerPlugin } from '@capacitor/core';
 import type { PluginListenerHandle } from '@capacitor/core';
-
-export interface CropBounds {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
-}
+import type { CropBounds } from '@/types/pdf';
 
 export interface NativePDFPlugin {
   open(options: {

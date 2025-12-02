@@ -18,13 +18,7 @@ import { useAuth } from './contexts/AuthContext';
 import { api } from './services/api';
 import { setlistService } from './services/setlistService';
 import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
-
-export interface CropBounds {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
-}
+import type { CropBounds } from '@/types/pdf';
 
 export interface PdfMetadata {
   songTitle: string;

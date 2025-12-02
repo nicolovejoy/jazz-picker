@@ -26,9 +26,8 @@ pip install -r requirements.txt
 python3 app.py
 # Runs on http://localhost:5001
 
-# Build/update catalog from lilypond files
-python3 build_catalog.py
-# Outputs: catalog.json (5.7MB) and catalog.db (SQLite)
+# Catalog is maintained via Eric's GitHub workflow
+# catalog.db is automatically rebuilt and uploaded to S3 when he pushes changes
 
 # Sync PDFs to S3 (Eric's workflow only)
 ./sync_pdfs_to_s3.sh         # Production sync
@@ -287,8 +286,14 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 **API Endpoints:**
 - `GET /api/v2/songs?limit=50&offset=0&q=search` - Paginated song list
 - `GET /api/v2/songs/:title/cached` - Get default key + cached concert keys from S3
-- `POST /api/v2/generate` - Generate PDF (see Data Model section above)
+- `POST /api/v2/generate` - Generate PDF with crop bounds (see Data Model section above)
 - `GET /health` - Health check
+
+**PDF Crop Detection:**
+- Uses PyMuPDF to detect content bounds after LilyPond generates PDF
+- Returns `crop: {top, bottom, left, right}` in generate response (points to trim)
+- Crop bounds stored in S3 object metadata for cached PDFs
+- iOS native viewer applies cropBox for tighter display
 
 **Environment Variables:**
 - `USE_S3=true` - Enable S3 integration
@@ -537,10 +542,10 @@ export function useEndpoint() {
 jazz-picker/
 ├── app.py                    # Flask backend
 ├── db.py                     # SQLite database access layer
-├── build_catalog.py          # Catalog generation
+├── crop_detector.py          # PDF content bounds detection (PyMuPDF)
 ├── catalog.db                # SQLite catalog (downloaded from S3)
 ├── fly.toml                  # Fly.io config
-├── Dockerfile.prod           # Production Docker (includes LilyPond)
+├── Dockerfile                # Production Docker (includes LilyPond)
 ├── .github/workflows/
 │   └── update-catalog.yml    # Reference copy of auto-refresh workflow
 ├── infrastructure/           # Terraform (AWS resources)
@@ -565,4 +570,7 @@ jazz-picker/
         │   └── NativePDF.ts
         ├── services/
         └── types/
+            ├── catalog.ts        # Song, instrument types
+            ├── pdf.ts            # CropBounds interface
+            └── setlist.ts        # Setlist types
 ```

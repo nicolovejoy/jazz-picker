@@ -1,10 +1,9 @@
-# Session Handoff - Dec 1, 2025
+# Session Handoff - Dec 2, 2025
 
 ## Just Completed
-- Native iOS app with Capacitor + TestFlight distribution
-- Full-screen PDF viewing (status bar hidden)
-- Dynamic build timestamp (PST)
-- Web subdomain: jazzpicker.pianohouseproject.org
+- Smart PDF crop detection (PyMuPDF backend, cropBox on iOS)
+- Native PDF viewer improvements (two-page landscape, swipe navigation)
+- Codebase cleanup (consolidated Dockerfile, shared CropBounds type)
 
 ## Current Stack
 | Component | Location |
@@ -22,8 +21,17 @@ open ios/App/App.xcworkspace
 # Xcode: "Any iOS Device (arm64)" → Product → Archive → Distribute
 ```
 
-## Pending
-- Eric's GitHub workflow failure (awaiting error details)
+## Recent Changes
+- `crop_detector.py` - Auto-detects PDF content bounds using PyMuPDF
+- `Dockerfile` - Renamed from Dockerfile.prod, now the only Dockerfile
+- `frontend/src/types/pdf.ts` - Shared CropBounds interface
+- iOS native viewer applies cropBox for tighter display
+
+## Clear S3 Cache
+After deploying crop detection, clear the S3 cache to regenerate PDFs with crop metadata:
+```bash
+aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
+```
 
 ## Next Up
 1. Setlist Edit mode (drag-drop, reorder, key +/-)

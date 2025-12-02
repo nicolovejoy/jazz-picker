@@ -20,6 +20,8 @@ import db  # SQLite database module
 import json
 
 # Crop detector is optional - may not be available in all environments
+# Note: This try/except may be cruft now that Dockerfile includes crop_detector.py
+# Kept for defensive coding in case of future deployment issues
 try:
     from crop_detector import detect_bounds
     CROP_DETECTION_AVAILABLE = True

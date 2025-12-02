@@ -5,7 +5,7 @@ app = "jazz-picker"
 primary_region = "iad"  # US East (Northern Virginia) - close to S3 us-east-1
 
 [build]
-  dockerfile = "Dockerfile.prod"
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "5001"
