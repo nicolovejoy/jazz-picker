@@ -7,10 +7,18 @@ const BACKEND_URL = Capacitor.isNativePlatform()
   : (import.meta.env.VITE_BACKEND_URL || '');
 const API_BASE = `${BACKEND_URL}/api`;
 
+export interface CropBounds {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
 export interface GenerateResponse {
   url: string;
   cached: boolean;
   generation_time_ms: number;
+  crop?: CropBounds;
 }
 
 export interface CachedKeysResponse {

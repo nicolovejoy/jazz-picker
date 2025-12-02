@@ -9,6 +9,7 @@ class NativePDFViewController: UIViewController {
     var songKey: String = ""
     var setlistIndex: Int?
     var setlistTotal: Int?
+    var cropBounds: CropBounds?
 
     var onClose: (() -> Void)?
     var onNextSong: (() -> Void)?
@@ -182,9 +183,30 @@ class NativePDFViewController: UIViewController {
         spinner.startAnimating()
         view.addSubview(spinner)
 
+        // Capture crop bounds for async block
+        let crop = self.cropBounds
+
         // Load PDF asynchronously
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             if let document = PDFDocument(url: url) {
+                // Apply crop bounds to each page if specified
+                if let crop = crop {
+                    for i in 0..<document.pageCount {
+                        if let page = document.page(at: i) {
+                            let mediaBox = page.bounds(for: .mediaBox)
+                            // Crop values are trim amounts from each edge
+                            // PDF coordinates have origin at bottom-left
+                            let croppedRect = CGRect(
+                                x: mediaBox.origin.x + crop.left,
+                                y: mediaBox.origin.y + crop.bottom,  // bottom in PDF = bottom trim
+                                width: mediaBox.width - crop.left - crop.right,
+                                height: mediaBox.height - crop.top - crop.bottom
+                            )
+                            page.setBounds(croppedRect, for: .cropBox)
+                        }
+                    }
+                }
+
                 DispatchQueue.main.async {
                     spinner.removeFromSuperview()
                     self?.pdfView.document = document

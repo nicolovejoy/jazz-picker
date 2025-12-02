@@ -97,6 +97,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                   clef: instrument.clef,
                   cached: result.cached,
                   generationTimeMs: result.generation_time_ms,
+                  crop: result.crop,
                 },
               };
 
@@ -160,6 +161,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         clef: instrument.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
       };
 
       // For native iOS, use S3 URL directly (PDFKit can't load blob URLs)

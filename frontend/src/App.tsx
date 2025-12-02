@@ -19,12 +19,20 @@ import { api } from './services/api';
 import { setlistService } from './services/setlistService';
 import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
 
+export interface CropBounds {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
 export interface PdfMetadata {
   songTitle: string;
   key: string;
   clef: string;
   cached: boolean;
   generationTimeMs: number;
+  crop?: CropBounds;
 }
 
 export interface SetlistNavigation {
@@ -209,6 +217,7 @@ function App() {
           key: metadata?.key,
           setlistIndex: nav?.currentIndex,
           setlistTotal: nav?.totalSongs,
+          crop: metadata?.crop,
         });
 
         // Clean up listeners after viewer closes
@@ -249,6 +258,7 @@ function App() {
         clef: instrument.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
       });
     } catch (error) {
       console.error('Failed to open song:', error);

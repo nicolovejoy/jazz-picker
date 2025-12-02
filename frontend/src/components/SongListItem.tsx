@@ -62,6 +62,7 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
         clef: instrument.clef,
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
       });
     } catch (err) {
       console.error('Failed to fetch PDF:', err);

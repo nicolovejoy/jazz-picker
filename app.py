@@ -17,6 +17,8 @@ import hashlib
 import time
 
 import db  # SQLite database module
+import json
+from crop_detector import detect_bounds
 
 app = Flask(__name__)
 
@@ -472,19 +474,33 @@ def generate_pdf():
     # Check if already cached in S3
     if s3_client:
         try:
-            s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
-            # Already exists - return presigned URL
+            head_response = s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
+            # Already exists - return presigned URL with crop metadata
             url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': S3_BUCKET, 'Key': s3_key},
                 ExpiresIn=900
             )
             generation_time = int((time.time() - start_time) * 1000)
-            return jsonify({
+
+            # Retrieve crop metadata if available
+            crop = None
+            metadata = head_response.get('Metadata', {})
+            if 'crop' in metadata:
+                try:
+                    crop = json.loads(metadata['crop'])
+                except:
+                    pass
+
+            response_data = {
                 'url': url,
                 'cached': True,
                 'generation_time_ms': generation_time
-            })
+            }
+            if crop:
+                response_data['crop'] = crop
+
+            return jsonify(response_data)
         except ClientError as e:
             if e.response['Error']['Code'] != '404':
                 print(f"⚠️  S3 error checking cache: {e}")
@@ -529,14 +545,28 @@ def generate_pdf():
                 'details': error_text
             }), 500
 
+        # Detect crop bounds before uploading
+        crop = None
+        try:
+            crop_bounds = detect_bounds(str(pdf_path))
+            if crop_bounds:
+                crop = crop_bounds.to_dict()
+        except Exception as e:
+            print(f"⚠️  Crop detection failed: {e}")
+
         # Upload to S3 if available
         if s3_client:
             try:
+                # Prepare metadata with crop bounds
+                extra_args = {'ContentType': 'application/pdf'}
+                if crop:
+                    extra_args['Metadata'] = {'crop': json.dumps(crop)}
+
                 s3_client.upload_file(
                     str(pdf_path),
                     S3_BUCKET,
                     s3_key,
-                    ExtraArgs={'ContentType': 'application/pdf'}
+                    ExtraArgs=extra_args
                 )
 
                 # Generate presigned URL
@@ -551,23 +581,31 @@ def generate_pdf():
                 pdf_path.unlink(missing_ok=True)
 
                 generation_time = int((time.time() - start_time) * 1000)
-                return jsonify({
+                response_data = {
                     'url': url,
                     'cached': False,
                     'generation_time_ms': generation_time
-                })
+                }
+                if crop:
+                    response_data['crop'] = crop
+
+                return jsonify(response_data)
             except Exception as e:
                 print(f"⚠️  Failed to upload to S3: {e}")
                 # Fall through to local file serving
 
         # No S3 - serve from local file (development mode)
         generation_time = int((time.time() - start_time) * 1000)
-        return jsonify({
+        response_data = {
             'url': f'/generated/{pdf_path.name}',
             'cached': False,
             'generation_time_ms': generation_time,
             'note': 'Local file (S3 not available)'
-        })
+        }
+        if crop:
+            response_data['crop'] = crop
+
+        return jsonify(response_data)
 
     except subprocess.TimeoutExpired:
         return jsonify({'error': 'LilyPond compilation timed out (60s limit)'}), 500
