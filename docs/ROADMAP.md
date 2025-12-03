@@ -38,6 +38,10 @@ Three contexts via bottom nav, plus Spin action:
 
 ## Priority Queue
 
+### In Progress
+- **bassKey + note ranges** - Extract note ranges from core files using python-ly, add to catalog, enable proper bass clef octave calculation
+
+### Up Next
 1. **Setlist Edit mode** - drag-drop, reorder, key +/−
 2. **Offline PDF caching**
 3. **Pre-cache setlist PDFs on app load**
@@ -115,4 +119,4 @@ CREATE TABLE singers (
 
 ---
 
-_Last updated: 2025-12-02_
+_Last updated: 2025-12-03_

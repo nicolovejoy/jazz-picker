@@ -4,10 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+!!! Eric is spelled with a C and not a K in this repository, always! !!!
+
 Jazz Picker is a modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands. It consists of:
 
 **Primary Target: iPad Native App**
 The iPad native app must be gig-ready (used on stage at live performances). The web version just needs to work. When working on PDF viewing, prioritize `NativePDFViewController.swift` over the React `PDFViewer.tsx` component (web only).
+
 - **Backend**: Flask API (Python) deployed on Fly.io
 - **Frontend**: React + TypeScript + Vite application deployed on Vercel
 - **iOS App**: Native iOS app via Capacitor, distributed through TestFlight
@@ -93,11 +96,13 @@ open ios/App/App.xcworkspace
 ```
 
 **Prerequisites:**
+
 - Xcode (Mac App Store)
 - Apple Developer account ($99/year) for TestFlight
 - CocoaPods: `brew install ruby && gem install cocoapods`
 
 **TestFlight Deployment:**
+
 1. Select "Any iOS Device (arm64)" in Xcode
 2. Product → Archive
 3. Distribute App → App Store Connect → Upload
@@ -118,11 +123,11 @@ Understanding how keys and transpositions work is essential for this codebase.
 
 ### Terminology
 
-| Term | Definition | Example |
-|------|------------|---------|
-| **Concert Key** | The key the audience hears. The "real" key. Always stored in DB/API/S3. | "Let's play in concert Eb" |
-| **Written Key** | What appears on the chart for a specific instrument | Trumpet chart shows "F" |
-| **Transposition** | The instrument category: C, Bb, Eb, or Bass | Trumpet is "Bb" |
+| Term              | Definition                                                              | Example                    |
+| ----------------- | ----------------------------------------------------------------------- | -------------------------- |
+| **Concert Key**   | The key the audience hears. The "real" key. Always stored in DB/API/S3. | "Let's play in concert Eb" |
+| **Written Key**   | What appears on the chart for a specific instrument                     | Trumpet chart shows "F"    |
+| **Transposition** | The instrument category: C, Bb, Eb, or Bass                             | Trumpet is "Bb"            |
 
 ### The Math
 
@@ -139,18 +144,19 @@ Concert Eb:
 
 If a band wants to play "Blue Bossa" in **concert Cm**, everyone plays together but sees different charts:
 
-| Player | Instrument | Transposition | Written Key | Clef |
-|--------|------------|---------------|-------------|------|
-| Piano | C | - | Cm | Treble |
-| Trumpet | Bb | +M2 | Dm | Treble |
-| Alto Sax | Eb | +M6 | Am | Treble |
-| Bass | C | - | Cm | Bass |
+| Player   | Instrument | Transposition | Written Key | Clef   |
+| -------- | ---------- | ------------- | ----------- | ------ |
+| Piano    | C          | -             | Cm          | Treble |
+| Trumpet  | Bb         | +M2           | Dm          | Treble |
+| Alto Sax | Eb         | +M6           | Am          | Treble |
+| Bass     | C          | -             | Cm          | Bass   |
 
 ---
 
 ## User Experience Design
 
 ### User Setup
+
 1. User signs up, picks instrument from fixed list (Trumpet, Alto Sax, Piano, etc.)
 2. Instrument determines transposition and clef automatically
 3. No separate instrument filter in header - user's instrument is the single source of truth
@@ -159,48 +165,58 @@ If a band wants to play "Blue Bossa" in **concert Cm**, everyone plays together 
 
 ```typescript
 const INSTRUMENTS = [
-  { id: 'piano',       label: 'Piano',       transposition: 'C',  clef: 'treble' },
-  { id: 'guitar',      label: 'Guitar',      transposition: 'C',  clef: 'treble' },
-  { id: 'trumpet',     label: 'Trumpet',     transposition: 'Bb', clef: 'treble' },
-  { id: 'clarinet',    label: 'Clarinet',    transposition: 'Bb', clef: 'treble' },
-  { id: 'tenor-sax',   label: 'Tenor Sax',   transposition: 'Bb', clef: 'treble' },
-  { id: 'soprano-sax', label: 'Soprano Sax', transposition: 'Bb', clef: 'treble' },
-  { id: 'alto-sax',    label: 'Alto Sax',    transposition: 'Eb', clef: 'treble' },
-  { id: 'bari-sax',    label: 'Bari Sax',    transposition: 'Eb', clef: 'treble' },
-  { id: 'bass',        label: 'Bass',        transposition: 'C',  clef: 'bass' },
-  { id: 'trombone',    label: 'Trombone',    transposition: 'C',  clef: 'bass' },
+  { id: "piano", label: "Piano", transposition: "C", clef: "treble" },
+  { id: "guitar", label: "Guitar", transposition: "C", clef: "treble" },
+  { id: "trumpet", label: "Trumpet", transposition: "Bb", clef: "treble" },
+  { id: "clarinet", label: "Clarinet", transposition: "Bb", clef: "treble" },
+  { id: "tenor-sax", label: "Tenor Sax", transposition: "Bb", clef: "treble" },
+  {
+    id: "soprano-sax",
+    label: "Soprano Sax",
+    transposition: "Bb",
+    clef: "treble",
+  },
+  { id: "alto-sax", label: "Alto Sax", transposition: "Eb", clef: "treble" },
+  { id: "bari-sax", label: "Bari Sax", transposition: "Eb", clef: "treble" },
+  { id: "bass", label: "Bass", transposition: "C", clef: "bass" },
+  { id: "trombone", label: "Trombone", transposition: "C", clef: "bass" },
 ];
 ```
 
 ### Browsing Songs
+
 - User sees list of all 735 songs
 - Search by title
 - No instrument filter dropdown (removed)
 - Header shows current instrument with hover hint: "Change in Settings"
 
 ### Song Card Display
+
 - Song title
 - Key pills showing **concert keys** that are cached for user's transposition
 - Plus button to generate in custom concert key
 - Default key comes from catalog (original key of the tune)
 
 ### Song Card Interactions
-| Click Target | Action |
-|--------------|--------|
-| Song title | Load PDF in default concert key |
-| Cached key pill | Load PDF in that concert key |
-| Plus button | Open key picker to generate in custom concert key |
+
+| Click Target    | Action                                            |
+| --------------- | ------------------------------------------------- |
+| Song title      | Load PDF in default concert key                   |
+| Cached key pill | Load PDF in that concert key                      |
+| Plus button     | Open key picker to generate in custom concert key |
 
 ### Key Display (PDF Header, Key Picker)
-| User's Transposition | Display for Concert Eb |
-|----------------------|------------------------|
-| C (Piano) | `Eb` |
-| Bb (Trumpet) | `F for Trumpet (Concert Eb)` |
-| Eb (Alto Sax) | `C for Alto Sax (Concert Eb)` |
+
+| User's Transposition | Display for Concert Eb        |
+| -------------------- | ----------------------------- |
+| C (Piano)            | `Eb`                          |
+| Bb (Trumpet)         | `F for Trumpet (Concert Eb)`  |
+| Eb (Alto Sax)        | `C for Alto Sax (Concert Eb)` |
 
 Format for transposing instruments: `{written_key} for {instrument_label} (Concert {concert_key})`
 
 ### Setlists
+
 - Store song title + concert key
 - Each band member sees their own transposition
 - Shareable (future feature)
@@ -218,6 +234,7 @@ All PDFs are dynamically generated and cached in S3.
 ```
 
 **Examples:**
+
 - `a-felicidade-a-C-treble.pdf` (Concert A, for piano)
 - `a-felicidade-a-Bb-treble.pdf` (Concert A, for trumpet)
 - `a-felicidade-a-Eb-treble.pdf` (Concert A, for alto sax)
@@ -227,6 +244,7 @@ All PDFs are dynamically generated and cached in S3.
 ### Query Pattern
 
 To find cached concert keys for a song + transposition:
+
 ```
 Prefix: {song-slug}-
 Filter: files matching *-{transposition}-{clef}.pdf
@@ -273,6 +291,7 @@ Backend calculates written key and passes to LilyPond.
 **Goal:** Immersive, distraction-free sheet music viewing like forScore.
 
 **Requirements (all implemented):**
+
 - Full bleed - White PDF extends edge-to-edge, minimal chrome
 - No status bar - Time/battery/wifi hidden on iOS
 - Landscape: Two pages side-by-side | Portrait: Single page fills screen
@@ -287,18 +306,45 @@ Eric's lilypond-lead-sheets repo uses a three-layer system:
 
 1. **Core files** (`Core/*.ly`) - The actual music in a reference key
 2. **Include files** (`Include/*.ily`) - Shared transposition/layout logic
-3. **Wrapper files** (`Wrappers/*.ly`) - Set variables, include the core:
+3. **Wrapper files** (`Wrappers/*.ly`) - Set variables, include the core
+
+### Wrapper Variables
+
+Jazz Picker generates wrapper files dynamically in `app.py:generate_wrapper_content()`:
+
+| Variable     | Description                            | Example                                    |
+| ------------ | -------------------------------------- | ------------------------------------------ |
+| `instrument` | Label for PDF subtitle                 | `"Trumpet"`                                |
+| `whatKey`    | Target key for melody transposition    | `f` (treble), `f,` (bass, one octave down) |
+| `whatClef`   | Staff clef                             | `"treble"` or `"bass"`                     |
+| `bassKey`    | Target key for bass line transposition | Same as `whatKey` for treble clef          |
+
+**Octave markers in LilyPond:**
+
+- No marker = middle octave (C below middle C to B below middle C)
+- `'` (apostrophe) = one octave up
+- `,` (comma) = one octave down
+- Example: `a` vs `a,` vs `a'`
+
+### Transposition Logic
+
+`refrain.ily` contains:
 
 ```lilypond
-instrument = "Bb for Standard Key"
-whatKey = b           % Target key
-whatClef = "treble"
-\include "../Core/502 Blues - Ly Core - Am.ly"
+\transpose \refrainKey \whatKey { \refrainMelody }   % Main melody
+\transpose \refrainKey \bassKey { \refrainBass }    % Bass line (if present)
 ```
 
-**The magic:** `refrain.ily` contains `\transpose \refrainKey \whatKey` which transposes from reference key to any target.
+**Key rules:**
 
-**Integration:** LilyPond runs directly in the Fly.io Docker container (~200MB). PDFs generate on-demand (~2-5s) and cache in S3.
+- Treble clef: `bassKey = whatKey` (same octave)
+- Bass clef: `whatKey` includes octave marker (e.g., `a,`), `bassKey` is the pitch class without octave
+
+### Integration
+
+LilyPond runs directly in the Fly.io Docker container (~200MB). PDFs generate on-demand (~2-5s) and cache in S3.
+
+**Reference:** See `lilypond-data/Wrappers/makesheet.py` for Eric's octave calculation logic based on instrument ranges.
 
 ---
 
@@ -315,12 +361,14 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 ### Backend (`app.py`)
 
 **Key Responsibilities:**
+
 - Serve paginated song list with search
 - Return cached keys for a song (queries S3)
 - Generate PDFs dynamically via LilyPond
 - Cache generated PDFs in S3
 
 **API Endpoints:**
+
 - `GET /api/v2/catalog` - Full catalog (all 735 songs, ~15KB) for navigation
 - `GET /api/v2/songs?limit=50&offset=0&q=search` - Paginated song list
 - `GET /api/v2/songs/:title/cached` - Get default key + cached concert keys from S3
@@ -328,12 +376,14 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - `GET /health` - Health check
 
 **PDF Crop Detection:**
+
 - Uses PyMuPDF to detect content bounds after LilyPond generates PDF
 - Returns `crop: {top, bottom, left, right}` in generate response (points to trim)
 - Crop bounds stored in S3 object metadata for cached PDFs
 - iOS native viewer applies cropBox for tighter display
 
 **Environment Variables:**
+
 - `USE_S3=true` - Enable S3 integration
 - `S3_BUCKET_NAME=jazz-picker-pdfs`
 - `S3_REGION=us-east-1`
@@ -341,6 +391,7 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - `BASIC_AUTH_USERNAME`, `BASIC_AUTH_PASSWORD` - Auth credentials
 
 **Data Loading:**
+
 1. Downloads `catalog.db` (SQLite) from S3 on startup
 2. Falls back to local file if S3 unavailable
 3. Uses `db.py` module for all database queries
@@ -349,12 +400,14 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 ### Frontend (`frontend/src/`)
 
 **Architecture Pattern:**
+
 - Component-based React with TypeScript
 - React Query for server state management
 - Tailwind CSS for styling
 - Custom hooks for data fetching
 
 **Key Components:**
+
 - `App.tsx` - Main application orchestrator with infinite scroll and search
 - `AuthGate.tsx` - Supabase sign in/up
 - `WelcomeScreen.tsx` - Instrument selection (from fixed list)
@@ -377,43 +430,51 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - `SettingsMenu.tsx` - Change instrument, logout
 
 **State Management:**
+
 - React Query for server data (songs, cached keys, PDF URLs)
 - React `useState` for UI state (search query)
 - LocalStorage for user instrument preference
 - Smart prefetching: next page of songs loaded ahead of user scroll
 
 **API Service (`services/api.ts`):**
+
 - `getSongsV2()` - Paginated song list with search
 - `getCachedKeys()` - Default key + cached concert keys for a song
 - `generatePDF()` - Generate/fetch PDF
 
 **Types (`types/catalog.ts`):**
+
 - `SongSummary` - title, default_key, default_clef
 - `InstrumentType`: 'C' | 'Bb' | 'Eb' | 'Bass'
 
 ### Catalog Generation (`build_catalog.py`)
 
 Scans `lilypond-data/Wrappers/*.ly` files and extracts:
+
 - Song title
 - Default concert key
 - Core file reference
 
 Outputs:
+
 - `catalog.db` - SQLite database with songs table
 
 **Important Logic:**
+
 - 729/735 songs have 1 core file
 - 6 songs have 2 core files (alternative keys, guitar solos, bass lines)
 
 ### Data Flow
 
 **Song Browsing:**
+
 1. User searches in Header
 2. App fetches songs via API
 3. React Query prefetches next page as user scrolls
 4. Intersection Observer triggers page increment when scroll reaches bottom
 
 **PDF Viewing:**
+
 1. User taps song title or key pill
 2. Frontend calls `/api/v2/generate` with song + concert key + user's transposition
 3. Backend checks S3 cache, generates if needed, returns presigned URL
@@ -422,12 +483,14 @@ Outputs:
 ## Important Implementation Details
 
 ### Frontend Infinite Scroll
+
 - Uses `IntersectionObserver` to detect scroll position
 - Prefetches next page when user approaches bottom (threshold: 0.1)
 - Accumulates songs across pages in state array
 - Resets on search change
 
 ### PDF Viewer Modes
+
 - **Portrait**: Single-page view, swipe vertical
 - **Landscape**: Side-by-side two pages, swipe horizontal
 - **Clean Mode**: Auto-hides navigation after 2s of no interaction
@@ -435,12 +498,14 @@ Outputs:
 - **Touch**: Pinch zoom, swipe gestures, tap top 20% to toggle nav
 
 ### S3 Integration
+
 - All PDFs are dynamically generated and cached
 - Naming: `{song-slug}-{concert-key}-{transposition}-{clef}.pdf`
 - Presigned URLs expire after 15 minutes
 - Backend handles cache check + generation + URL generation
 
 ### Authentication
+
 - **Frontend**: Supabase auth (`AuthGate.tsx`)
 - **Backend**: Optional basic auth (disabled by default, controlled via `REQUIRE_AUTH`)
 
@@ -449,11 +514,13 @@ Outputs:
 The iOS app wraps the React frontend in a native shell, with a custom native PDF viewer for true fullscreen display.
 
 **Architecture:**
+
 ```
 React App (WebView) ←→ Capacitor Bridge ←→ Native Swift Plugins
 ```
 
 **Key Files:**
+
 - `frontend/capacitor.config.ts` - Capacitor configuration
 - `frontend/ios/App/App/AppDelegate.swift` - Plugin registration
 - `frontend/ios/App/App/NativePDFPlugin.swift` - Capacitor bridge for PDF viewer
@@ -461,6 +528,7 @@ React App (WebView) ←→ Capacitor Bridge ←→ Native Swift Plugins
 - `frontend/src/plugins/NativePDF.ts` - TypeScript interface for native plugin
 
 **Native PDF Viewer:**
+
 - Uses iOS PDFKit for smooth rendering
 - Hides status bar and home indicator (`prefersStatusBarHidden`)
 - Auto-hiding controls with 2s timeout
@@ -468,11 +536,12 @@ React App (WebView) ←→ Capacitor Bridge ←→ Native Swift Plugins
 - Falls back to web viewer if native plugin unavailable
 
 **Platform Detection:**
+
 ```typescript
 // In services/api.ts
 const BACKEND_URL = Capacitor.isNativePlatform()
-  ? 'https://jazz-picker.fly.dev'  // Native needs full URL
-  : '';                             // Web uses relative URLs
+  ? "https://jazz-picker.fly.dev" // Native needs full URL
+  : ""; // Web uses relative URLs
 ```
 
 ## Infrastructure
@@ -487,17 +556,20 @@ terraform apply
 ```
 
 **Managed resources:**
+
 - S3 bucket (`jazz-picker-pdfs`)
 - IAM user (`jazz-picker-api`) with read + write (generated/ only) policies
 - GitHub OIDC provider + IAM role (`jazz-picker-catalog-updater`) for auto-refresh workflow
 
 **Not managed by Terraform:**
+
 - Fly.io (uses `fly.toml` + `fly secrets`)
 - IAM access keys (stored as Fly secrets)
 
 ### Auto-Refresh Catalog
 
 When Eric pushes changes to `neonscribe/lilypond-lead-sheets`, a GitHub Action automatically:
+
 1. Rebuilds `catalog.db` from the lilypond files
 2. Uploads to S3 (using OIDC - no stored AWS credentials)
 3. Restarts the Fly app to load the new catalog
@@ -505,6 +577,7 @@ When Eric pushes changes to `neonscribe/lilypond-lead-sheets`, a GitHub Action a
 The workflow lives in Eric's repo. A reference copy is in `.github/workflows/update-catalog.yml`.
 
 **Manual refresh:**
+
 ```bash
 python3 build_catalog.py
 aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
@@ -533,6 +606,7 @@ fly apps restart jazz-picker
 ### Adding a New API Endpoint
 
 1. Add endpoint handler in `app.py`:
+
 ```python
 @app.route('/api/v2/endpoint', methods=['GET'])
 @requires_auth
@@ -544,6 +618,7 @@ def endpoint_handler():
 2. Add TypeScript types in `frontend/src/types/catalog.ts`
 
 3. Add API method in `frontend/src/services/api.ts`:
+
 ```typescript
 async getEndpoint(): Promise<ResponseType> {
   const response = await fetch(`${API_BASE}/v2/endpoint`);
@@ -553,10 +628,11 @@ async getEndpoint(): Promise<ResponseType> {
 ```
 
 4. Create React Query hook in `frontend/src/hooks/`:
+
 ```typescript
 export function useEndpoint() {
   return useQuery({
-    queryKey: ['endpoint'],
+    queryKey: ["endpoint"],
     queryFn: () => api.getEndpoint(),
   });
 }
