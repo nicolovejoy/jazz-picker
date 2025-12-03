@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowLeft, FiTrash2, FiLink, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiLink, FiCheck, FiWifiOff, FiDownload } from 'react-icons/fi';
 import { Capacitor } from '@capacitor/core';
 import { api } from '@/services/api';
 import { useSetlist, useRemoveSetlistItem } from '@/hooks/useSetlists';
 import { formatKey, type Instrument } from '@/types/catalog';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Setlist, SetlistItem } from '@/types/setlist';
+import NativePDFCache from '@/plugins/NativePDFCache';
+import NativePDF, { type PDFItem } from '@/plugins/NativePDF';
+import { buildCacheKey } from '@/utils/pdfCache';
 
 interface SetlistViewerProps {
   setlist: Setlist;
@@ -18,6 +21,7 @@ interface SetlistViewerProps {
 interface CachedPdf {
   blobUrl: string;
   originalUrl: string;  // S3 URL for native iOS (can't use blob URLs)
+  localPath?: string;   // Local file path if cached to disk (iOS only)
   metadata: PdfMetadata;
 }
 
@@ -26,18 +30,34 @@ interface ResolvedSongInfo {
   concertKey: string;
 }
 
+// Note: Cache age threshold (7 days) is handled in the Swift plugin (NativePDFCachePlugin)
+
 export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav, onBack }: SetlistViewerProps) {
   const [loading, setLoading] = useState<number | null>(null);
   const [prefetchStatus, setPrefetchStatus] = useState<Record<number, 'pending' | 'loading' | 'done' | 'error'>>({});
+  const [diskCacheStatus, setDiskCacheStatus] = useState<Record<number, boolean>>({});  // Track which items are cached to disk
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [resolvedInfo, setResolvedInfo] = useState<Record<number, ResolvedSongInfo>>({});
   const [copied, setCopied] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { data: setlistWithItems, isLoading: isLoadingItems } = useSetlist(setlist.id);
   const removeItem = useRemoveSetlistItem();
 
   // In-memory cache of PDF blobs
   const pdfCache = useRef<Record<number, CachedPdf>>({});
+
+  // Track network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const items = setlistWithItems?.items || [];
 
@@ -50,6 +70,8 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
       const initialStatus: Record<number, 'pending' | 'loading' | 'done' | 'error'> = {};
       items.forEach((_, i) => { initialStatus[i] = 'pending'; });
       setPrefetchStatus(initialStatus);
+
+      const isNative = Capacitor.isNativePlatform();
 
       // Prefetch in parallel (batches of 4)
       const batchSize = 4;
@@ -71,35 +93,87 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
               // Store resolved info for display
               setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 
-              const result = await api.generatePDF(
-                item.song_title,
-                concertKey,
-                instrument.transposition,
-                instrument.clef,
-                instrument.label
-              );
+              const cacheKey = buildCacheKey(item.song_title, concertKey, instrument.transposition, instrument.clef);
 
-              // For native iOS, just store the S3 URL (PDFKit can't load blob URLs)
-              // For web, prefetch as blob for faster display
-              let blobUrl = '';
-              if (!Capacitor.isNativePlatform()) {
+              // On iOS, check disk cache first
+              if (isNative) {
+                const diskCache = await NativePDFCache.getCachedPath({ cacheKey });
+
+                if (diskCache.path && !diskCache.isStale) {
+                  // Use cached file - it's fresh
+                  pdfCache.current[index] = {
+                    blobUrl: '',
+                    originalUrl: '',
+                    localPath: diskCache.path,
+                    metadata: {
+                      songTitle: item.song_title,
+                      key: concertKey,
+                      clef: instrument.clef,
+                      cached: true,
+                      generationTimeMs: 0,
+                      crop: diskCache.crop,
+                    },
+                  };
+                  setDiskCacheStatus(prev => ({ ...prev, [index]: true }));
+                  setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
+                  return;
+                }
+
+                // Need to fetch from server (either not cached or stale)
+                const result = await api.generatePDF(
+                  item.song_title,
+                  concertKey,
+                  instrument.transposition,
+                  instrument.clef,
+                  instrument.label
+                );
+
+                // Download and cache to disk
+                const downloadResult = diskCache.path && diskCache.isStale
+                  ? await NativePDFCache.refreshPdf({ url: result.url, cacheKey, crop: result.crop })
+                  : await NativePDFCache.downloadPdf({ url: result.url, cacheKey, crop: result.crop });
+
+                pdfCache.current[index] = {
+                  blobUrl: '',
+                  originalUrl: result.url,
+                  localPath: downloadResult.path,
+                  metadata: {
+                    songTitle: item.song_title,
+                    key: concertKey,
+                    clef: instrument.clef,
+                    cached: result.cached,
+                    generationTimeMs: result.generation_time_ms,
+                    crop: result.crop,
+                  },
+                };
+                setDiskCacheStatus(prev => ({ ...prev, [index]: true }));
+              } else {
+                // Web: use in-memory blob cache (existing behavior)
+                const result = await api.generatePDF(
+                  item.song_title,
+                  concertKey,
+                  instrument.transposition,
+                  instrument.clef,
+                  instrument.label
+                );
+
                 const response = await fetch(result.url);
                 const blob = await response.blob();
-                blobUrl = URL.createObjectURL(blob);
-              }
+                const blobUrl = URL.createObjectURL(blob);
 
-              pdfCache.current[index] = {
-                blobUrl,
-                originalUrl: result.url,
-                metadata: {
-                  songTitle: item.song_title,
-                  key: concertKey,
-                  clef: instrument.clef,
-                  cached: result.cached,
-                  generationTimeMs: result.generation_time_ms,
-                  crop: result.crop,
-                },
-              };
+                pdfCache.current[index] = {
+                  blobUrl,
+                  originalUrl: result.url,
+                  metadata: {
+                    songTitle: item.song_title,
+                    key: concertKey,
+                    clef: instrument.clef,
+                    cached: result.cached,
+                    generationTimeMs: result.generation_time_ms,
+                    crop: result.crop,
+                  },
+                };
+              }
 
               setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
             } catch (err) {
@@ -115,7 +189,9 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
 
     return () => {
       Object.values(pdfCache.current).forEach(cached => {
-        URL.revokeObjectURL(cached.blobUrl);
+        if (cached.blobUrl) {
+          URL.revokeObjectURL(cached.blobUrl);
+        }
       });
     };
   }, [items, instrument]);
@@ -123,22 +199,44 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   const loadSong = useCallback(async (index: number) => {
     if (index < 0 || index >= items.length) return;
 
-    const item = items[index];
+    const isNative = Capacitor.isNativePlatform();
     setCurrentIndex(index);
 
-    // Check cache first
+    if (isNative) {
+      // Native: Use openSetlist with all PDFs for fast internal navigation
+      const pdfItems: PDFItem[] = items.map((item, i) => {
+        const cached = pdfCache.current[i];
+        const info = resolvedInfo[i];
+        return {
+          localPath: cached?.localPath,
+          remoteUrl: cached?.originalUrl,
+          title: item.song_title,
+          key: info?.concertKey || item.concert_key || '',
+          crop: cached?.metadata.crop,
+        };
+      });
+
+      try {
+        await NativePDF.openSetlist({ items: pdfItems, startIndex: index });
+      } catch (err) {
+        console.error('Failed to open setlist viewer:', err);
+        alert('Failed to open PDF viewer');
+      }
+      return;
+    }
+
+    // Web: Use single PDF mode (existing behavior)
+    const item = items[index];
     const cached = pdfCache.current[index];
+
     if (cached) {
-      // Use original S3 URL for native (PDFKit can't load blob URLs), blob for web
-      const url = Capacitor.isNativePlatform() ? cached.originalUrl : cached.blobUrl;
-      onOpenPdfUrl(url, cached.metadata);
+      onOpenPdfUrl(cached.blobUrl, cached.metadata);
       return;
     }
 
     setLoading(index);
 
     try {
-      // Use stored concert_key if available, otherwise fetch default
       let concertKey = item.concert_key;
       if (!concertKey) {
         const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
@@ -164,27 +262,20 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         crop: result.crop,
       };
 
-      // For native iOS, use S3 URL directly (PDFKit can't load blob URLs)
-      // For web, convert to blob for better caching
-      let blobUrl = '';
-      if (!Capacitor.isNativePlatform()) {
-        const response = await fetch(result.url);
-        const blob = await response.blob();
-        blobUrl = URL.createObjectURL(blob);
-      }
+      const response = await fetch(result.url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
 
       pdfCache.current[index] = { blobUrl, originalUrl: result.url, metadata };
       setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
-
-      const urlToOpen = Capacitor.isNativePlatform() ? result.url : blobUrl;
-      onOpenPdfUrl(urlToOpen, metadata);
+      onOpenPdfUrl(blobUrl, metadata);
     } catch (err) {
       console.error('Failed to load:', err);
       alert(`Could not load "${item.song_title}". Check if it exists in the catalog.`);
     } finally {
       setLoading(null);
     }
-  }, [items, instrument, onOpenPdfUrl]);
+  }, [items, instrument, onOpenPdfUrl, resolvedInfo]);
 
   // Update navigation callbacks when currentIndex changes
   useEffect(() => {
@@ -260,6 +351,13 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
           </button>
         </div>
 
+        {!isOnline && (
+          <div className="flex items-center gap-2 p-3 mb-4 bg-yellow-500/20 border border-yellow-500/40 rounded-lg text-yellow-200 text-sm">
+            <FiWifiOff className="flex-shrink-0" />
+            <span>You're offline. Only cached songs are available.</span>
+          </div>
+        )}
+
         {isLoadingItems && (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
@@ -305,7 +403,14 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                     ) : prefetchStatus[index] === 'loading' ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-400/50 border-t-transparent" />
                     ) : prefetchStatus[index] === 'done' ? (
-                      <span className="text-green-400 text-xs">Ready</span>
+                      diskCacheStatus[index] ? (
+                        <span className="flex items-center gap-1 text-green-400 text-xs" title="Saved for offline">
+                          <FiDownload className="w-3 h-3" />
+                          Saved
+                        </span>
+                      ) : (
+                        <span className="text-green-400 text-xs">Ready</span>
+                      )
                     ) : null}
                   </button>
                   <button
