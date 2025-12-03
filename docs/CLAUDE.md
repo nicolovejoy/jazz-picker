@@ -321,6 +321,7 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
 - Cache generated PDFs in S3
 
 **API Endpoints:**
+- `GET /api/v2/catalog` - Full catalog (all 735 songs, ~15KB) for navigation
 - `GET /api/v2/songs?limit=50&offset=0&q=search` - Paginated song list
 - `GET /api/v2/songs/:title/cached` - Get default key + cached concert keys from S3
 - `POST /api/v2/generate` - Generate PDF with crop bounds (see Data Model section above)
@@ -368,6 +369,7 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
   - Pinch zoom (0.3x-5x), swipe gestures
   - Keyboard shortcuts (arrows, F for fullscreen, Esc)
   - Setlist navigation (swipe L/R at first/last page to change songs)
+  - Catalog navigation (swipe L/R to browse alphabetically from Browse/Spin)
   - Safe area support for iOS PWA mode
 - `SettingsMenu.tsx` - Change instrument, logout
 
