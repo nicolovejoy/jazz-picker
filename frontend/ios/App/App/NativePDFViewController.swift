@@ -3,17 +3,13 @@ import PDFKit
 
 class NativePDFViewController: UIViewController {
 
-    // MARK: - Properties (Single PDF mode - backward compatible)
+    // MARK: - Properties
     var pdfURLString: String = ""
     var songTitle: String = ""
     var songKey: String = ""
     var setlistIndex: Int?
     var setlistTotal: Int?
     var cropBounds: CropBounds?
-
-    // MARK: - Properties (Setlist mode - new)
-    var pdfItems: [PDFItem] = []
-    var currentIndex: Int = 0
 
     var onClose: (() -> Void)?
     var onNextSong: (() -> Void)?
@@ -24,12 +20,6 @@ class NativePDFViewController: UIViewController {
     private var setlistBadge: UILabel?
     private var controlsVisible = true
     private var hideTimer: Timer?
-    private var loadingSpinner: UIActivityIndicatorView?
-
-    // Computed property to check if in setlist mode
-    private var isSetlistMode: Bool {
-        return !pdfItems.isEmpty
-    }
 
     // MARK: - Lifecycle
 
@@ -128,11 +118,11 @@ class NativePDFViewController: UIViewController {
             closeButton.heightAnchor.constraint(equalToConstant: 44)
         ])
 
-        // Setlist Badge (bottom right) - for both modes
-        let showBadge = isSetlistMode || (setlistIndex != nil && setlistTotal != nil)
-        if showBadge {
+        // Setlist Badge (bottom right) - only if in setlist
+        if let index = setlistIndex, let total = setlistTotal {
             let badge = UILabel()
             badge.translatesAutoresizingMaskIntoConstraints = false
+            badge.text = "\(index + 1) / \(total)"
             badge.textColor = .white
             badge.font = .systemFont(ofSize: 14, weight: .medium)
             badge.backgroundColor = UIColor.black.withAlphaComponent(0.6)
@@ -155,7 +145,6 @@ class NativePDFViewController: UIViewController {
             ])
 
             setlistBadge = badge
-            updateBadgeText()
         }
 
         // Tap gesture for showing/hiding controls
@@ -168,8 +157,8 @@ class NativePDFViewController: UIViewController {
         downSwipe.direction = .down
         view.addGestureRecognizer(downSwipe)
 
-        // Swipe gestures for setlist navigation (both modes)
-        if isSetlistMode || setlistIndex != nil {
+        // Swipe gestures for setlist navigation
+        if setlistIndex != nil {
             let leftSwipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
             leftSwipe.direction = .left
             view.addGestureRecognizer(leftSwipe)
@@ -180,55 +169,21 @@ class NativePDFViewController: UIViewController {
         }
     }
 
-    private func updateBadgeText() {
-        if isSetlistMode {
-            setlistBadge?.text = "\(currentIndex + 1) / \(pdfItems.count)"
-        } else if let index = setlistIndex, let total = setlistTotal {
-            setlistBadge?.text = "\(index + 1) / \(total)"
-        }
-    }
-
     private func loadPDF() {
-        if isSetlistMode {
-            loadPDFFromItem(pdfItems[currentIndex])
-        } else {
-            loadPDFFromURL(pdfURLString, crop: cropBounds)
-        }
-    }
-
-    private func loadPDFFromItem(_ item: PDFItem) {
-        // Try local path first, then remote URL
-        if let localPath = item.localPath, FileManager.default.fileExists(atPath: localPath) {
-            loadPDFFromURL(localPath, crop: item.crop)
-        } else if let remoteUrl = item.remoteUrl {
-            loadPDFFromURL(remoteUrl, crop: item.crop)
-        } else {
-            showError("No valid path for PDF")
-        }
-    }
-
-    private func loadPDFFromURL(_ urlString: String, crop: CropBounds?) {
-        // Support both remote URLs and local file paths
-        let url: URL
-        if urlString.hasPrefix("/") {
-            // Local file path (from cache)
-            url = URL(fileURLWithPath: urlString)
-        } else if let remoteUrl = URL(string: urlString) {
-            // Remote URL (S3, etc)
-            url = remoteUrl
-        } else {
+        guard let url = URL(string: pdfURLString) else {
             showError("Invalid PDF URL")
             return
         }
 
         // Show loading indicator
-        loadingSpinner?.removeFromSuperview()
         let spinner = UIActivityIndicatorView(style: .large)
-        spinner.color = .gray
+        spinner.color = .white
         spinner.center = view.center
         spinner.startAnimating()
         view.addSubview(spinner)
-        loadingSpinner = spinner
+
+        // Capture crop bounds for async block
+        let crop = self.cropBounds
 
         // Load PDF asynchronously
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -252,15 +207,13 @@ class NativePDFViewController: UIViewController {
                 }
 
                 DispatchQueue.main.async {
-                    self?.loadingSpinner?.removeFromSuperview()
-                    self?.loadingSpinner = nil
+                    spinner.removeFromSuperview()
                     self?.pdfView.document = document
                     self?.updateScale()
                 }
             } else {
                 DispatchQueue.main.async {
-                    self?.loadingSpinner?.removeFromSuperview()
-                    self?.loadingSpinner = nil
+                    spinner.removeFromSuperview()
                     self?.showError("Failed to load PDF")
                 }
             }
@@ -290,29 +243,15 @@ class NativePDFViewController: UIViewController {
         let isFirstPage = pageIndex == 0
         let isLastPage = pageIndex == document.pageCount - 1
 
-        if isSetlistMode {
-            // Setlist mode: navigate internally without dismiss
-            if gesture.direction == .right && isFirstPage && currentIndex > 0 {
-                // Previous song
-                currentIndex -= 1
-                updateBadgeText()
-                loadPDF()
-            } else if gesture.direction == .left && isLastPage && currentIndex < pdfItems.count - 1 {
-                // Next song
-                currentIndex += 1
-                updateBadgeText()
-                loadPDF()
+        if gesture.direction == .right && isFirstPage {
+            // Swipe right on first page -> previous song
+            dismiss(animated: true) { [weak self] in
+                self?.onPrevSong?()
             }
-        } else {
-            // Legacy mode: dismiss and callback to JS
-            if gesture.direction == .right && isFirstPage {
-                dismiss(animated: true) { [weak self] in
-                    self?.onPrevSong?()
-                }
-            } else if gesture.direction == .left && isLastPage {
-                dismiss(animated: true) { [weak self] in
-                    self?.onNextSong?()
-                }
+        } else if gesture.direction == .left && isLastPage {
+            // Swipe left on last page -> next song
+            dismiss(animated: true) { [weak self] in
+                self?.onNextSong?()
             }
         }
     }

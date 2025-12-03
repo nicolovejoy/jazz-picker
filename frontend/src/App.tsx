@@ -12,8 +12,6 @@ import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
 import NativePDF from './plugins/NativePDF';
-import NativePDFCache, { type CacheStats } from './plugins/NativePDFCache';
-import { formatBytes } from './utils/pdfCache';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { useAuth } from './contexts/AuthContext';
@@ -78,8 +76,6 @@ function App() {
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isPdfTransitioning, setIsPdfTransitioning] = useState(false);
-  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
-  const [isClearingCache, setIsClearingCache] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -90,13 +86,6 @@ function App() {
     offset: page * LIMIT,
     query: searchQuery,
   });
-
-  // Load cache stats when on menu (iOS only)
-  useEffect(() => {
-    if (activeContext === 'menu' && Capacitor.isNativePlatform()) {
-      NativePDFCache.getCacheStats().then(setCacheStats).catch(console.error);
-    }
-  }, [activeContext]);
 
   // Pre-fetch next page
   useEffect(() => {
@@ -563,41 +552,6 @@ function App() {
                 <span className="text-gray-500">→</span>
               </button>
             </div>
-
-            {/* Offline Storage Section (iOS only) */}
-            {Capacitor.isNativePlatform() && (
-              <div className="pt-4 border-t border-white/10">
-                <h3 className="text-sm text-gray-500 uppercase tracking-wide mb-3">Offline Storage</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded border border-white/10">
-                    <span>Cached PDFs</span>
-                    <span className="text-gray-400">
-                      {cacheStats
-                        ? `${cacheStats.count} (${formatBytes(cacheStats.totalSizeBytes)})`
-                        : '—'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Clear all cached PDFs? They will re-download when you view setlists.')) return;
-                      setIsClearingCache(true);
-                      try {
-                        await NativePDFCache.clearCache();
-                        setCacheStats({ count: 0, totalSizeBytes: 0 });
-                      } catch (err) {
-                        console.error('Failed to clear cache:', err);
-                      } finally {
-                        setIsClearingCache(false);
-                      }
-                    }}
-                    disabled={isClearingCache || !cacheStats || cacheStats.count === 0}
-                    className="w-full p-3 text-red-400 hover:bg-red-500/10 rounded border border-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isClearingCache ? 'Clearing...' : 'Clear Cache'}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Account Section */}
             <div className="pt-4 border-t border-white/10">

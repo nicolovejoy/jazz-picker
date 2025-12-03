@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		030FF6F82EDD4D5B00DE41A6 /* NativePDFViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030FF6F72EDD4D5B00DE41A6 /* NativePDFViewController.swift */; };
 		030FF6F92EDD4D5B00DE41A6 /* NativePDFPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030FF6F62EDD4D5B00DE41A6 /* NativePDFPlugin.swift */; };
-		03831FEE2EE0C50300D98C9D /* NativePDFCachePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03831FED2EE0C50300D98C9D /* NativePDFCachePlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -23,7 +22,6 @@
 /* Begin PBXFileReference section */
 		030FF6F62EDD4D5B00DE41A6 /* NativePDFPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFPlugin.swift; sourceTree = "<group>"; };
 		030FF6F72EDD4D5B00DE41A6 /* NativePDFViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFViewController.swift; sourceTree = "<group>"; };
-		03831FED2EE0C50300D98C9D /* NativePDFCachePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePDFCachePlugin.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,7 +77,6 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
-				03831FED2EE0C50300D98C9D /* NativePDFCachePlugin.swift */,
 				030FF6F62EDD4D5B00DE41A6 /* NativePDFPlugin.swift */,
 				030FF6F72EDD4D5B00DE41A6 /* NativePDFViewController.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
@@ -219,7 +216,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				030FF6F82EDD4D5B00DE41A6 /* NativePDFViewController.swift in Sources */,
-				03831FEE2EE0C50300D98C9D /* NativePDFCachePlugin.swift in Sources */,
 				030FF6F92EDD4D5B00DE41A6 /* NativePDFPlugin.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
