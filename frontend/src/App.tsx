@@ -75,6 +75,7 @@ function App() {
   const [catalog, setCatalog] = useState<SongSummary[]>([]);
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [isPdfTransitioning, setIsPdfTransitioning] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -222,6 +223,9 @@ function App() {
     const song = catalog[newIndex];
     catalogIndexRef.current = newIndex;
 
+    // Show loading overlay
+    setIsPdfTransitioning(true);
+
     try {
       const result = await api.generatePDF(
         song.title,
@@ -252,6 +256,8 @@ function App() {
       setPdfMetadata(metadata);
     } catch (error) {
       console.error('Failed to navigate catalog:', error);
+    } finally {
+      setIsPdfTransitioning(false);
     }
   }, [catalog, instrument]);
 
@@ -581,6 +587,7 @@ function App() {
           pdfUrl={pdfUrl}
           metadata={pdfMetadata}
           setlistNav={setlistNav || catalogAsSetlistNav()}
+          isTransitioning={isPdfTransitioning}
           onClose={() => {
             setPdfUrl(null);
             setPdfMetadata(null);

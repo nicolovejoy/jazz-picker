@@ -13,10 +13,11 @@ interface PDFViewerProps {
   pdfUrl: string;
   metadata?: PdfMetadata | null;
   setlistNav?: SetlistNavigation | null;
+  isTransitioning?: boolean;
   onClose: () => void;
 }
 
-export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
   const [error, setError] = useState<string | null>(null);
@@ -600,6 +601,16 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
             </span>
             <span className="text-gray-400 mx-1">/</span>
             <span className="text-gray-300">{setlistNav.totalSongs}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Transition Loading Overlay */}
+      {isTransitioning && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading next song...</p>
           </div>
         </div>
       )}
