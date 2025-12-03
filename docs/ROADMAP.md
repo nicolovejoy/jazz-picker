@@ -38,8 +38,11 @@ Three contexts via bottom nav, plus Spin action:
 
 ## Priority Queue
 
+### Blocker
+- **iOS PDF viewing broken** - TestFlight builds 8 & 9 fail to render PDFs. See `DEBUG_PLAN.md`.
+
 ### In Progress
-- **bassKey + note ranges** - Parse MIDI files to extract melody note ranges, add to catalog.db, enable proper bass clef octave calculation (see HANDOFF.md for implementation plan)
+- **bassKey octave calculation** - Note ranges extracted (739 songs), need to integrate into `app.py` for bass clef PDF generation
 
 ### Up Next
 1. **Pre-cache setlist PDFs on app load**
@@ -47,9 +50,10 @@ Three contexts via bottom nav, plus Spin action:
 3. **URL rename** - jazzpick.pianohouseproject.org
 
 ### Paused
-- **Offline PDF caching** - paused while completing note range extraction (was broken in TestFlight build 8)
+- **Offline PDF caching** - caused PDF rendering failure, reverted
 
 ### Completed
+- ✅ **Note range extraction** - MIDI parsing for 739 songs, outlier filtering (Dec 2025)
 - ✅ **Setlist Edit mode** - drag-drop, reorder, key +/− (Dec 2025)
 - ✅ **Spin** - roulette wheel action button with animation (Dec 2025)
 - ✅ **PDF transitions** - loading overlay when swiping between songs (Dec 2025)
