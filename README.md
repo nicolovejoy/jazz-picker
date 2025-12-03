@@ -42,6 +42,19 @@ npm run dev
 - **Database:** Supabase (auth + setlists)
 - **Storage:** S3 (`jazz-picker-pdfs`)
 
+## Pending Work
+
+### Offline PDF Caching (iOS)
+Commit `f1fe8b2` has offline caching implementation that broke TestFlight. To restore:
+```bash
+git cherry-pick f1fe8b2
+```
+**Issues to fix:**
+- PDFs won't open in TestFlight (works in local Xcode builds)
+- Swipe-between-songs is laggy, needs visual feedback (haptic, animation, or preload adjacent PDFs)
+
+**What it does:** Caches setlist PDFs to iOS Documents directory during prefetch, passes all PDF paths to Swift for fast internal navigation without JS roundtrips.
+
 ## Documentation
 
 - **[CLAUDE.md](docs/CLAUDE.md)**: Comprehensive development reference
