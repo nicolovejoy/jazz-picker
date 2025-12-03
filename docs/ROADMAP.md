@@ -2,18 +2,19 @@
 
 ## App Architecture Vision
 
-Four contexts, switchable via bottom nav:
+Three contexts via bottom nav, plus Spin action:
 
-| Context | Purpose |
-|---------|---------|
-| **Browse** | Search songs, quick PDF view, add to setlist |
-| **Spin the Dial** | Random song practice |
-| **Setlist** | Perform mode (default) or Edit mode |
-| **Menu** | Settings, admin, about |
+| Nav Item | Type | Purpose |
+|----------|------|---------|
+| **Browse** | Context | Search songs, quick PDF view, add to setlist |
+| **Spin** | Action | Tap to open random song (roulette animation) |
+| **Setlist** | Context | Perform mode (default) or Edit mode |
+| **More** | Context | Settings, admin, about |
 
 **Principles:**
 - Bottom nav is ubiquitous and minimal
-- Each context is self-contained
+- Spin is an action button, not a page - animates then opens PDF
+- After Spin, closing PDF returns to Browse
 - "Add to Setlist" available from Browse and PDF view
 
 ---
@@ -44,7 +45,8 @@ Four contexts, switchable via bottom nav:
 5. **URL rename** - jazzpick.pianohouseproject.org
 
 ### Completed
-- ✅ **Spin the Dial** - random song selection (Dec 2025)
+- ✅ **Spin** - roulette wheel action button with animation (Dec 2025)
+- ✅ **PDF transitions** - loading overlay when swiping between songs (Dec 2025)
 - ✅ **Bottom nav** - context switcher (already implemented)
 - ✅ **Catalog navigation** - alphabetical swipe in PDF viewer (Dec 2025)
 

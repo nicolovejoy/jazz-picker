@@ -1,10 +1,12 @@
 # Session Handoff - Dec 2, 2025
 
 ## Just Completed
-- **Spin the Dial** - Random song picker, goes directly to PDF in standard key
-- **Catalog navigation** - Swipe left/right in PDF viewer to browse catalog alphabetically (Browse/Spin contexts)
-- Consolidated docs (7 files → 3: CLAUDE.md, HANDOFF.md, ROADMAP.md)
-- New backend endpoint: `GET /api/v2/catalog` returns all 735 song titles
+- **Spin** - Roulette wheel icon in nav bar, one-tap action (not a page)
+  - Tap icon → wheel animates → random song opens
+  - Closes to Browse context (not a spin page)
+- **PDF transition overlay** - Loading spinner when swiping between songs (no flash to browse)
+- **PDF viewer race condition fix** - Added key prop to Document component
+- Consolidated "Spin the Dial" / "Roll the Dice" → unified "Spin" metaphor
 
 ## Current Stack
 | Component | Location |
@@ -22,11 +24,11 @@ open ios/App/App.xcworkspace
 # Xcode: "Any iOS Device (arm64)" → Product → Archive → Distribute
 ```
 
-## Recent Changes
-- `crop_detector.py` - Auto-detects PDF content bounds using PyMuPDF
-- `Dockerfile` - Renamed from Dockerfile.prod, now the only Dockerfile
-- `frontend/src/types/pdf.ts` - Shared CropBounds interface
-- iOS native viewer applies cropBox for tighter display
+## Key Components Changed
+- `RouletteIcon.tsx` - SVG roulette wheel with spin animation
+- `BottomNav.tsx` - Spin triggers action directly (onSpin callback)
+- `PDFViewer.tsx` - Transition overlay, race condition fix
+- `App.tsx` - isSpinning/isPdfTransitioning state management
 
 ## Clear S3 Cache
 After deploying crop detection, clear the S3 cache to regenerate PDFs with crop metadata:

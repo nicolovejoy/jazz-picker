@@ -369,8 +369,11 @@ Frontend (React) → Backend API (Flask) → S3 PDFs
   - Pinch zoom (0.3x-5x), swipe gestures
   - Keyboard shortcuts (arrows, F for fullscreen, Esc)
   - Setlist navigation (swipe L/R at first/last page to change songs)
-  - Catalog navigation (swipe L/R to browse alphabetically from Browse/Spin)
+  - Catalog navigation (swipe L/R to browse alphabetically)
+  - Transition loading overlay when switching songs
   - Safe area support for iOS PWA mode
+- `RouletteIcon.tsx` - SVG roulette wheel icon with spin animation
+- `BottomNav.tsx` - Navigation bar with Spin action button (triggers onSpin callback)
 - `SettingsMenu.tsx` - Change instrument, logout
 
 **State Management:**
