@@ -5,15 +5,28 @@ import Capacitor
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var pluginRegistered = false
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Register plugin after a brief delay to ensure bridge is ready
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            if let vc = self.window?.rootViewController as? CAPBridgeViewController {
-                vc.bridge?.registerPluginInstance(NativePDFPlugin())
-            }
-        }
+        print("[AppDelegate] didFinishLaunchingWithOptions")
         return true
+    }
+
+    private func registerPluginIfNeeded() {
+        guard !pluginRegistered else {
+            print("[AppDelegate] Plugin already registered")
+            return
+        }
+
+        if let vc = self.window?.rootViewController as? CAPBridgeViewController,
+           let bridge = vc.bridge {
+            print("[AppDelegate] Registering NativePDFPlugin...")
+            bridge.registerPluginInstance(NativePDFPlugin())
+            pluginRegistered = true
+            print("[AppDelegate] NativePDFPlugin registered successfully")
+        } else {
+            print("[AppDelegate] ERROR: Could not find bridge for plugin registration")
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -31,7 +44,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        print("[AppDelegate] applicationDidBecomeActive")
+        registerPluginIfNeeded()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

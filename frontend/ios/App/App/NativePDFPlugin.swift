@@ -18,10 +18,15 @@ public class NativePDFPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     @objc func open(_ call: CAPPluginCall) {
+        print("[NativePDF Plugin] open() called")
+
         guard let urlString = call.getString("url") else {
+            print("[NativePDF Plugin] ERROR: No URL provided")
             call.reject("URL is required")
             return
         }
+
+        print("[NativePDF Plugin] URL received: \(urlString.prefix(100))...")
 
         let title = call.getString("title") ?? "PDF"
         let key = call.getString("key") ?? ""
@@ -43,9 +48,31 @@ public class NativePDFPlugin: CAPPlugin, CAPBridgedPlugin {
 
         DispatchQueue.main.async {
             guard let viewController = self.bridge?.viewController else {
+                print("[NativePDF Plugin] ERROR: No view controller available")
                 call.reject("No view controller available")
                 return
             }
+
+            // Check if view is in window hierarchy
+            guard viewController.view.window != nil else {
+                print("[NativePDF Plugin] ERROR: View not in window hierarchy, retrying...")
+                // Retry after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.open(call)
+                }
+                return
+            }
+
+            // Check if already presenting something
+            if viewController.presentedViewController != nil {
+                print("[NativePDF Plugin] Already presenting a view controller, dismissing first...")
+                viewController.dismiss(animated: false) {
+                    self.open(call)
+                }
+                return
+            }
+
+            print("[NativePDF Plugin] Presenting NativePDFViewController...")
 
             let pdfVC = NativePDFViewController()
             pdfVC.pdfURLString = urlString
@@ -69,7 +96,9 @@ public class NativePDFPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.notifyListeners("prevSong", data: [:])
             }
 
-            viewController.present(pdfVC, animated: true)
+            viewController.present(pdfVC, animated: true) {
+                print("[NativePDF Plugin] Presentation complete")
+            }
         }
     }
 }

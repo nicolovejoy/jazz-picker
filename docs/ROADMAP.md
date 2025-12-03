@@ -38,19 +38,21 @@ Three contexts via bottom nav, plus Spin action:
 
 ## Priority Queue
 
-### Blocker
-- **iOS PDF viewing broken** - TestFlight builds 8 & 9 fail to render PDFs. See `DEBUG_PLAN.md`.
-
 ### In Progress
+- **Full bleed PDF display** - Remove margins, gutter, hide status bar/home indicator
 - **bassKey octave calculation** - Note ranges extracted (739 songs), need to integrate into `app.py` for bass clef PDF generation
 
 ### Up Next
-1. **Pre-cache setlist PDFs on app load**
-2. **Home page with one-click setlist access**
-3. **URL rename** - jazzpick.pianohouseproject.org
+1. **Add to Setlist button** - Add to PDF viewer top controls
+2. **Fix setlist badge** - Shows catalog position instead of setlist position
+3. **Fix setlist swipe navigation** - Erratic, sometimes flashes back
+4. **Improve Spin animation** - More engaging visual feedback
+5. **Pre-cache setlist PDFs on app load**
+6. **Home page with one-click setlist access**
 
 ### Paused
 - **Offline PDF caching** - caused PDF rendering failure, reverted
+- **Two-page landscape mode** - PDFKit gutter issues, using single-page for now
 
 ### Completed
 - ✅ **Note range extraction** - MIDI parsing for 739 songs, outlier filtering (Dec 2025)

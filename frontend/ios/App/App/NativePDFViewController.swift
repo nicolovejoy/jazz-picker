@@ -25,6 +25,14 @@ class NativePDFViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // Extend content under status bar and home indicator
+        edgesForExtendedLayout = .all
+        extendedLayoutIncludesOpaqueBars = true
+
+        // Capture status bar appearance from this VC when presented modally
+        modalPresentationCapturesStatusBarAppearance = true
+
         setupUI()
         loadPDF()
         startHideTimer()
@@ -32,8 +40,8 @@ class NativePDFViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // Hide status bar completely
         setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -42,6 +50,10 @@ class NativePDFViewController: UIViewController {
 
     override var prefersHomeIndicatorAutoHidden: Bool {
         return true
+    }
+
+    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation {
+        return .fade
     }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -59,22 +71,37 @@ class NativePDFViewController: UIViewController {
     // MARK: - Display Mode
 
     private func updateDisplayMode(for size: CGSize? = nil) {
-        let targetSize = size ?? view.bounds.size
-        let isLandscape = targetSize.width > targetSize.height
+        // Always use single page - cleanest for full bleed
+        // User swipes horizontally to change pages
+        pdfView.displayMode = .singlePage
 
-        if isLandscape {
-            // Two pages side-by-side in landscape
-            pdfView.displayMode = .twoUpContinuous
-        } else {
-            // Single page continuous allows horizontal swiping between pages
-            pdfView.displayMode = .singlePageContinuous
+        // Update scale after mode change
+        DispatchQueue.main.async {
+            self.updateScale()
         }
     }
 
     private func updateScale() {
-        guard pdfView.document != nil else { return }
-        // Use exact fit - crop bounds handle margin removal
-        pdfView.scaleFactor = pdfView.scaleFactorForSizeToFit
+        guard let document = pdfView.document,
+              let page = document.page(at: 0) else { return }
+
+        // Calculate scale to fill width completely
+        let pageRect = page.bounds(for: .cropBox)
+        let viewWidth = view.bounds.width
+        let viewHeight = view.bounds.height
+
+        // Scale to fit width (full bleed horizontally)
+        let widthScale = viewWidth / pageRect.width
+        // Scale to fit height
+        let heightScale = viewHeight / pageRect.height
+
+        // Use the larger scale to fill the view (may crop slightly)
+        // Or use min to fit entirely - adjust based on preference
+        let targetScale = min(widthScale, heightScale)
+
+        pdfView.scaleFactor = targetScale
+        pdfView.minScaleFactor = targetScale * 0.5
+        pdfView.maxScaleFactor = targetScale * 4.0
     }
 
     // MARK: - Setup
@@ -82,13 +109,26 @@ class NativePDFViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .white
 
-        // PDF View
+        // PDF View - configured for full bleed display
         pdfView = PDFView()
         pdfView.translatesAutoresizingMaskIntoConstraints = false
         pdfView.backgroundColor = .white
-        pdfView.autoScales = true
+        pdfView.autoScales = false  // We'll control scaling manually
         pdfView.displayDirection = .horizontal
-        pdfView.pageBreakMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        pdfView.pageBreakMargins = UIEdgeInsets.zero
+        pdfView.displaysPageBreaks = false
+
+        // Remove shadows and extra chrome
+        if #available(iOS 12.0, *) {
+            pdfView.pageShadowsEnabled = false
+        }
+
+        // Remove internal scroll view insets
+        if let scrollView = pdfView.subviews.first as? UIScrollView {
+            scrollView.contentInset = .zero
+            scrollView.scrollIndicatorInsets = .zero
+        }
+
         view.addSubview(pdfView)
 
         // Set display mode based on current orientation
@@ -170,10 +210,15 @@ class NativePDFViewController: UIViewController {
     }
 
     private func loadPDF() {
+        print("[NativePDF] loadPDF called with URL: \(pdfURLString)")
+
         guard let url = URL(string: pdfURLString) else {
+            print("[NativePDF] ERROR: Invalid URL string")
             showError("Invalid PDF URL")
             return
         }
+
+        print("[NativePDF] URL parsed successfully: \(url)")
 
         // Show loading indicator
         let spinner = UIActivityIndicatorView(style: .large)
@@ -186,8 +231,11 @@ class NativePDFViewController: UIViewController {
         let crop = self.cropBounds
 
         // Load PDF asynchronously
+        print("[NativePDF] Starting async PDF load...")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            print("[NativePDF] In background thread, attempting PDFDocument(url:)")
             if let document = PDFDocument(url: url) {
+                print("[NativePDF] SUCCESS: Document loaded, pageCount=\(document.pageCount)")
                 // Apply crop bounds to each page if specified
                 if let crop = crop {
                     for i in 0..<document.pageCount {
@@ -212,6 +260,7 @@ class NativePDFViewController: UIViewController {
                     self?.updateScale()
                 }
             } else {
+                print("[NativePDF] FAILED: PDFDocument(url:) returned nil for \(url)")
                 DispatchQueue.main.async {
                     spinner.removeFromSuperview()
                     self?.showError("Failed to load PDF")
@@ -258,34 +307,38 @@ class NativePDFViewController: UIViewController {
 
     // MARK: - Controls Visibility
 
+    private let controlsAnimationDuration: TimeInterval = 0.3
+    private let controlsAutoHideDelay: TimeInterval = 1.5
+
+    private var allControls: [UIView] {
+        [closeButton, setlistBadge].compactMap { $0 }
+    }
+
+    private func setControlsAlpha(_ alpha: CGFloat) {
+        UIView.animate(withDuration: controlsAnimationDuration) {
+            self.allControls.forEach { $0.alpha = alpha }
+        }
+    }
+
     private func toggleControls() {
         controlsVisible.toggle()
-        UIView.animate(withDuration: 0.3) {
-            self.closeButton.alpha = self.controlsVisible ? 1 : 0
-            self.setlistBadge?.alpha = self.controlsVisible ? 1 : 0
-        }
+        setControlsAlpha(controlsVisible ? 1 : 0)
     }
 
     private func showControls() {
         guard !controlsVisible else { return }
         controlsVisible = true
-        UIView.animate(withDuration: 0.3) {
-            self.closeButton.alpha = 1
-            self.setlistBadge?.alpha = 1
-        }
+        setControlsAlpha(1)
     }
 
     private func hideControls() {
         guard controlsVisible else { return }
         controlsVisible = false
-        UIView.animate(withDuration: 0.3) {
-            self.closeButton.alpha = 0
-            self.setlistBadge?.alpha = 0
-        }
+        setControlsAlpha(0)
     }
 
     private func startHideTimer() {
-        hideTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
+        hideTimer = Timer.scheduledTimer(withTimeInterval: controlsAutoHideDelay, repeats: false) { [weak self] _ in
             self?.hideControls()
         }
     }

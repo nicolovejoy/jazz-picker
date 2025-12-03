@@ -1,19 +1,33 @@
 # Session Handoff - Dec 3, 2025
 
-## Current Blocker: TestFlight PDFs Not Rendering
+## RESOLVED: TestFlight PDFs Now Working
 
-**Priority:** Fix iOS PDF viewing before continuing with note range integration.
+The iOS PDF viewing issue has been fixed. Root cause was plugin registration timing.
 
-See `DEBUG_PLAN.md` for detailed debugging steps.
+### What Was Fixed
+1. **Plugin registration timing** — Was using delayed `asyncAfter(0.5)`, now registers in `applicationDidBecomeActive`
+2. **View hierarchy check** — Added guard to retry if view not in window hierarchy
+3. **Double-call handling** — Detects if already presenting and handles gracefully
 
-### Quick Summary
-- Build 8 (offline caching): PDFs didn't render
-- Build 9 (reverted to simpler code): PDFs still don't render
-- Backend works fine (API returns valid PDF URLs)
-- Web version status unknown (needs testing)
+### Current State
+- TestFlight builds now work
+- PDFs render correctly
+- Controls (X button, setlist badge) auto-hide after 1.5s
 
-### Key Question
-What exactly happens when you tap a song in TestFlight? (Blank screen? Error? Spinner?)
+## In Progress: Full Bleed PDF Display
+
+Working on removing margins/gutter for edge-to-edge PDF display. Current issues:
+- Margins visible around PDF content
+- Gutter visible between pages in landscape (switched to single-page mode as workaround)
+- Status bar/home indicator still showing in TestFlight
+
+## Outstanding Todo Items
+
+1. **Full bleed display** — Remove remaining margins, hide status bar properly
+2. **Add to Setlist button** — Add to PDF viewer controls
+3. **Setlist badge position** — Shows catalog position (12/735) instead of setlist position (6/7)
+4. **Setlist swipe navigation** — Erratic, sometimes flashes back to setlist
+5. **Spin animation** — Make more engaging (grows/expands)
 
 ---
 

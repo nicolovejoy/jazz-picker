@@ -1,8 +1,24 @@
 # Debug Plan: TestFlight PDFs Not Rendering
 
-## Problem Summary
+## ✅ RESOLVED - Dec 3, 2025
 
-PDFs are not displaying in the TestFlight iOS app. Both Build 8 (with offline caching) and Build 9 (after revert, current code) fail to render PDFs.
+**Root Cause:** Plugin registration timing issue. The `NativePDFPlugin` was being registered with a 0.5s delay in `didFinishLaunchingWithOptions`, which caused race conditions where JS called the plugin before it was registered.
+
+**Fix Applied:**
+1. Moved plugin registration to `applicationDidBecomeActive` (fires after UI is ready)
+2. Added check for view in window hierarchy before presenting
+3. Added handling for double-calls (dismiss existing before re-presenting)
+
+**Files Changed:**
+- `frontend/ios/App/App/AppDelegate.swift` - New registration timing
+- `frontend/ios/App/App/NativePDFPlugin.swift` - Retry logic, double-call handling
+- `frontend/ios/App/App/NativePDFViewController.swift` - Debug logging, full bleed attempts
+
+---
+
+## Original Problem Summary (for reference)
+
+PDFs were not displaying in the TestFlight iOS app. Both Build 8 (with offline caching) and Build 9 (after revert, current code) failed to render PDFs.
 
 ## What Works
 
