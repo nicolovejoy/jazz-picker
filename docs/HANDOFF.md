@@ -1,9 +1,10 @@
 # Session Handoff - Dec 2, 2025
 
 ## Just Completed
-- Smart PDF crop detection (PyMuPDF backend, cropBox on iOS)
-- Native PDF viewer improvements (two-page landscape, swipe navigation)
-- Codebase cleanup (consolidated Dockerfile, shared CropBounds type)
+- **Spin the Dial** - Random song picker, goes directly to PDF in standard key
+- **Catalog navigation** - Swipe left/right in PDF viewer to browse catalog alphabetically (Browse/Spin contexts)
+- Consolidated docs (7 files → 3: CLAUDE.md, HANDOFF.md, ROADMAP.md)
+- New backend endpoint: `GET /api/v2/catalog` returns all 735 song titles
 
 ## Current Stack
 | Component | Location |
@@ -35,5 +36,6 @@ aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
 
 ## Next Up
 1. Setlist Edit mode (drag-drop, reorder, key +/-)
-2. Spin the Dial (random song)
-3. Offline PDF caching
+2. Offline PDF caching
+3. Pre-cache setlist PDFs on app load
+4. Home page with one-click setlist access

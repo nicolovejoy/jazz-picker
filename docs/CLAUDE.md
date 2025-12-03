@@ -268,6 +268,40 @@ Backend calculates written key and passes to LilyPond.
 
 ---
 
+## PDF Viewing Vision
+
+**Goal:** Immersive, distraction-free sheet music viewing like forScore.
+
+**Requirements (all implemented):**
+- Full bleed - White PDF extends edge-to-edge, minimal chrome
+- No status bar - Time/battery/wifi hidden on iOS
+- Landscape: Two pages side-by-side | Portrait: Single page fills screen
+- Controls auto-hide after 2 seconds
+- Smart cropping - Auto-detect and trim whitespace margins (PyMuPDF → cropBox)
+
+---
+
+## LilyPond Architecture
+
+Eric's lilypond-lead-sheets repo uses a three-layer system:
+
+1. **Core files** (`Core/*.ly`) - The actual music in a reference key
+2. **Include files** (`Include/*.ily`) - Shared transposition/layout logic
+3. **Wrapper files** (`Wrappers/*.ly`) - Set variables, include the core:
+
+```lilypond
+instrument = "Bb for Standard Key"
+whatKey = b           % Target key
+whatClef = "treble"
+\include "../Core/502 Blues - Ly Core - Am.ly"
+```
+
+**The magic:** `refrain.ily` contains `\transpose \refrainKey \whatKey` which transposes from reference key to any target.
+
+**Integration:** LilyPond runs directly in the Fly.io Docker container (~200MB). PDFs generate on-demand (~2-5s) and cache in S3.
+
+---
+
 ## Architecture
 
 ### High-Level Structure

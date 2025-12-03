@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import type { SongListResponse, Transposition, Clef } from '@/types/catalog';
+import type { SongListResponse, SongSummary, Transposition, Clef } from '@/types/catalog';
 import type { CropBounds } from '@/types/pdf';
 
 // Native app needs full URL. Web uses relative URLs (Vite proxy in dev, same origin in prod).
@@ -18,6 +18,11 @@ export interface GenerateResponse {
 export interface CachedKeysResponse {
   default_key: string;
   cached_concert_keys: string[];
+}
+
+export interface CatalogResponse {
+  songs: SongSummary[];
+  total: number;
 }
 
 export const api = {
@@ -82,6 +87,12 @@ export const api = {
     if (!response.ok) {
       throw new Error('Failed to fetch cached keys');
     }
+    return response.json();
+  },
+
+  async getCatalog(): Promise<CatalogResponse> {
+    const response = await fetch(`${API_BASE}/v2/catalog`);
+    if (!response.ok) throw new Error('Failed to fetch catalog');
     return response.json();
   },
 };

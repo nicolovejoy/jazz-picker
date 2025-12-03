@@ -36,6 +36,12 @@ export interface SetlistNavigation {
   onNextSong: () => void;
 }
 
+export interface CatalogNavigation {
+  currentIndex: number;
+  totalSongs: number;
+  catalog: SongSummary[];
+}
+
 const STORAGE_KEY = 'jazz-picker-instrument-id';
 
 function getStoredInstrument(): Instrument | null {
@@ -66,6 +72,8 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
+  const [catalog, setCatalog] = useState<SongSummary[]>([]);
+  const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -167,6 +175,17 @@ function App() {
     window.history.replaceState({}, '', url.toString());
   }, [activeSetlist]);
 
+  // Fetch full catalog for navigation (Spin + alphabetical browsing)
+  useEffect(() => {
+    if (user && instrument) {
+      api.getCatalog().then(response => {
+        setCatalog(response.songs);
+      }).catch(err => {
+        console.error('Failed to load catalog:', err);
+      });
+    }
+  }, [user, instrument]);
+
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
   }, []);
@@ -180,37 +199,121 @@ function App() {
     }
   }, []);
 
-  // Use ref to access current setlistNav in callbacks without recreating handleOpenPdfUrl
+  // Use refs to access current nav state in callbacks
   const setlistNavRef = useRef(setlistNav);
   useEffect(() => {
     setlistNavRef.current = setlistNav;
   }, [setlistNav]);
 
-  const handleOpenPdfUrl = useCallback(async (url: string, metadata?: PdfMetadata) => {
+  const catalogNavRef = useRef(catalogNav);
+  useEffect(() => {
+    catalogNavRef.current = catalogNav;
+  }, [catalogNav]);
+
+  // Ref to track current catalog index for navigation callbacks
+  const catalogIndexRef = useRef<number>(0);
+
+  // Navigate to adjacent song in catalog
+  const navigateCatalog = useCallback(async (newIndex: number) => {
+    if (!instrument || catalog.length === 0) return;
+    if (newIndex < 0 || newIndex >= catalog.length) return;
+
+    const song = catalog[newIndex];
+    catalogIndexRef.current = newIndex;
+
+    try {
+      const result = await api.generatePDF(
+        song.title,
+        song.default_key,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label
+      );
+
+      const metadata: PdfMetadata = {
+        songTitle: song.title,
+        key: song.default_key,
+        clef: instrument.clef,
+        cached: result.cached,
+        generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
+      };
+
+      // Update navigation state
+      setCatalogNav({
+        currentIndex: newIndex,
+        totalSongs: catalog.length,
+        catalog: catalog,
+      });
+
+      // Update PDF (for web viewer)
+      setPdfUrl(result.url);
+      setPdfMetadata(metadata);
+    } catch (error) {
+      console.error('Failed to navigate catalog:', error);
+    }
+  }, [catalog, instrument]);
+
+  const handleOpenPdfUrl = useCallback(async (url: string, metadata?: PdfMetadata, catalogIndex?: number) => {
+    // Auto-detect catalog index from song title if not provided and not in setlist mode
+    let effectiveCatalogIndex = catalogIndex;
+    if (effectiveCatalogIndex === undefined && setlistNavRef.current === null && metadata?.songTitle && catalog.length > 0) {
+      const foundIndex = catalog.findIndex(s => s.title === metadata.songTitle);
+      if (foundIndex >= 0) {
+        effectiveCatalogIndex = foundIndex;
+        catalogIndexRef.current = foundIndex;
+        setCatalogNav({
+          currentIndex: foundIndex,
+          totalSongs: catalog.length,
+          catalog: catalog,
+        });
+      }
+    }
+
     // On native iOS, use the native PDF viewer
     if (Capacitor.isNativePlatform()) {
       try {
-        const nav = setlistNavRef.current;
+        const setlistNavNow = setlistNavRef.current;
+        const catalogNavNow = catalogNavRef.current;
 
-        // Set up event listeners for setlist navigation before opening
+        // Determine which navigation to use (setlist takes priority)
+        const hasSetlistNav = setlistNavNow !== null;
+        const hasCatalogNav = catalogNavNow !== null || effectiveCatalogIndex !== undefined;
+
+        // Set up event listeners for navigation before opening
         let nextListener: { remove: () => void } | null = null;
         let prevListener: { remove: () => void } | null = null;
 
-        if (nav) {
+        if (hasSetlistNav && setlistNavNow) {
           nextListener = await NativePDF.addListener('nextSong', () => {
-            nav.onNextSong();
+            setlistNavNow.onNextSong();
           });
           prevListener = await NativePDF.addListener('prevSong', () => {
-            nav.onPrevSong();
+            setlistNavNow.onPrevSong();
+          });
+        } else if (hasCatalogNav) {
+          // Use ref for current index so callbacks always have latest value
+          if (effectiveCatalogIndex !== undefined) {
+            catalogIndexRef.current = effectiveCatalogIndex;
+          }
+          nextListener = await NativePDF.addListener('nextSong', () => {
+            navigateCatalog(catalogIndexRef.current + 1);
+          });
+          prevListener = await NativePDF.addListener('prevSong', () => {
+            navigateCatalog(catalogIndexRef.current - 1);
           });
         }
+
+        // Get navigation info for display
+        const navIndex = hasSetlistNav ? setlistNavNow?.currentIndex : (effectiveCatalogIndex ?? catalogNavNow?.currentIndex);
+        const navTotal = hasSetlistNav ? setlistNavNow?.totalSongs : (catalogNavNow?.totalSongs ?? catalog.length);
 
         await NativePDF.open({
           url,
           title: metadata?.songTitle,
           key: metadata?.key,
-          setlistIndex: nav?.currentIndex,
-          setlistTotal: nav?.totalSongs,
+          setlistIndex: navIndex,
+          setlistTotal: navTotal,
           crop: metadata?.crop,
         });
 
@@ -228,7 +331,7 @@ function App() {
     // Web: use the React PDF viewer
     setPdfUrl(url);
     setPdfMetadata(metadata || null);
-  }, []);
+  }, [navigateCatalog, catalog]);
 
   const handleEnterPress = useCallback(async () => {
     // Only handle if exactly 1 song in results and we have an instrument
@@ -258,6 +361,64 @@ function App() {
       console.error('Failed to open song:', error);
     }
   }, [allSongs, instrument]);
+
+  // Create setlist-compatible navigation for catalog
+  const catalogAsSetlistNav = useCallback((): SetlistNavigation | null => {
+    if (catalogNav === null) return null;
+    return {
+      currentIndex: catalogNav.currentIndex,
+      totalSongs: catalogNav.totalSongs,
+      onPrevSong: () => navigateCatalog(catalogIndexRef.current - 1),
+      onNextSong: () => navigateCatalog(catalogIndexRef.current + 1),
+    };
+  }, [catalogNav, navigateCatalog]);
+
+  // Open a song from catalog with navigation context
+  const openSongFromCatalog = useCallback(async (songIndex: number) => {
+    if (!instrument || catalog.length === 0) return;
+
+    const song = catalog[songIndex];
+    if (!song) return;
+
+    catalogIndexRef.current = songIndex;
+
+    // Set up catalog navigation
+    setCatalogNav({
+      currentIndex: songIndex,
+      totalSongs: catalog.length,
+      catalog: catalog,
+    });
+
+    try {
+      const result = await api.generatePDF(
+        song.title,
+        song.default_key,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label
+      );
+
+      const metadata: PdfMetadata = {
+        songTitle: song.title,
+        key: song.default_key,
+        clef: instrument.clef,
+        cached: result.cached,
+        generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
+      };
+
+      await handleOpenPdfUrl(result.url, metadata, songIndex);
+    } catch (error) {
+      console.error('Failed to open song:', error);
+    }
+  }, [catalog, instrument, handleOpenPdfUrl]);
+
+  // Spin: pick a random song and open it
+  const handleSpin = useCallback(() => {
+    if (catalog.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * catalog.length);
+    openSongFromCatalog(randomIndex);
+  }, [catalog, openSongFromCatalog]);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -332,14 +493,27 @@ function App() {
           </>
         )}
 
-        {/* Spin Context (Placeholder) */}
+        {/* Spin Context */}
         {activeContext === 'spin' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <div className="text-6xl mb-4">🎲</div>
+            <button
+              onClick={handleSpin}
+              disabled={catalog.length === 0}
+              className="group relative"
+            >
+              <div className="text-8xl mb-6 transform transition-transform group-hover:scale-110 group-active:scale-95">
+                🎲
+              </div>
+            </button>
             <h2 className="text-2xl font-bold mb-2">Spin the Dial</h2>
-            <p className="text-gray-400 max-w-xs">
-              Random song practice mode. Coming soon.
+            <p className="text-gray-400 max-w-xs mb-6">
+              Tap the dice for a random song
             </p>
+            {catalog.length > 0 && (
+              <p className="text-gray-600 text-sm">
+                {catalog.length} songs in catalog
+              </p>
+            )}
           </div>
         )}
 
@@ -415,10 +589,11 @@ function App() {
         <PDFViewer
           pdfUrl={pdfUrl}
           metadata={pdfMetadata}
-          setlistNav={setlistNav}
+          setlistNav={setlistNav || catalogAsSetlistNav()}
           onClose={() => {
             setPdfUrl(null);
             setPdfMetadata(null);
+            setCatalogNav(null);
           }}
         />
       )}

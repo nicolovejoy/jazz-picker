@@ -58,6 +58,21 @@ def get_total_songs():
         return cursor.fetchone()[0]
 
 
+def get_all_songs():
+    """
+    Get all songs sorted alphabetically.
+    Returns lightweight list with just title and default_key.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT title, default_key FROM songs ORDER BY title"
+        )
+        return [
+            {'title': row['title'], 'default_key': row['default_key']}
+            for row in cursor.fetchall()
+        ]
+
+
 def search_songs(query='', limit=50, offset=0):
     """
     Search songs by title.

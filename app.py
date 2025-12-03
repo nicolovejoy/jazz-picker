@@ -241,6 +241,28 @@ def health():
     }), 200
 
 
+@app.route('/api/v2/catalog')
+@requires_auth
+def get_catalog():
+    """
+    Get full catalog of song titles (lightweight, for navigation).
+    Returns all songs sorted alphabetically - just titles and default keys.
+    """
+    # Check ETag - if client has current version, return 304
+    if check_etag(db_etag):
+        return make_response('', 304)
+
+    songs = db.get_all_songs()
+
+    response = make_response(jsonify({
+        'songs': songs,
+        'total': len(songs)
+    }))
+
+    # Cache for 5 minutes
+    return add_cache_headers(response, max_age=300, etag=db_etag)
+
+
 @app.route('/api/v2/songs')
 @requires_auth
 def get_songs_v2():
