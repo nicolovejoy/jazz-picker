@@ -121,7 +121,7 @@ def get_song_by_title(title):
     """Get a song by title."""
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT id, title, default_key, core_files FROM songs WHERE title = ?",
+            "SELECT id, title, default_key, core_files, low_note_midi, high_note_midi FROM songs WHERE title = ?",
             (title,)
         )
         row = cursor.fetchone()
@@ -134,6 +134,8 @@ def get_song_by_title(title):
             'title': row['title'],
             'default_key': row['default_key'],
             'core_files': json.loads(row['core_files']) if row['core_files'] else [],
+            'low_note_midi': row['low_note_midi'],
+            'high_note_midi': row['high_note_midi'],
         }
 
 
@@ -176,3 +178,19 @@ def song_exists(title):
             (title,)
         )
         return cursor.fetchone() is not None
+
+
+def get_song_note_range(title):
+    """
+    Get the MIDI note range for a song's melody.
+    Returns (low_note_midi, high_note_midi) tuple, or (None, None) if not found.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT low_note_midi, high_note_midi FROM songs WHERE title = ?",
+            (title,)
+        )
+        row = cursor.fetchone()
+        if row:
+            return row['low_note_midi'], row['high_note_midi']
+        return None, None

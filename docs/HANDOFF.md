@@ -1,180 +1,157 @@
 # Session Handoff - Dec 3, 2025
 
-## Current Focus: Extracting Note Ranges from Core Files
+## Current Focus: Extracting Note Ranges via MIDI
 
 ### The Goal
 
 Jazz Picker needs to set `whatKey` with correct octave markers (`,` or `'`) when generating bass clef PDFs. To do this, we need to know each song's **note range** (low note, high note).
 
-### python-ly Investigation Results (Dec 3 - Session 2)
+### The Plan: Parse MIDI Files
 
-**Conclusion:** python-ly works partially but has bugs with complex files.
+**Why MIDI?** Eric's LilyPond workflow generates MIDI files via `midi.ily`. The melody is on an "overdriven guitar" track. MIDI has absolute pitches—no parsing drift issues like python-ly had.
 
-**What Works:**
-- `pip install python-ly` installs cleanly (v0.9.9)
-- `ly.document.Document()` parses LilyPond files into a tree
-- `ly.music.document()` creates a navigable music tree with Note, Chord, Relative items
-- Can find `refrainMelody` assignment and extract notes
-- `Pitch.makeAbsolute()` calculates absolute pitch from relative notation
+### Validated Approach (Dec 3 - Session 4)
 
-**What Doesn't Work:**
-- The relative-to-absolute conversion drifts on files with repeated sections (A1, A2, A3)
-- `ly.pitch.rel2abs.rel2abs()` has same issue - produces `c,,,,` (MIDI 0) for some songs
-- The drift happens because section repeats don't reset the relative pitch context
+We tested and validated this approach on several songs:
 
-**Workaround Tested:**
-- Filter MIDI values 36-96 (C2 to C7) to exclude obvious errors
-- Works for most songs but some still show suspiciously high values
+| Song | Raw Range | After Filtering | Notes |
+|------|-----------|-----------------|-------|
+| 502 Blues | D#4-G#5 | D#4-G#5 | ✓ Verified against chart |
+| Agua de Beber | F#3-A5 | G4-A5 | F#3, G3 are `\voiceTwo` bass fill |
+| Song for My Father | F3-G5 | F3-G5 | Clean, no secondary voices |
+| In Walked Bud | G#3-G#5 | G#3-G#5 | Clean |
+| Sugar | F3-A#4 | ? | F3 from intro chord voicing |
 
-**Example Results (with filtering):**
-| Song | Low Note | High Note | MIDI Range |
-|------|----------|-----------|------------|
-| Song for My Father | g | g' | 55-67 ✓ |
-| Mean to Me | c, | a' | 36-69 ✓ |
-| All Blues | b' | d''' | 71-86 (suspiciously high?) |
+**Key findings:**
+- MIDI program 29 (0-indexed) = "overdriven guitar" = melody track
+- MIDI program 16 = "drawbar organ" = chords track
+- Some songs have `\voiceTwo` bass fills that appear in MIDI but should be excluded
+- These outlier notes are typically >1 octave below the main melody range
 
-### Next Session: Decision Needed
+### Implementation Steps
 
-**Option A: Accept python-ly with filtering**
-- Add to `build_catalog.py` with MIDI 36-84 filter
-- May produce some wrong values, but most will be usable
+1. **Generate MIDI from Standard wrappers**
+   ```bash
+   lilypond --output=/tmp -dno-print-pages "Wrappers/Song - Ly - Key Standard.ly"
+   ```
+   - Use `-dno-print-pages` to skip PDF (faster, avoids LilyPond 2.24/2.25 compat issues)
+   - Process only `*Standard.ly` files (one per song, no transpositions)
 
-**Option B: Ask Eric to provide note ranges**
-- He already knows the ranges (uses them in makesheet.py)
-- Could add to core files as a comment or variable
-- More reliable but requires Eric's time
+2. **Parse MIDI with mido**
+   ```python
+   import mido
+   midi_file = mido.MidiFile(path)
+   for track in midi_file.tracks:
+       for msg in track:
+           if msg.type == 'program_change':
+               current_program = msg.program
+           elif msg.type == 'note_on' and msg.velocity > 0:
+               if current_program == 29:  # melody track
+                   melody_notes.append(msg.note)
+   ```
 
-**Option C: Try different approach**
-- Regex-based extraction of note tokens
-- Manual relative-to-absolute logic with section-aware reset
-- More complex but potentially more accurate
+3. **Filter outliers (voiceTwo bass fills)**
+   ```python
+   import statistics
+   median = statistics.median(melody_notes)
+   # Exclude notes >12 semitones (1 octave) below median
+   filtered = [n for n in melody_notes if n >= median - 12]
+   low_note = min(filtered)
+   high_note = max(filtered)
+   ```
 
-**Key file with working extraction code:** See conversation history for the Python script using `extract_note_range_filtered()`
+4. **Store in catalog.db**
+   ```sql
+   ALTER TABLE songs ADD COLUMN low_note_midi INTEGER;
+   ALTER TABLE songs ADD COLUMN high_note_midi INTEGER;
+   ```
+
+5. **Use at PDF generation time** (`app.py`)
+   ```python
+   def calculate_bass_octave(low_note_midi, target_key):
+       # Goal: lowest note no lower than E below bass staff (E2 = MIDI 40)
+       low_e_midi = 40
+       transposed_low = low_note_midi + key_semitone_offset(target_key)
+       octave_offset = 0
+       while transposed_low < low_e_midi:
+           transposed_low += 12
+           octave_offset += 1
+       return octave_offset  # 0 = no marker, 1 = ",", 2 = ",,"
+   ```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `extract_note_ranges.py` | Proof-of-concept script (in jazz-picker root) |
+| `lilypond-data/Include/midi.ily` | LilyPond MIDI generation |
+| `lilypond-data/Include/refrain.ily:214` | Includes midi.ily |
+| `build_catalog.py` | Integrate MIDI parsing here |
+| `app.py:generate_wrapper_content()` | Use note range for octave calculation |
+
+### Why Statistical Filtering Works
+
+Some songs have `\voiceTwo` sections with bass fills (e.g., Agua de Beber measure ~20 has `g,8 fs8~`). These appear in the melody MIDI track but are secondary voices, often marked with `\magnifyMusic 0.63` (smaller notation).
+
+We could parse LilyPond source to identify `\voiceTwo` notes, but that requires converting relative notation to absolute pitches—complex and error-prone.
+
+**Simpler approach:** Filter notes >1 octave below the median. Bass fills are always significantly lower than the main melody, so statistical filtering catches them reliably. Not perfect, but good enough.
 
 ---
 
-## Background: Why We Need Note Ranges
-
-### The bassKey Problem
+## Background: The bassKey Problem
 
 Eric's LilyPond system uses two variables for transposition:
 - `whatKey` - target key for melody (may include octave marker like `f,`)
 - `bassKey` - target key for bass line (pitch class only, no octave marker)
 
-### How Eric's makesheet.py Calculates Octave
+### Rules (confirmed with Eric)
 
-```python
-# Lines 390-414: Calculate octave offset for bass clef
-# Goal: lowest note no lower than E below bass staff (offset -8)
-low_e_offset = -8
-octave_offset = -5
-bass_low_note = low_note_offset - (5 * 12)
-while bass_low_note < low_e_offset:
-    bass_low_note += 12
-    octave_offset += 1
-```
+| Clef | whatKey | bassKey |
+|------|---------|---------|
+| Treble | `f` | `f` |
+| Bass | `f,` (with octave marker) | `f` (pitch class only) |
 
-This requires knowing the song's `low_note_offset` - which comes from user input when Eric runs makesheet.py.
-
-### What Jazz Picker Needs
-
-For each song in the catalog, we need:
-- `low_note` (e.g., `c` or `g,`)
-- `high_note` (e.g., `a''`)
-
-Then at PDF generation time:
-```python
-if clef == 'treble':
-    whatKey = target_key
-    bassKey = target_key
-else:  # bass clef
-    # Calculate octave offset using low_note + target_key
-    octave_marker = calculate_bass_octave(low_note, target_key)
-    whatKey = target_key + octave_marker  # e.g., "f,"
-    bassKey = target_key                   # e.g., "f"
-```
-
----
-
-## Confirmed with Eric (Dec 3)
-
-1. **bassKey rule:**
-   - Treble clef: `bassKey = whatKey` (same value)
-   - Bass clef: `bassKey` = pitch class only, `whatKey` = pitch + octave marker
-
-2. **Song for My Father example:**
-   | File | whatKey | bassKey | whatClef |
-   |------|---------|---------|----------|
-   | Fm Standard (treble) | `f` | `f` | treble |
-   | Fm Bass for Standard | `f,` | `f` | bass |
-
-3. **bassKey is harmless to set always** - even if song has no `refrainBass`
-
-4. **Without bassKey:** LilyPond errors or warns
-
-5. **The blocker:** Jazz Picker can't calculate the octave marker without note range data
-
----
-
-## Data Model Changes Needed
-
-### Option A: Add to Catalog (Preferred)
-
-Modify `build_catalog.py` to extract note ranges using python-ly:
-
-```python
-# New fields in catalog.db
-songs table:
-  - title TEXT
-  - default_key TEXT
-  - low_note TEXT      # NEW: e.g., "c" or "g,"
-  - high_note TEXT     # NEW: e.g., "a''"
-```
-
-### Option B: Separate JSON File
-
-If python-ly parsing is complex, could store ranges in a separate file that Eric maintains.
+The octave marker ensures the melody doesn't go below readable bass clef range.
 
 ---
 
 ## Quick Reference
 
-### LilyPond Octave Notation (from makesheet.py)
-
+### MIDI Note Numbers
 ```
-c, = C2 (two ledger lines below bass staff)
-c  = C3 (bass staff, second space from bottom)
-c' = C4 (middle C)
-c'' = C5 (treble staff)
-c''' = C6 (two ledger lines above treble staff)
+C2 = 36, E2 = 40 (low E for bass clef target)
+C3 = 48, C4 = 60 (middle C), C5 = 72, C6 = 84
 ```
 
-### Key Files
-
-- `lilypond-data/Wrappers/makesheet.py` - Eric's octave calculation logic
-- `lilypond-data/Include/refrain.ily:62-71` - Where bassKey is used
-- `lilypond-data/Core/Song for My Father - Ly Core - Fm.ly` - Example with refrainBass
-- `build_catalog.py` - Where we'd add note range extraction
+### LilyPond Octave Notation
+```
+c, = C2    c = C3    c' = C4 (middle C)    c'' = C5
+```
 
 ---
 
 ## Previous Sessions
 
-### Dec 3 - Session 2 (This Session)
-- Investigated python-ly for note range extraction
-- Found: works partially but drifts on complex files
-- Tested filtering approach (MIDI 36-96)
-- Decision needed: accept imperfect extraction vs ask Eric
+### Dec 3 - Session 4 (This Session)
+- Created `extract_note_ranges.py` proof-of-concept
+- Validated MIDI parsing on 502 Blues, Agua de Beber, Song for My Father, In Walked Bud, Sugar
+- Discovered `\voiceTwo` bass fills cause outlier low notes
+- Decided on statistical filtering (>1 octave below median) as "good enough" solution
+- Updated ROADMAP: offline caching moved to Paused
 
-### Dec 3 - Session 1
+### Dec 3 - Session 3
+- Abandoned python-ly approach (drift issues with repeated sections)
+- New plan: Parse MIDI files generated by Eric's workflow
+
+### Dec 3 - Sessions 1-2
 - Discussed bassKey implementation with Eric
-- Identified blocker: need note ranges for octave calculation
-- Decision: investigate python-ly for automatic extraction
+- Investigated python-ly (unreliable)
 
 ### Dec 2
-- **Spin** - Roulette wheel icon in nav bar, one-tap action
-- **PDF transition overlay** - Loading spinner when swiping between songs
-- **PDF viewer race condition fix** - Added key prop to Document component
+- Spin roulette wheel feature
+- PDF transition overlay
+- PDF viewer race condition fix
 
 ---
 
@@ -185,35 +162,35 @@ c''' = C6 (two ledger lines above treble staff)
 | Web | jazzpicker.pianohouseproject.org (Vercel) |
 | iOS | TestFlight (Jazz Picker) |
 | Backend | jazz-picker.fly.dev (Fly.io) |
-| Auth/DB | Supabase |
 | PDFs | AWS S3 |
-| LilyPond source | lilypond-data/ submodule (Eric's repo) |
+| LilyPond source | lilypond-data/ submodule |
 
 ## Quick Commands
 
 ```bash
-# Update lilypond-data submodule
-cd lilypond-data && git pull
+# Test MIDI generation for a single song
+cd lilypond-data
+lilypond --output=/tmp -dno-print-pages "Wrappers/502 Blues - Ly - Am Standard.ly"
 
-# TestFlight deploy
-cd frontend && npm run build && npx cap sync ios
-open ios/App/App.xcworkspace
-# Xcode: "Any iOS Device (arm64)" → Product → Archive → Distribute
+# Parse with Python
+python3 -c "import mido; print(mido.MidiFile('/tmp/502 Blues - Ly - Am Standard.midi').tracks)"
 
-# Deploy backend
-fly deploy
+# Run proof-of-concept on 5 songs
+python3 extract_note_ranges.py --limit 5
 ```
 
-## After bassKey is Implemented
+## Next Steps
 
-User needs to clear S3 cache:
-```bash
-aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
-```
+1. **Integrate MIDI parsing into `build_catalog.py`**
+   - Add `low_note_midi`, `high_note_midi` columns
+   - Process all ~735 Standard wrapper files
+   - Apply statistical outlier filtering
 
-## Next Up (after bassKey)
+2. **Update `app.py` to use note ranges**
+   - Calculate octave marker for bass clef PDFs
+   - Set `whatKey` and `bassKey` correctly
 
-1. Setlist Edit mode (drag-drop, reorder, key +/-)
-2. Offline PDF caching (commit f1fe8b2 - broken in TestFlight)
-3. Pre-cache setlist PDFs on app load
-4. Home page with one-click setlist access
+3. **Clear S3 cache after deployment**
+   ```bash
+   aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
+   ```

@@ -257,7 +257,7 @@ Extract: concert key from filename
 
 ### Storage & API Convention
 
-- **Catalog** stores song title + default concert key
+- **Catalog** stores song title + default concert key + note range (low_note_midi, high_note_midi)
 - **Setlists** store song title + concert key
 - **API** always uses concert key
 - **S3 filenames** encode concert key + transposition + clef
@@ -345,6 +345,17 @@ Jazz Picker generates wrapper files dynamically in `app.py:generate_wrapper_cont
 LilyPond runs directly in the Fly.io Docker container (~200MB). PDFs generate on-demand (~2-5s) and cache in S3.
 
 **Reference:** See `lilypond-data/Wrappers/makesheet.py` for Eric's octave calculation logic based on instrument ranges.
+
+### MIDI Generation (for note range extraction)
+
+`refrain.ily` includes `midi.ily` which generates MIDI output with distinct instrument tracks:
+
+| Track | Instrument | MIDI Program |
+|-------|------------|--------------|
+| Melody | "overdriven guitar" | 30 |
+| Chords | "drawbar organ" | 17 |
+
+To extract note ranges: parse MIDI files with `mido`, filter for program 30, get min/max note values. See `HANDOFF.md` for implementation plan.
 
 ---
 

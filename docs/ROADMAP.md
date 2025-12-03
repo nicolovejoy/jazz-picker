@@ -39,16 +39,18 @@ Three contexts via bottom nav, plus Spin action:
 ## Priority Queue
 
 ### In Progress
-- **bassKey + note ranges** - Extract note ranges from core files using python-ly, add to catalog, enable proper bass clef octave calculation
+- **bassKey + note ranges** - Parse MIDI files to extract melody note ranges, add to catalog.db, enable proper bass clef octave calculation (see HANDOFF.md for implementation plan)
 
 ### Up Next
-1. **Setlist Edit mode** - drag-drop, reorder, key +/−
-2. **Offline PDF caching**
-3. **Pre-cache setlist PDFs on app load**
-4. **Home page with one-click setlist access**
-5. **URL rename** - jazzpick.pianohouseproject.org
+1. **Pre-cache setlist PDFs on app load**
+2. **Home page with one-click setlist access**
+3. **URL rename** - jazzpick.pianohouseproject.org
+
+### Paused
+- **Offline PDF caching** - paused while completing note range extraction (was broken in TestFlight build 8)
 
 ### Completed
+- ✅ **Setlist Edit mode** - drag-drop, reorder, key +/− (Dec 2025)
 - ✅ **Spin** - roulette wheel action button with animation (Dec 2025)
 - ✅ **PDF transitions** - loading overlay when swiping between songs (Dec 2025)
 - ✅ **Bottom nav** - context switcher (already implemented)
