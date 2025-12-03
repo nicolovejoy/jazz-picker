@@ -11,6 +11,7 @@ import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
+import { RouletteIcon } from './components/RouletteIcon';
 import NativePDF from './plugins/NativePDF';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
@@ -74,6 +75,7 @@ function App() {
   const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
   const [catalog, setCatalog] = useState<SongSummary[]>([]);
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -413,12 +415,21 @@ function App() {
     }
   }, [catalog, instrument, handleOpenPdfUrl]);
 
-  // Spin: pick a random song and open it
+  // Spin: animate wheel then pick a random song
   const handleSpin = useCallback(() => {
-    if (catalog.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * catalog.length);
-    openSongFromCatalog(randomIndex);
-  }, [catalog, openSongFromCatalog]);
+    if (catalog.length === 0 || isSpinning) return;
+
+    // Switch to spin context and start animation
+    setActiveContext('spin');
+    setIsSpinning(true);
+
+    // After animation, pick random song
+    setTimeout(() => {
+      setIsSpinning(false);
+      const randomIndex = Math.floor(Math.random() * catalog.length);
+      openSongFromCatalog(randomIndex);
+    }, 1200); // 1.2s spin animation
+  }, [catalog, openSongFromCatalog, isSpinning]);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -498,18 +509,21 @@ function App() {
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
             <button
               onClick={handleSpin}
-              disabled={catalog.length === 0}
+              disabled={catalog.length === 0 || isSpinning}
               className="group relative"
             >
-              <div className="text-8xl mb-6 transform transition-transform group-hover:scale-110 group-active:scale-95">
-                🎲
+              <div className={`mb-6 transform transition-transform ${!isSpinning ? 'group-hover:scale-110 group-active:scale-95' : ''}`}>
+                <RouletteIcon
+                  className="w-32 h-32 text-blue-400"
+                  spinning={isSpinning}
+                />
               </div>
             </button>
-            <h2 className="text-2xl font-bold mb-2">Spin the Dial</h2>
+            <h2 className="text-2xl font-bold mb-2">Spin</h2>
             <p className="text-gray-400 max-w-xs mb-6">
-              Tap the dice for a random song
+              {isSpinning ? 'Spinning...' : 'Tap the wheel for a random song'}
             </p>
-            {catalog.length > 0 && (
+            {catalog.length > 0 && !isSpinning && (
               <p className="text-gray-600 text-sm">
                 {catalog.length} songs in catalog
               </p>
@@ -582,7 +596,12 @@ function App() {
 
       {/* Bottom Navigation - Always visible except in PDF Viewer */}
       {!pdfUrl && (
-        <BottomNav activeContext={activeContext} onContextChange={setActiveContext} />
+        <BottomNav
+          activeContext={activeContext}
+          onContextChange={setActiveContext}
+          onSpin={handleSpin}
+          isSpinning={isSpinning}
+        />
       )}
 
       {pdfUrl && (

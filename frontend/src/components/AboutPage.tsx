@@ -41,6 +41,7 @@ export function AboutPage({ onClose }: AboutPageProps) {
               <li>Generate charts in any of the 12 concert keys on demand</li>
               <li>Multi-instrument support (Piano, Trumpet, Alto Sax, Bass, and more)</li>
               <li>Search by song title</li>
+              <li>Spin the wheel for a random song</li>
               <li>Create setlists for gigs with swipe navigation</li>
               <li>iPad-optimized PDF viewer with landscape side-by-side mode</li>
             </ul>

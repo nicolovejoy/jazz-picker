@@ -60,6 +60,13 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
     }
   };
 
+  // Reset state when PDF changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setNumPages(0);
+    setError(null);
+  }, [pdfUrl]);
+
   // Update scale on orientation change
   useEffect(() => {
     const handleResize = () => {
@@ -515,6 +522,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, onClose }: PDFViewerPr
 
             <div className="h-full flex flex-col items-center justify-center">
               <Document
+                key={pdfUrl}
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
                 onLoadError={onDocumentLoadError}
