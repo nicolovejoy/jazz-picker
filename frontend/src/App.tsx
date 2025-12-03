@@ -423,9 +423,10 @@ function App() {
     setActiveContext('spin');
     setIsSpinning(true);
 
-    // After animation, pick random song
+    // After animation, pick random song and switch to browse
     setTimeout(() => {
       setIsSpinning(false);
+      setActiveContext('browse'); // So closing PDF returns to browse, not spin
       const randomIndex = Math.floor(Math.random() * catalog.length);
       openSongFromCatalog(randomIndex);
     }, 1200); // 1.2s spin animation
