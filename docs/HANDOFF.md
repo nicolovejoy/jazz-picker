@@ -1,8 +1,18 @@
 # Session Handoff - Dec 3, 2025
 
+## BLOCKER: TestFlight Build Needed
+
+The PDF viewer improvements work in local Xcode builds but TestFlight still has the old version. Need to:
+
+1. Open Xcode: `open frontend/ios/App/App.xcworkspace`
+2. Select "Any iOS Device (arm64)"
+3. Product → Archive
+4. Distribute App → App Store Connect → Upload
+5. Wait ~15 min for processing
+
 ## Just Completed: iOS PDF Viewer Improvements
 
-### Full Bleed Display (DONE)
+### Full Bleed Display (DONE - needs TestFlight build)
 - Removed black margins and gutter from PDFView
 - Landscape mode now shows 2-up (side-by-side pages)
 - 97% scale for breathing room around edges
