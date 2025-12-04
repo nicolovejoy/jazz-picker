@@ -2,20 +2,22 @@
 
 ## Current State
 
-Phase 1 complete. Change Key feature done. Ready for TestFlight.
+Phase 2 in progress. Setlist foundation built, perform mode needs fix.
 
 **What works:**
 - Browse (grid on iPad, list on iPhone) → tap → PDF
-- PDF: swipe L/R songs, swipe down close, menu → Change Key
+- PDF: swipe L/R songs, swipe down close, menu → Change Key, Add to Setlist
 - Key pills on cards (green=standard, orange=cached)
 - Spin → random song
-- Controls auto-hide (8s)
+- Controls auto-hide (8s), tab bar hidden in PDF view
+- Setlists: create, delete, add songs, view detail
 
 **Known issues:**
+- Setlist perform mode: swipe L/R not navigating between songs
+- Spin tab placeholder briefly visible before PDF appears
 - New keys don't show as pills until app refresh
-- "Baby Elephant Walk" fails to generate (bassKey issue)
 
-**Next:** Setlist data layer (see `SETLIST_UX.md`)
+**Next:** Fix setlist perform mode swipe navigation
 
 ---
 
@@ -27,11 +29,13 @@ Phase 1 complete. Change Key feature done. Ready for TestFlight.
 - [x] Change Key feature with key pills
 
 ### Phase 2: Setlists
-- [ ] Setlist + SetlistItem models
-- [ ] SetlistStore (UserDefaults → iCloud)
-- [ ] Setlist views (list, detail, edit)
-- [ ] Add to Setlist flow
-- [ ] Perform mode
+- [x] Setlist + SetlistItem models
+- [x] SetlistStore (UserDefaults persistence)
+- [x] Setlist views (list, detail)
+- [x] Add to Setlist flow
+- [ ] Perform mode (swipe navigation broken)
+- [ ] Edit mode (reorder, set breaks)
+- [ ] iCloud sync
 
 ### Phase 3: Offline & Polish
 - [ ] PDFCache service
@@ -53,6 +57,12 @@ Phase 1 complete. Change Key feature done. Ready for TestFlight.
 ---
 
 ## Session History
+
+### Dec 4, 2025 (evening)
+- Setlist data layer: models, SetlistStore, UserDefaults persistence
+- Setlist UI: list view, detail view, add-to-setlist sheet
+- PDF viewer: Add to Setlist menu item, hide tab bar
+- Known issue: setlist perform mode swipe not working
 
 ### Dec 4, 2025 (afternoon)
 - Change Key: grid picker, key pills, sticky keys

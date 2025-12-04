@@ -27,17 +27,18 @@ open JazzPicker/JazzPicker.xcodeproj
 ```
 JazzPicker/JazzPicker/
 ├── App/        # Entry point, ContentView with tabs
-├── Models/     # Song, Instrument, PDFNavigationContext
-├── Views/      # Browse/, PDF/, Settings/, Components/
-└── Services/   # APIClient, CatalogStore, CachedKeysStore
+├── Models/     # Song, Instrument, PDFNavigationContext, Setlist
+├── Views/      # Browse/, PDF/, Settings/, Setlists/, Components/
+└── Services/   # APIClient, CatalogStore, CachedKeysStore, SetlistStore
 ```
 
 **Key patterns:**
 
-- `@Observable` for stores (CatalogStore, CachedKeysStore)
+- `@Observable` for stores (CatalogStore, CachedKeysStore, SetlistStore)
 - Environment injection from JazzPickerApp
 - `async/await` throughout
 - PDFKit for rendering with crop bounds
+- UserDefaults for setlist persistence (iCloud later)
 
 **TestFlight:** Any iOS Device (arm64) → Archive → Distribute
 
