@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(CatalogStore.self) private var catalogStore
+    @Environment(CachedKeysStore.self) private var cachedKeysStore
     @State private var selectedTab = 0
     @State private var previousTab = 0
     @State private var spinSong: Song?
@@ -80,4 +81,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(CatalogStore())
+        .environment(CachedKeysStore())
 }

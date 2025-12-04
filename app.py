@@ -355,6 +355,12 @@ def slugify(text):
 
 def generate_wrapper_content(core_file, target_key, clef, instrument=""):
     """Generate LilyPond wrapper file content."""
+    # bassKey is always the key without octave modifier
+    bass_key = target_key.rstrip(',')
+
+    # For bass clef, whatKey needs octave-down comma
+    what_key = f"{target_key}," if clef == "bass" else target_key
+
     return f'''%% -*- Mode: LilyPond -*-
 
 \\version "2.24.0"
@@ -362,11 +368,85 @@ def generate_wrapper_content(core_file, target_key, clef, instrument=""):
 \\include "english.ly"
 
 instrument = "{instrument}"
-whatKey = {target_key}
+whatKey = {what_key}
+bassKey = {bass_key}
 whatClef = "{clef}"
 
 \\include "../Core/{core_file}"
 '''
+
+
+@app.route('/api/v2/cached-keys')
+@requires_auth
+def get_all_cached_keys():
+    """
+    Get all cached keys for all songs in a single request.
+
+    Query params:
+        transposition: C, Bb, or Eb (required)
+        clef: treble or bass (default: treble)
+
+    Returns:
+    {
+        "cached_keys": {
+            "502-blues": ["a", "bf"],
+            "autumn-leaves": ["g", "ef"],
+            ...
+        }
+    }
+    """
+    # Get transposition from query params
+    transposition = request.args.get('transposition', 'C')
+    if transposition not in VALID_TRANSPOSITIONS:
+        return jsonify({'error': f'Invalid transposition. Must be one of: {", ".join(VALID_TRANSPOSITIONS)}'}), 400
+
+    clef = request.args.get('clef', 'treble')
+    if clef not in VALID_CLEFS:
+        clef = 'treble'
+
+    cached_keys = {}
+
+    if s3_client:
+        try:
+            # List all generated PDFs
+            paginator = s3_client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=S3_BUCKET, Prefix='generated/')
+
+            for page in pages:
+                for obj in page.get('Contents', []):
+                    # Parse: generated/{slug}-{concert_key}-{transposition}-{clef}.pdf
+                    key = obj['Key']
+                    if not key.endswith('.pdf'):
+                        continue
+
+                    # Remove prefix and extension
+                    filename = key.replace('generated/', '').replace('.pdf', '')
+
+                    # Split from the end to handle song slugs with hyphens
+                    parts = filename.rsplit('-', 3)
+                    if len(parts) != 4:
+                        continue
+
+                    song_slug, concert_key, file_trans, file_clef = parts
+
+                    # Filter by transposition and clef
+                    if file_trans == transposition and file_clef == clef:
+                        if song_slug not in cached_keys:
+                            cached_keys[song_slug] = []
+                        if concert_key not in cached_keys[song_slug]:
+                            cached_keys[song_slug].append(concert_key)
+
+        except ClientError as e:
+            print(f"⚠️  Error listing cached keys: {e}")
+
+    response = make_response(jsonify({
+        'cached_keys': cached_keys,
+        'transposition': transposition,
+        'clef': clef
+    }))
+
+    # Cache for 5 minutes
+    return add_cache_headers(response, max_age=300)
 
 
 @app.route('/api/v2/songs/<path:song_title>/cached')

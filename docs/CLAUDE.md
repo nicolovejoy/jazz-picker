@@ -55,8 +55,9 @@ fly logs        # View logs
 ```
 
 **API Endpoints:**
-- `GET /api/v2/catalog` - Full catalog (~735 songs)
-- `GET /api/v2/songs/:title/cached` - Cached keys for a song
+- `GET /api/v2/catalog` - Full catalog (~730 songs)
+- `GET /api/v2/cached-keys?transposition=C&clef=treble` - All cached keys (bulk, for Browse pills)
+- `GET /api/v2/songs/:title/cached` - Cached keys for a single song
 - `POST /api/v2/generate` - Generate/fetch PDF (see below)
 
 **Generate Request:**
@@ -113,10 +114,12 @@ Examples: `blue-bossa-ef-Bb-treble.pdf`, `autumn-leaves-g-C-bass.pdf`
 
 - Full bleed, no status bar
 - Landscape: 2-up | Portrait: single page
-- Auto-hide controls (2s)
+- Auto-hide controls (1.5s) — appear on open/tap, NOT on swipe
 - Swipe L/R for song navigation at page boundaries
-- Swipe down to close
+- Swipe down or X to close
 - Smart cropping via PyMuPDF
+
+**Controls (top bar):** X (close), song title, key, menu (Change Key, Add to Setlist)
 
 ---
 
@@ -175,5 +178,10 @@ jazz-picker/
 ├── infrastructure/                   # Terraform
 ├── JazzPicker/                       # Native SwiftUI app ← ACTIVE
 ├── frontend/                         # Web + deprecated Capacitor
-└── docs/                             # CLAUDE.md, HANDOFF.md, ROADMAP.md, SWIFT_ARCHITECTURE.md
+└── docs/
+    ├── CLAUDE.md                     # This file
+    ├── HANDOFF.md                    # Session handoff notes
+    ├── ROADMAP.md                    # Implementation phases + history
+    ├── SETLIST_UX.md                 # Setlist UX spec (Phase 2)
+    └── SWIFT_ARCHITECTURE.md         # iOS architecture details
 ```

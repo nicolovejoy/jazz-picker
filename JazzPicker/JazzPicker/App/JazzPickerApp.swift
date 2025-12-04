@@ -10,11 +10,13 @@ import SwiftUI
 @main
 struct JazzPickerApp: App {
     @State private var catalogStore = CatalogStore()
+    @State private var cachedKeysStore = CachedKeysStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(catalogStore)
+                .environment(cachedKeysStore)
         }
     }
 }

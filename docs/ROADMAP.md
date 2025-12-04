@@ -22,20 +22,27 @@ Phase 1 (Core Browsing MVP) is **complete** and on TestFlight as "JazzPickerNati
 - [x] PDF viewer: landscape 2-up mode
 - [x] App icon
 - [x] PDF viewer: swipe L/R for song navigation, swipe down to close
-- [ ] Browse: grid layout for iPad (cards instead of list)
+- [x] Browse: grid layout for iPad (cards instead of list)
 
 ### Phase 2: Setlists
-- [ ] Setlist model
-- [ ] iCloud sync (NSUbiquitousKeyValueStore)
-- [ ] SetlistListView (list, create, delete)
-- [ ] SetlistDetailView (perform mode)
-- [ ] SetlistEditView (reorder, add, remove)
-- [ ] Swipe between songs in PDF viewer
+UX spec: `docs/SETLIST_UX.md`
+
+- [x] PDF viewer: Change Key (circle-of-fifths wheel)
+- [x] Browse cards: Key pills (green=standard, orange=cached)
+- [x] Backend: `/api/v2/cached-keys` bulk endpoint
+- [ ] Setlist + SetlistItem models (with set break support)
+- [ ] SetlistStore (CRUD, soft delete, UserDefaults → iCloud later)
+- [ ] SetlistListView (cards, sorted by recency, swipe-delete with confirm)
+- [ ] SetlistDetailView (song list, tap to perform)
+- [ ] SetlistEditView (reorder, multi-select, set breaks)
+- [ ] PDF viewer: Add to Setlist flow
+- [ ] Setlist perform mode (swipe between songs, position indicator)
 
 ### Phase 3: Offline & Polish
 - [ ] PDFCache service
 - [ ] "Download for Offline" on setlist
 - [ ] Spin button with animation
+- [ ] Home page (app info, recent setlist 1-click, browse ~50% of screen, refresh button for cached keys)
 
 ### Phase 4: Mac Support
 - [ ] Add macOS target
@@ -90,6 +97,36 @@ jazz-picker/
 ---
 
 ## Session History
+
+### Dec 4, 2025 (afternoon)
+- Implemented Change Key feature
+- Added `/api/v2/cached-keys` bulk endpoint to backend (deployed)
+- Created `CachedKeysStore` service for iOS with local caching
+- Updated SongCard with key pills (green=standard, orange=cached)
+- Added sticky key support (persists for session)
+- Key picker: started with circle-of-fifths wheel, simplified to 2-row grid
+- PDF viewer: menu → Change Key → grid picker → loads new PDF
+- Context-aware sharp/flat spelling based on song's standard key
+- Fixed search keyboard not appearing (gesture conflict with cards)
+- Extended controls auto-hide timer to 8 seconds
+- Known issue: new keys don't appear as pills until cache refresh
+
+### Dec 4, 2025 (later morning)
+- Designed full Setlist UX through Q&A process
+- Created `docs/SETLIST_UX.md` spec covering: key changes, add-to-setlist, perform mode, edit mode, set breaks
+- Widened iPad grid cards (320px min)
+
+### Dec 4, 2025 (morning)
+- Fixed "Baby Elephant Walk" bug: added `bassKey` to `generate_wrapper_content()`
+- Fixed key format: rebuilt catalog.db with `ef`/`bf`/`af`/`df` format, removed iOS workaround
+- Added iPad grid layout for Browse view (cards via `LazyVGrid`, iPhone keeps list)
+- Deployed backend to Fly.io
+
+### Dec 4, 2025 (late night)
+- Committed full SwiftUI folder structure (`b6a13d5`)
+- Diagnosed "Baby Elephant Walk" bug: missing `bassKey` in `generate_wrapper_content()`
+- Documented fix plan in HANDOFF.md with exact code snippet
+- Ready for backend fix + deploy
 
 ### Dec 4, 2025 (late evening)
 - Fixed key format bug: catalog uses `eb` but API expects `ef` - added client-side conversion in APIClient.swift

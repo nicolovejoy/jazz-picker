@@ -7,10 +7,16 @@ import SwiftUI
 
 struct BrowseView: View {
     @Environment(CatalogStore.self) private var catalogStore
+    @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let instrument: Instrument
 
     @State private var searchText = ""
-    @State private var selectedSongIndex: Int?
+    @State private var selectedSong: SelectedSong?
+
+    private var useGrid: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var filteredSongs: [Song] {
         catalogStore.search(searchText)
@@ -27,6 +33,8 @@ struct BrowseView: View {
                         systemImage: "wifi.slash",
                         description: Text(error.localizedDescription)
                     )
+                } else if useGrid {
+                    songGrid
                 } else {
                     songList
                 }
@@ -35,38 +43,72 @@ struct BrowseView: View {
             .searchable(text: $searchText, prompt: "Search songs")
             .refreshable {
                 await catalogStore.refresh()
+                await cachedKeysStore.refresh(for: instrument)
             }
             .task {
                 if catalogStore.songs.isEmpty {
                     await catalogStore.load()
                 }
+                await cachedKeysStore.load(for: instrument)
             }
-            .navigationDestination(item: $selectedSongIndex) { index in
+            .onChange(of: instrument.id) {
+                // Reload cached keys when instrument changes
+                Task {
+                    await cachedKeysStore.load(for: instrument)
+                }
+            }
+            .navigationDestination(item: $selectedSong) { selection in
                 let songs = filteredSongs
-                if index < songs.count {
-                    let song = songs[index]
+                if selection.index < songs.count {
+                    let song = songs[selection.index]
                     PDFViewerView(
                         song: song,
-                        concertKey: song.defaultKey,
+                        concertKey: selection.key,
                         instrument: instrument,
-                        navigationContext: .browse(songs: songs, currentIndex: index)
+                        navigationContext: .browse(songs: songs, currentIndex: selection.index)
                     )
                 }
             }
         }
     }
 
+    /// Represents a song selection with index and chosen key
+    struct SelectedSong: Hashable {
+        let index: Int
+        let key: String
+    }
+
     private var songList: some View {
         List(Array(filteredSongs.enumerated()), id: \.element.id) { index, song in
             SongRow(song: song, instrument: instrument) {
-                selectedSongIndex = index
+                selectedSong = SelectedSong(index: index, key: song.defaultKey)
             }
         }
         .listStyle(.plain)
+    }
+
+    private var songGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 16)], spacing: 16) {
+                ForEach(Array(filteredSongs.enumerated()), id: \.element.id) { index, song in
+                    SongCard(song: song, instrument: instrument) { key in
+                        // Set sticky key if non-standard
+                        if key != song.defaultKey {
+                            cachedKeysStore.setStickyKey(key, for: song)
+                        }
+                        selectedSong = SelectedSong(index: index, key: key)
+                    }
+                    .frame(height: 100)
+                }
+            }
+            .padding()
+        }
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 
 #Preview {
     BrowseView(instrument: .piano)
         .environment(CatalogStore())
+        .environment(CachedKeysStore())
 }

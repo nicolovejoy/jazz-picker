@@ -42,6 +42,24 @@ final class APIClient: Sendable {
         return try JSONDecoder().decode(CachedKeysResponse.self, from: data)
     }
 
+    func fetchAllCachedKeys(transposition: Transposition, clef: Clef) async throws -> BulkCachedKeysResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("cached-keys"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "transposition", value: transposition.rawValue),
+            URLQueryItem(name: "clef", value: clef.rawValue)
+        ]
+
+        let (data, response) = try await URLSession.shared.data(from: components.url!)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw APIError.invalidResponse(statusCode: code, body: "Bulk cached keys fetch failed")
+        }
+
+        return try JSONDecoder().decode(BulkCachedKeysResponse.self, from: data)
+    }
+
     func generatePDF(
         song: String,
         concertKey: String,
@@ -55,19 +73,9 @@ final class APIClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Normalize key format:
-        // 1. Strip "m" suffix from minor keys (catalog stores "cm", API expects "c")
-        // 2. Convert flat notation: catalog uses "eb", API expects "ef"
-        var pitchClass = concertKey.hasSuffix("m") ? String(concertKey.dropLast()) : concertKey
-
-        // Convert flat notation: "eb" → "ef", "ab" → "af", etc.
-        if pitchClass.hasSuffix("b") && pitchClass.count == 2 {
-            pitchClass = String(pitchClass.dropLast()) + "f"
-        }
-
         var body: [String: Any] = [
             "song": song,
-            "concert_key": pitchClass,
+            "concert_key": concertKey,
             "transposition": transposition.rawValue,
             "clef": clef.rawValue
         ]
@@ -78,7 +86,7 @@ final class APIClient: Sendable {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("🌐 API Request: \(song) in \(pitchClass) for \(transposition.rawValue)")
+        print("🌐 API Request: \(song) in \(concertKey) for \(transposition.rawValue)")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

@@ -13,6 +13,7 @@ struct PDFViewerView: View {
     @State var navigationContext: PDFNavigationContext
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(CachedKeysStore.self) private var cachedKeysStore
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -21,6 +22,7 @@ struct PDFViewerView: View {
     @State private var showControls = true
     @State private var hideControlsTask: Task<Void, Never>?
     @State private var isLandscape = false
+    @State private var showKeyPicker = false
 
     // Page tracking for boundary detection
     @State private var isAtFirstPage = true
@@ -92,14 +94,75 @@ struct PDFViewerView: View {
         }
         .navigationTitle(song.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        showKeyPicker = true
+                    } label: {
+                        Label("Change Key", systemImage: "music.quarternote.3")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 2) {
+                    Text(song.title)
+                        .font(.headline)
+                    Text(formatKeyForDisplay(concertKey))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
         .toolbarVisibility(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
         .statusBarHidden(!showControls && error == nil)
-        .task(id: song.id) {
+        .task(id: "\(song.id)-\(concertKey)") {
             await loadPDF()
         }
         .onDisappear {
             hideControlsTask?.cancel()
         }
+        .sheet(isPresented: $showKeyPicker) {
+            KeyPickerSheet(
+                currentKey: concertKey,
+                standardKey: song.defaultKey
+            ) { newKey in
+                changeKey(to: newKey)
+            }
+        }
+    }
+
+    // MARK: - Key Change
+
+    private func changeKey(to newKey: String) {
+        guard newKey != concertKey else { return }
+
+        // Update sticky key in store
+        cachedKeysStore.setStickyKey(newKey, for: song)
+
+        // Update concert key (triggers PDF reload via task)
+        concertKey = newKey
+    }
+
+    private func formatKeyForDisplay(_ key: String) -> String {
+        let isMinor = key.hasSuffix("m")
+        let pitchPart = isMinor ? String(key.dropLast()) : key
+
+        var result = pitchPart.prefix(1).uppercased()
+
+        if pitchPart.count > 1 {
+            let modifier = pitchPart.dropFirst()
+            if modifier == "f" {
+                result += "b"
+            } else if modifier == "s" {
+                result += "#"
+            }
+        }
+
+        return isMinor ? result + "m" : result
     }
 
     // MARK: - Gestures
@@ -199,13 +262,17 @@ struct PDFViewerView: View {
     private func scheduleHideControls() {
         hideControlsTask?.cancel()
         hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(8))
             if !Task.isCancelled {
                 withAnimation {
                     showControls = false
                 }
             }
         }
+    }
+
+    private func cancelHideControls() {
+        hideControlsTask?.cancel()
     }
 
     private func loadPDF() async {
@@ -419,4 +486,5 @@ struct PDFKitView: UIViewRepresentable {
             navigationContext: .single
         )
     }
+    .environment(CachedKeysStore())
 }

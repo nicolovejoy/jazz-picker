@@ -1,93 +1,77 @@
-# Handoff - Dec 4, 2025 Late Night
+# Handoff - Dec 4, 2025
 
 ## Current State
 
-Native SwiftUI app fully working. Spin + swipe navigation functional after key format fix.
-
-**Uncommitted:** Large SwiftUI restructure (App/, Models/, Views/, Services/ folders). Commit before starting new work.
+Change Key feature implemented and working. Ready for TestFlight.
 
 ---
 
-## Next Session: Two Backend Fixes
+## Completed This Session
 
-### 1. Baby Elephant Bug (Priority)
+1. **Change Key Feature**
+   - Backend: `/api/v2/cached-keys` bulk endpoint (deployed)
+   - iOS: `CachedKeysStore` service with local caching
+   - iOS: Key picker grid (simple 2-row layout, tap to select)
+   - iOS: Key pills on SongCard (green=standard, orange=cached)
+   - PDF viewer: Menu → Change Key → grid picker → tap key → new PDF loads
 
-**Symptom:** First 4 bars of "Baby Elephant Walk" show chord symbols but no melody (for any instrument).
+2. **Key Pills on Browse Cards**
+   - Standard key (green) always leftmost
+   - Sticky key (session) promoted to 2nd position
+   - Context-aware sharp/flat spelling based on song's standard key
+   - Tap pill → opens in that key, tap card title → standard key
 
-**Root cause:** `app.py:generate_wrapper_content()` is missing `bassKey` variable.
-
-**How it breaks:**
-- `bass-intro.ily:19` does `\transpose \refrainKey \bassKey { \bassIntro }`
-- When `bassKey` undefined, LilyPond silently skips the intro section
-- Eric's static wrappers work because they define `bassKey`
-
-**The fix** in `app.py:generate_wrapper_content()` (~line 356):
-
-```python
-def generate_wrapper_content(core_file, target_key, clef, instrument=""):
-    # bassKey is always the key without octave modifier
-    bass_key = target_key.rstrip(',')
-
-    # For bass clef, whatKey needs octave-down comma
-    what_key = f"{target_key}," if clef == "bass" else target_key
-
-    return f'''%% -*- Mode: LilyPond -*-
-
-\\version "2.24.0"
-
-\\include "english.ly"
-
-instrument = "{instrument}"
-whatKey = {what_key}
-bassKey = {bass_key}
-whatClef = "{clef}"
-
-\\include "../Core/{core_file}"
-'''
-```
-
-**Test:** Generate "Baby Elephant Walk" for Piano. First 4 bars should have melody notes, not just "F" chord symbols.
-
-**Deploy:** `fly deploy`
+3. **Bug Fixes**
+   - Fixed search keyboard not appearing (was gesture conflict)
+   - Fixed controls disappearing too fast (now 8 seconds)
+   - Simplified key picker from wheel to grid (clearer UX)
 
 ---
 
-### 2. Key Format Normalization (Lower Priority)
+## Known Issues / Next Session
 
-**Problem:** Catalog stores flats as `eb` (b=flat), but backend expects `ef` (f=flat).
+1. **New keys not cached locally** — When you generate a PDF in a new key, the key pill doesn't appear on the Browse card until next app launch (needs to refresh from server or add to local cache after generation)
 
-**Current workaround:** `APIClient.swift:63-66` converts `eb` → `ef` client-side.
-
-**Proper fix:** Update `build_catalog.py` to output `ef` format at source, then remove iOS workaround.
-
-**Files:**
-- `build_catalog.py` — change key output format
-- `JazzPicker/JazzPicker/Services/APIClient.swift` — remove workaround after deploy
+2. **Home page** — Planned for Phase 3: app info, recent setlist 1-click, browse ~50%, refresh button
 
 ---
 
-## What Works (All ✓)
+## What Works
 
-- Browse → tap song → PDF loads
-- Swipe L/R between songs (browse + spin modes)
-- Swipe down to dismiss
-- Spin → random song → swipe to more random songs
-- Loading overlay during transitions
-- Error state with back button
+- Browse (grid on iPad, list on iPhone) → tap → PDF
+- PDF: swipe L/R between songs, swipe down to close
+- PDF: Menu → Change Key → 12-key grid picker
+- Key pills on cards show cached keys from S3
+- Sticky keys persist for session
+- Spin → random song → swipe for more
+- Controls auto-hide after 8 seconds
+
+---
+
+## Files Changed This Session
+
+**Backend:**
+- `app.py` — Added `/api/v2/cached-keys` bulk endpoint
+
+**iOS - New:**
+- `Services/CachedKeysStore.swift`
+- `Views/Components/CircleOfFifthsWheel.swift` (now contains KeyPickerGrid)
+
+**iOS - Modified:**
+- `App/JazzPickerApp.swift` — Added CachedKeysStore environment
+- `App/ContentView.swift` — Added CachedKeysStore environment
+- `Services/APIClient.swift` — Added fetchAllCachedKeys
+- `Models/Song.swift` — Added BulkCachedKeysResponse
+- `Views/Browse/BrowseView.swift` — Load cached keys, pass key to PDF
+- `Views/Browse/SongCard.swift` — Key pills with tap handlers
+- `Views/PDF/PDFViewerView.swift` — Change Key menu + sheet
+
+---
 
 ## Quick Reference
 
 ```bash
-# iOS development
-open JazzPicker/JazzPicker.xcodeproj
-
-# Backend
-python3 app.py          # localhost:5001
-fly deploy              # Deploy to Fly.io
-fly logs                # View logs
-
-# Test Baby Elephant fix locally before deploy
-curl -X POST http://localhost:5001/api/v2/generate \
-  -H "Content-Type: application/json" \
-  -d '{"song":"Baby Elephant Walk","concert_key":"f","transposition":"C","clef":"treble","instrument_label":"Piano"}'
+open JazzPicker/JazzPicker.xcodeproj   # iOS dev
+python3 app.py                          # Backend local
+fly deploy                              # Deploy backend
 ```

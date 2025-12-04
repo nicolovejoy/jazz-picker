@@ -56,3 +56,15 @@ struct CachedKeysResponse: Codable, Sendable {
         case cachedKeys = "cached_keys"
     }
 }
+
+struct BulkCachedKeysResponse: Codable, Sendable {
+    let cachedKeys: [String: [String]]
+    let transposition: String
+    let clef: String
+
+    enum CodingKeys: String, CodingKey {
+        case cachedKeys = "cached_keys"
+        case transposition
+        case clef
+    }
+}
