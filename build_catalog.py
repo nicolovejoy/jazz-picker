@@ -164,8 +164,15 @@ def extract_song_info(wrapper_path: Path) -> dict:
     title = match.group(1)
     default_key = match.group(2).lower()
 
-    # Normalize key format (bf -> bb, etc.)
-    default_key = default_key.replace('bf', 'bb').replace('sf', '#')
+    # Normalize key format to LilyPond notation:
+    # - Strip 'm' suffix (minor keys just use pitch class)
+    # - Convert 'b' flat notation to 'f' (e.g., 'bb' -> 'bf', 'eb' -> 'ef')
+    # - Convert '#' sharp to 's' (e.g., 'f#' -> 'fs')
+    default_key = default_key.rstrip('m')  # Remove minor indicator
+    default_key = default_key.replace('#', 's')  # Sharp notation
+    # Convert flat notation: 'xb' -> 'xf' (but not 'b' alone which is B natural)
+    if len(default_key) == 2 and default_key[1] == 'b':
+        default_key = default_key[0] + 'f'
 
     # Extract core file references from content
     content = wrapper_path.read_text()

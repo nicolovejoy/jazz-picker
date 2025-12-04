@@ -40,6 +40,15 @@ class NativePDFViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        print("[NativePDF] viewWillAppear - requesting status bar update")
+        setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        print("[NativePDF] viewDidAppear - requesting status bar update again")
+        // Try again after view is fully visible
         setNeedsStatusBarAppearanceUpdate()
         setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
@@ -71,9 +80,16 @@ class NativePDFViewController: UIViewController {
     // MARK: - Display Mode
 
     private func updateDisplayMode(for size: CGSize? = nil) {
-        // Always use single page - cleanest for full bleed
-        // User swipes horizontally to change pages
-        pdfView.displayMode = .singlePage
+        let currentSize = size ?? view.bounds.size
+        let isLandscape = currentSize.width > currentSize.height
+
+        if isLandscape {
+            // Landscape: show two pages side-by-side
+            pdfView.displayMode = .twoUp
+        } else {
+            // Portrait: single page
+            pdfView.displayMode = .singlePage
+        }
 
         // Update scale after mode change
         DispatchQueue.main.async {
@@ -85,23 +101,21 @@ class NativePDFViewController: UIViewController {
         guard let document = pdfView.document,
               let page = document.page(at: 0) else { return }
 
-        // Calculate scale to fill width completely
         let pageRect = page.bounds(for: .cropBox)
         let viewWidth = view.bounds.width
         let viewHeight = view.bounds.height
 
-        // Scale to fit width (full bleed horizontally)
-        let widthScale = viewWidth / pageRect.width
-        // Scale to fit height
+        // For two-up mode, account for two pages side by side
+        let effectivePageWidth = pdfView.displayMode == .twoUp ? pageRect.width * 2 : pageRect.width
+
+        // Scale to fit with small margin (97% to add breathing room)
+        let widthScale = viewWidth / effectivePageWidth
         let heightScale = viewHeight / pageRect.height
+        let fitScale = min(widthScale, heightScale) * 0.97
 
-        // Use the larger scale to fill the view (may crop slightly)
-        // Or use min to fit entirely - adjust based on preference
-        let targetScale = min(widthScale, heightScale)
-
-        pdfView.scaleFactor = targetScale
-        pdfView.minScaleFactor = targetScale * 0.5
-        pdfView.maxScaleFactor = targetScale * 4.0
+        pdfView.scaleFactor = fitScale
+        pdfView.minScaleFactor = fitScale * 0.5
+        pdfView.maxScaleFactor = fitScale * 4.0
     }
 
     // MARK: - Setup
@@ -123,11 +137,8 @@ class NativePDFViewController: UIViewController {
             pdfView.pageShadowsEnabled = false
         }
 
-        // Remove internal scroll view insets
-        if let scrollView = pdfView.subviews.first as? UIScrollView {
-            scrollView.contentInset = .zero
-            scrollView.scrollIndicatorInsets = .zero
-        }
+        // Remove internal scroll view insets and backgrounds
+        removeInternalPDFViewChrome()
 
         view.addSubview(pdfView)
 
@@ -257,6 +268,8 @@ class NativePDFViewController: UIViewController {
                 DispatchQueue.main.async {
                     spinner.removeFromSuperview()
                     self?.pdfView.document = document
+                    // Re-apply chrome removal after document loads (PDFView recreates internal views)
+                    self?.removeInternalPDFViewChrome()
                     self?.updateScale()
                 }
             } else {
@@ -332,15 +345,27 @@ class NativePDFViewController: UIViewController {
     }
 
     private func hideControls() {
-        guard controlsVisible else { return }
+        guard controlsVisible else {
+            print("[NativePDF] hideControls called but already hidden")
+            return
+        }
+        print("[NativePDF] hideControls - hiding controls now")
         controlsVisible = false
         setControlsAlpha(0)
     }
 
     private func startHideTimer() {
-        hideTimer = Timer.scheduledTimer(withTimeInterval: controlsAutoHideDelay, repeats: false) { [weak self] _ in
-            self?.hideControls()
+        hideTimer?.invalidate()  // Cancel any existing timer first
+        print("[NativePDF] startHideTimer - will hide in \(controlsAutoHideDelay)s")
+        let timer = Timer(timeInterval: controlsAutoHideDelay, repeats: false) { [weak self] _ in
+            print("[NativePDF] Timer fired - calling hideControls")
+            DispatchQueue.main.async {
+                self?.hideControls()
+            }
         }
+        // Add to main run loop to ensure it fires even during UI interactions
+        RunLoop.main.add(timer, forMode: .common)
+        hideTimer = timer
     }
 
     private func resetHideTimer() {
@@ -357,5 +382,61 @@ class NativePDFViewController: UIViewController {
             self?.closeTapped()
         })
         present(alert, animated: true)
+    }
+
+    // MARK: - PDFView Chrome Removal
+
+    /// Recursively removes black backgrounds and extra chrome from PDFView internals
+    private func removeInternalPDFViewChrome() {
+        // PDFView has internal subviews with their own backgrounds
+        // We need to make them all white/clear to get true full bleed
+        func cleanSubviews(_ view: UIView) {
+            for subview in view.subviews {
+                // Hide any page controls, scrubbers, or navigation chrome
+                if subview is UIPageControl {
+                    subview.isHidden = true
+                    continue
+                }
+
+                // Hide slider-like controls (PDFView might add scrubbers)
+                if subview is UISlider {
+                    subview.isHidden = true
+                    continue
+                }
+
+                // Hide any toolbar-like views at the bottom
+                let className = String(describing: type(of: subview))
+                if className.contains("Scrubber") || className.contains("Thumbnail") || className.contains("PageIndicator") {
+                    subview.isHidden = true
+                    continue
+                }
+
+                // Make all backgrounds white or clear
+                if subview.backgroundColor == .black || subview.backgroundColor == UIColor(white: 0, alpha: 1) {
+                    subview.backgroundColor = .white
+                }
+
+                // Remove any layer backgrounds
+                if let bgColor = subview.layer.backgroundColor, UIColor(cgColor: bgColor) == .black {
+                    subview.layer.backgroundColor = UIColor.white.cgColor
+                }
+
+                // If it's a scroll view, remove content insets
+                if let scrollView = subview as? UIScrollView {
+                    scrollView.contentInset = .zero
+                    scrollView.scrollIndicatorInsets = .zero
+                    if #available(iOS 11.0, *) {
+                        scrollView.contentInsetAdjustmentBehavior = .never
+                    }
+                }
+
+                cleanSubviews(subview)
+            }
+        }
+
+        cleanSubviews(pdfView)
+
+        // Also set PDFView's layer background
+        pdfView.layer.backgroundColor = UIColor.white.cgColor
     }
 }

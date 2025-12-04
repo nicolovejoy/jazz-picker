@@ -8,6 +8,17 @@ const BACKEND_URL = Capacitor.isNativePlatform()
   : (import.meta.env.VITE_BACKEND_URL || '');
 const API_BASE = `${BACKEND_URL}/api`;
 
+// Normalize key format from catalog (am, bb) to LilyPond notation (a, bf)
+// TODO: Remove once catalog is rebuilt with correct format
+function normalizeKey(key: string): string {
+  let k = key.toLowerCase().replace(/m$/, ''); // Strip minor 'm' suffix
+  k = k.replace('#', 's'); // Sharp: # -> s
+  if (k.length === 2 && k[1] === 'b' && k[0] !== 'b') {
+    k = k[0] + 'f'; // Flat: xb -> xf (but not 'b' alone)
+  }
+  return k;
+}
+
 export interface GenerateResponse {
   url: string;
   cached: boolean;
@@ -50,7 +61,7 @@ export const api = {
   ): Promise<GenerateResponse> {
     const body: Record<string, string> = {
       song,
-      concert_key: concertKey,
+      concert_key: normalizeKey(concertKey),
       transposition,
       clef,
     };

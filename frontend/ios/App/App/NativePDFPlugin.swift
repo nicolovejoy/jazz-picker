@@ -17,8 +17,20 @@ public class NativePDFPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "open", returnType: CAPPluginReturnPromise)
     ]
 
+    private var lastOpenTime: Date?
+    private let debounceInterval: TimeInterval = 0.3  // 300ms debounce
+
     @objc func open(_ call: CAPPluginCall) {
         print("[NativePDF Plugin] open() called")
+
+        // Debounce rapid calls
+        let now = Date()
+        if let lastTime = lastOpenTime, now.timeIntervalSince(lastTime) < debounceInterval {
+            print("[NativePDF Plugin] Debounced - too soon after last open")
+            call.resolve(["action": "debounced"])
+            return
+        }
+        lastOpenTime = now
 
         guard let urlString = call.getString("url") else {
             print("[NativePDF Plugin] ERROR: No URL provided")

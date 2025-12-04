@@ -110,21 +110,26 @@ function App() {
   }, [searchQuery]);
 
   // Accumulate songs as pages load
+  // Only update when we have fresh data (not while fetching with stale keepPreviousData)
   useEffect(() => {
-    if (data?.songs) {
+    if (data?.songs && !isFetching) {
       if (page === 0) {
         // Reset on first page (new search/filter)
         setAllSongs(data.songs);
       } else {
-        // Append to existing songs
-        setAllSongs(prev => [...prev, ...data.songs]);
+        // Append to existing songs (avoid duplicates)
+        setAllSongs(prev => {
+          const existingTitles = new Set(prev.map(s => s.title));
+          const newSongs = data.songs.filter(s => !existingTitles.has(s.title));
+          return [...prev, ...newSongs];
+        });
       }
 
       // Check if there are more pages
       const loadedCount = (page + 1) * LIMIT;
       setHasMore(loadedCount < data.total);
     }
-  }, [data, page]);
+  }, [data, page, isFetching]);
 
   // Infinite scroll observer
   useEffect(() => {

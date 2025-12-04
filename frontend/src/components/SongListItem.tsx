@@ -66,6 +66,11 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
       });
     } catch (err) {
       console.error('Failed to fetch PDF:', err);
+      console.error('Error details:', {
+        name: (err as Error)?.name,
+        message: (err as Error)?.message,
+        stack: (err as Error)?.stack,
+      });
     } finally {
       setIsGenerating(false);
       setGeneratingKey(null);
