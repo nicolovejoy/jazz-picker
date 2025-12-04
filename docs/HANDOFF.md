@@ -1,93 +1,93 @@
-# Session Handoff - Dec 3, 2025
+# Handoff - Dec 4, 2025 Late Night
 
-## BUG: TestFlight PDF Viewer Not Getting Fixes
+## Current State
 
-**Symptom:** PDF viewer improvements work in local Xcode builds but NOT in TestFlight:
-- Still has black margins/gutters
-- Still shows 6/7 badge at bottom
-- Still has status bar/controls at top
+Native SwiftUI app fully working. Spin + swipe navigation functional after key format fix.
 
-**Verified:** New TestFlight build was uploaded, but issues persist.
-
-**Likely causes to investigate:**
-1. Debug vs Release build configuration differences
-2. Web assets not synced before archive (`npm run build && npx cap sync ios`)
-3. Xcode caching old Swift code - try Clean Build Folder (⌘⇧K) before archive
-4. Check if `NativePDFViewController.swift` changes are in the archive
-
-**To debug:**
-- Add more `print()` statements to verify code paths in Release builds
-- Check Xcode console when running TestFlight build via "Window → Devices and Simulators"
-
-## Just Completed: iOS PDF Viewer Improvements
-
-### Full Bleed Display (works locally, broken in TestFlight)
-- Removed black margins and gutter from PDFView
-- Landscape mode now shows 2-up (side-by-side pages)
-- 97% scale for breathing room around edges
-- Auto-hiding controls working (1.5s timer)
-- Added debouncing (300ms) to prevent rapid open/close race conditions
-
-### Infinite Scroll Fix (DONE)
-- Fixed duplicate songs appearing when scrolling
-- Root cause: `keepPreviousData` caused stale data to be processed
-- Added `!isFetching` check and title-based deduplication
-
-### Key Format Fix (DONE)
-- Catalog stored keys as `am`, `bb` but backend expected `a`, `bf`
-- Added `normalizeKey()` in frontend as temporary fix
-- Fixed `build_catalog.py` to output correct format (for future rebuild)
-
-### Catalog Uploaded
-- New catalog.db with note ranges uploaded to S3
-- Fly.io restarted to pick up new catalog
+**Uncommitted:** Large SwiftUI restructure (App/, Models/, Views/, Services/ folders). Commit before starting new work.
 
 ---
 
-## Outstanding Todo Items
+## Next Session: Two Backend Fixes
 
-1. **Add to Setlist button** — Add to PDF viewer top controls
-2. **Fix setlist badge** — Shows catalog position (12/735) instead of setlist position (6/7)
-3. **Fix setlist swipe navigation** — Erratic, sometimes flashes back
-4. **Improve Spin animation** — More engaging visual feedback
-5. **bassKey octave calculation** — Use note ranges to set octave for bass clef
+### 1. Baby Elephant Bug (Priority)
+
+**Symptom:** First 4 bars of "Baby Elephant Walk" show chord symbols but no melody (for any instrument).
+
+**Root cause:** `app.py:generate_wrapper_content()` is missing `bassKey` variable.
+
+**How it breaks:**
+- `bass-intro.ily:19` does `\transpose \refrainKey \bassKey { \bassIntro }`
+- When `bassKey` undefined, LilyPond silently skips the intro section
+- Eric's static wrappers work because they define `bassKey`
+
+**The fix** in `app.py:generate_wrapper_content()` (~line 356):
+
+```python
+def generate_wrapper_content(core_file, target_key, clef, instrument=""):
+    # bassKey is always the key without octave modifier
+    bass_key = target_key.rstrip(',')
+
+    # For bass clef, whatKey needs octave-down comma
+    what_key = f"{target_key}," if clef == "bass" else target_key
+
+    return f'''%% -*- Mode: LilyPond -*-
+
+\\version "2.24.0"
+
+\\include "english.ly"
+
+instrument = "{instrument}"
+whatKey = {what_key}
+bassKey = {bass_key}
+whatClef = "{clef}"
+
+\\include "../Core/{core_file}"
+'''
+```
+
+**Test:** Generate "Baby Elephant Walk" for Piano. First 4 bars should have melody notes, not just "F" chord symbols.
+
+**Deploy:** `fly deploy`
 
 ---
+
+### 2. Key Format Normalization (Lower Priority)
+
+**Problem:** Catalog stores flats as `eb` (b=flat), but backend expects `ef` (f=flat).
+
+**Current workaround:** `APIClient.swift:63-66` converts `eb` → `ef` client-side.
+
+**Proper fix:** Update `build_catalog.py` to output `ef` format at source, then remove iOS workaround.
+
+**Files:**
+- `build_catalog.py` — change key output format
+- `JazzPicker/JazzPicker/Services/APIClient.swift` — remove workaround after deploy
+
+---
+
+## What Works (All ✓)
+
+- Browse → tap song → PDF loads
+- Swipe L/R between songs (browse + spin modes)
+- Swipe down to dismiss
+- Spin → random song → swipe to more random songs
+- Loading overlay during transitions
+- Error state with back button
 
 ## Quick Reference
 
-### Key Files Changed This Session
+```bash
+# iOS development
+open JazzPicker/JazzPicker.xcodeproj
 
-| File | Changes |
-|------|---------|
-| `NativePDFViewController.swift` | 2-up landscape, 97% scale, chrome removal, timer fix |
-| `NativePDFPlugin.swift` | 300ms debounce for rapid opens |
-| `App.tsx` | Infinite scroll fix (isFetching check, dedup) |
-| `api.ts` | `normalizeKey()` for catalog key format |
-| `build_catalog.py` | Fixed key format (bb→bf, strip 'm') |
+# Backend
+python3 app.py          # localhost:5001
+fly deploy              # Deploy to Fly.io
+fly logs                # View logs
 
-### TestFlight
-Ready for new build - all iOS fixes committed and pushed.
-
----
-
-## Current Stack
-
-| Component | Location |
-|-----------|----------|
-| Web | jazzpicker.pianohouseproject.org (Vercel) |
-| iOS | TestFlight (pending new build) |
-| Backend | jazz-picker.fly.dev (Fly.io) |
-| PDFs | AWS S3 |
-| LilyPond source | lilypond-data/ submodule |
-
----
-
-## Previous Sessions
-
-### Dec 2-3
-- Spin roulette wheel feature
-- PDF transition overlay
-- Catalog navigation (swipe through songs)
-- MIDI note range extraction (739 songs)
-- TestFlight PDF rendering fix (plugin registration timing)
+# Test Baby Elephant fix locally before deploy
+curl -X POST http://localhost:5001/api/v2/generate \
+  -H "Content-Type: application/json" \
+  -d '{"song":"Baby Elephant Walk","concert_key":"f","transposition":"C","clef":"treble","instrument_label":"Piano"}'
+```

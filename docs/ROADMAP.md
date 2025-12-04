@@ -1,127 +1,149 @@
 # Jazz Picker Roadmap
 
-## App Architecture Vision
+## Current State
 
-Three contexts via bottom nav, plus Spin action:
+Phase 1 (Core Browsing MVP) is **complete** and on TestFlight as "JazzPickerNative".
 
-| Nav Item | Type | Purpose |
-|----------|------|---------|
-| **Browse** | Context | Search songs, quick PDF view, add to setlist |
-| **Spin** | Action | Tap to open random song (roulette animation) |
-| **Setlist** | Context | Perform mode (default) or Edit mode |
-| **More** | Context | Settings, admin, about |
-
-**Principles:**
-- Bottom nav is ubiquitous and minimal
-- Spin is an action button, not a page - animates then opens PDF
-- After Spin, closing PDF returns to Browse
-- "Add to Setlist" available from Browse and PDF view
+**Bundle ID:** `com.pianohouseproject.jazzpicker-native`
 
 ---
 
-## Setlist Modes
+## Implementation Phases
 
-### Perform Mode (default)
-- Clean list of songs
-- Tap song → opens PDF
-- Swipe through setlist in PDF view
+### Phase 1: Core Browsing (MVP) - COMPLETE ✓
+- [x] Project setup, folder structure
+- [x] Song model + APIClient
+- [x] CatalogStore with local caching
+- [x] BrowseView with search
+- [x] PDFViewerView (SwiftUI + PDFKit)
+- [x] Instrument model + Settings (UserDefaults)
+- [x] Tab navigation shell
+- [x] PDF viewer: auto-hide controls (2s timer)
+- [x] PDF viewer: landscape 2-up mode
+- [x] App icon
+- [x] PDF viewer: swipe L/R for song navigation, swipe down to close
+- [ ] Browse: grid layout for iPad (cards instead of list)
 
-### Edit Mode
-- Enter via "Edit" button
-- Drag to reorder songs
-- Remove button (✕) on each song
-- Key +/− controls per song
-- Search box to add songs
-- Exit via "Done" button
+### Phase 2: Setlists
+- [ ] Setlist model
+- [ ] iCloud sync (NSUbiquitousKeyValueStore)
+- [ ] SetlistListView (list, create, delete)
+- [ ] SetlistDetailView (perform mode)
+- [ ] SetlistEditView (reorder, add, remove)
+- [ ] Swipe between songs in PDF viewer
+
+### Phase 3: Offline & Polish
+- [ ] PDFCache service
+- [ ] "Download for Offline" on setlist
+- [ ] Spin button with animation
+
+### Phase 4: Mac Support
+- [ ] Add macOS target
+- [ ] Sidebar navigation for Mac
+- [ ] Keyboard shortcuts, menu bar
+
+### Phase 5: Auth & Sharing (Future)
+- [ ] Sign in with Apple
+- [ ] Server-side setlist backup
+- [ ] Shareable setlists
 
 ---
 
-## Priority Queue
+## Architecture Decisions
 
-### Up Next
-1. **Add to Setlist button** - Add to PDF viewer top controls
-2. **Fix setlist badge** - Shows catalog position instead of setlist position
-3. **Fix setlist swipe navigation** - Erratic, sometimes flashes back
-4. **Improve Spin animation** - More engaging visual feedback
-5. **bassKey octave calculation** - Use note ranges for bass clef PDF generation
-6. **Pre-cache setlist PDFs on app load**
-
-### Paused
-- **Offline PDF caching** - caused PDF rendering failure, reverted
-
-### Completed
-- ✅ **Full bleed PDF display** - 2-up landscape, 97% scale, no margins (Dec 2025)
-- ✅ **Infinite scroll fix** - No more duplicate songs (Dec 2025)
-- ✅ **Note range extraction** - MIDI parsing for 739 songs, outlier filtering (Dec 2025)
-- ✅ **Setlist Edit mode** - drag-drop, reorder, key +/− (Dec 2025)
-- ✅ **Spin** - roulette wheel action button with animation (Dec 2025)
-- ✅ **PDF transitions** - loading overlay when swiping between songs (Dec 2025)
-- ✅ **Bottom nav** - context switcher (Dec 2025)
-- ✅ **Catalog navigation** - alphabetical swipe in PDF viewer (Dec 2025)
+- **Setlists:** iCloud sync (NSUbiquitousKeyValueStore)
+- **Offline:** Pre-download setlist PDFs to device
+- **Catalog:** Cache locally as JSON, refresh on pull
+- **Auth:** None for v1, Sign in with Apple later
+- **PDF Viewer:** Pure SwiftUI + PDFKit
 
 ---
 
-## Future: Database Schema
+## Project Structure
 
-When user accounts are needed:
-
-### users
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  user_type TEXT DEFAULT 'prospective_user',  -- 'admin' | 'user' | 'prospective_user'
-  preferred_instrument TEXT,                   -- "C" | "Bb" | "Eb" | "Bass"
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 ```
-
-### setlists (server-side)
-```sql
-CREATE TABLE setlists (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  name TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE setlist_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  setlist_id TEXT NOT NULL REFERENCES setlists(id),
-  song_title TEXT NOT NULL,
-  concert_key TEXT NOT NULL,
-  position INTEGER NOT NULL,
-  notes TEXT
-);
-```
-
-### singers (for voice range features)
-```sql
-CREATE TABLE singers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  imputed_range_low TEXT,
-  imputed_range_high TEXT
-);
+jazz-picker/
+├── app.py                    # Backend (Flask on Fly.io)
+├── frontend/                 # Hybrid Capacitor app (deprecated)
+├── JazzPicker/               # Native SwiftUI app
+│   ├── JazzPicker.xcodeproj
+│   └── JazzPicker/
+│       ├── App/
+│       ├── Models/
+│       ├── Views/
+│       └── Services/
+└── docs/
 ```
 
 ---
 
-## Future: Auth Phases
+## Stack
 
-### Phase 1: Current (Supabase)
-- Supabase auth in frontend
-- Basic auth optional on backend
-
-### Phase 2: User Accounts
-- Store preferences server-side
-- Migrate setlists from localStorage to DB
-
-### Phase 3: Roles
-- Admin: cache invalidation, stats
-- User: normal access
+| Component | Location |
+|-----------|----------|
+| Web | jazzpicker.pianohouseproject.org (Vercel) |
+| iOS (hybrid) | TestFlight (deprecated) |
+| iOS (native) | TestFlight as "JazzPickerNative" |
+| Backend | jazz-picker.fly.dev (Fly.io) |
+| PDFs | AWS S3 |
 
 ---
 
-_Last updated: 2025-12-03_
+## Session History
+
+### Dec 4, 2025 (late evening)
+- Fixed key format bug: catalog uses `eb` but API expects `ef` - added client-side conversion in APIClient.swift
+- Spin + swipe navigation now fully working
+- Major CLAUDE.md cleanup: 727 → 180 lines (removed deprecated Capacitor details, consolidated)
+- Identified next tasks: key normalization at source (build_catalog.py), "Baby Elephant" bug
+
+### Dec 4, 2025 (evening)
+- Implemented PDF swipe navigation: L/R for songs at page boundaries, down to close
+- Created `PDFNavigationContext` enum with browse/setlist/spin/single modes
+- Added PDFKit Coordinator for page change detection
+- Haptic feedback at list boundaries
+- Fixed Swift 6 concurrency warnings (added `Sendable` to models, refactored `APIClient`)
+- Fixed: error state now shows toolbar + "Go Back" button (was getting stuck)
+- Added loading overlay for song transitions (dark overlay + spinner over previous PDF)
+- Added debug logging throughout PDF loading pipeline
+- Improved APIClient error reporting (status code + response body)
+
+### Dec 4, 2025 (later)
+- Cleaned up docs: deleted DEBUG_PLAN.md, merged HANDOFF.md into ROADMAP.md
+- Designed PDF navigation gestures (swipe L/R for songs, swipe down to close)
+- Documented transposition data model (`instrument_transposition` param)
+- Added navigation context enum for browse/setlist/spin modes
+
+### Dec 4, 2025
+- PDF viewer: auto-hide controls (2s), landscape 2-up mode
+- App icon created and added
+- First TestFlight build submitted as "JazzPickerNative"
+- Phase 1 complete
+
+### Dec 4 (earlier)
+- Created native SwiftUI project structure
+- Implemented Phase 1: Browse, Search, PDF viewer, Settings
+- Decided on native Swift rewrite
+- Created SWIFT_ARCHITECTURE.md
+
+### Dec 2-3
+- Spin roulette wheel feature (hybrid)
+- PDF transition overlay
+- Catalog navigation (swipe through songs)
+- MIDI note range extraction (739 songs)
+- TestFlight PDF rendering fix attempts (led to rewrite decision)
+
+---
+
+## Legacy Hybrid App
+
+The Capacitor/React hybrid app (`frontend/ios/`) is deprecated but still functional on TestFlight. Features implemented there (for reference when porting):
+- Full bleed PDF display - 2-up landscape, 97% scale
+- Setlist Edit mode - drag-drop, reorder, key +/−
+- Spin - roulette wheel action button
+- PDF transitions - loading overlay
+- Catalog navigation - alphabetical swipe
+
+---
+
+_Last updated: 2025-12-04_
