@@ -1,18 +1,27 @@
 # Session Handoff - Dec 3, 2025
 
-## BLOCKER: TestFlight Build Needed
+## BUG: TestFlight PDF Viewer Not Getting Fixes
 
-The PDF viewer improvements work in local Xcode builds but TestFlight still has the old version. Need to:
+**Symptom:** PDF viewer improvements work in local Xcode builds but NOT in TestFlight:
+- Still has black margins/gutters
+- Still shows 6/7 badge at bottom
+- Still has status bar/controls at top
 
-1. Open Xcode: `open frontend/ios/App/App.xcworkspace`
-2. Select "Any iOS Device (arm64)"
-3. Product → Archive
-4. Distribute App → App Store Connect → Upload
-5. Wait ~15 min for processing
+**Verified:** New TestFlight build was uploaded, but issues persist.
+
+**Likely causes to investigate:**
+1. Debug vs Release build configuration differences
+2. Web assets not synced before archive (`npm run build && npx cap sync ios`)
+3. Xcode caching old Swift code - try Clean Build Folder (⌘⇧K) before archive
+4. Check if `NativePDFViewController.swift` changes are in the archive
+
+**To debug:**
+- Add more `print()` statements to verify code paths in Release builds
+- Check Xcode console when running TestFlight build via "Window → Devices and Simulators"
 
 ## Just Completed: iOS PDF Viewer Improvements
 
-### Full Bleed Display (DONE - needs TestFlight build)
+### Full Bleed Display (works locally, broken in TestFlight)
 - Removed black margins and gutter from PDFView
 - Landscape mode now shows 2-up (side-by-side pages)
 - 97% scale for breathing room around edges
