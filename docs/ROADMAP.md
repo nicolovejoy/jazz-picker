@@ -38,28 +38,25 @@ Three contexts via bottom nav, plus Spin action:
 
 ## Priority Queue
 
-### In Progress
-- **Full bleed PDF display** - Remove margins, gutter, hide status bar/home indicator
-- **bassKey octave calculation** - Note ranges extracted (739 songs), need to integrate into `app.py` for bass clef PDF generation
-
 ### Up Next
 1. **Add to Setlist button** - Add to PDF viewer top controls
 2. **Fix setlist badge** - Shows catalog position instead of setlist position
 3. **Fix setlist swipe navigation** - Erratic, sometimes flashes back
 4. **Improve Spin animation** - More engaging visual feedback
-5. **Pre-cache setlist PDFs on app load**
-6. **Home page with one-click setlist access**
+5. **bassKey octave calculation** - Use note ranges for bass clef PDF generation
+6. **Pre-cache setlist PDFs on app load**
 
 ### Paused
 - **Offline PDF caching** - caused PDF rendering failure, reverted
-- **Two-page landscape mode** - PDFKit gutter issues, using single-page for now
 
 ### Completed
+- ✅ **Full bleed PDF display** - 2-up landscape, 97% scale, no margins (Dec 2025)
+- ✅ **Infinite scroll fix** - No more duplicate songs (Dec 2025)
 - ✅ **Note range extraction** - MIDI parsing for 739 songs, outlier filtering (Dec 2025)
 - ✅ **Setlist Edit mode** - drag-drop, reorder, key +/− (Dec 2025)
 - ✅ **Spin** - roulette wheel action button with animation (Dec 2025)
 - ✅ **PDF transitions** - loading overlay when swiping between songs (Dec 2025)
-- ✅ **Bottom nav** - context switcher (already implemented)
+- ✅ **Bottom nav** - context switcher (Dec 2025)
 - ✅ **Catalog navigation** - alphabetical swipe in PDF viewer (Dec 2025)
 
 ---

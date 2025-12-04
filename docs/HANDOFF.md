@@ -1,105 +1,54 @@
 # Session Handoff - Dec 3, 2025
 
-## RESOLVED: TestFlight PDFs Now Working
+## Just Completed: iOS PDF Viewer Improvements
 
-The iOS PDF viewing issue has been fixed. Root cause was plugin registration timing.
+### Full Bleed Display (DONE)
+- Removed black margins and gutter from PDFView
+- Landscape mode now shows 2-up (side-by-side pages)
+- 97% scale for breathing room around edges
+- Auto-hiding controls working (1.5s timer)
+- Added debouncing (300ms) to prevent rapid open/close race conditions
 
-### What Was Fixed
-1. **Plugin registration timing** — Was using delayed `asyncAfter(0.5)`, now registers in `applicationDidBecomeActive`
-2. **View hierarchy check** — Added guard to retry if view not in window hierarchy
-3. **Double-call handling** — Detects if already presenting and handles gracefully
+### Infinite Scroll Fix (DONE)
+- Fixed duplicate songs appearing when scrolling
+- Root cause: `keepPreviousData` caused stale data to be processed
+- Added `!isFetching` check and title-based deduplication
 
-### Current State
-- TestFlight builds now work
-- PDFs render correctly
-- Controls (X button, setlist badge) auto-hide after 1.5s
+### Key Format Fix (DONE)
+- Catalog stored keys as `am`, `bb` but backend expected `a`, `bf`
+- Added `normalizeKey()` in frontend as temporary fix
+- Fixed `build_catalog.py` to output correct format (for future rebuild)
 
-## In Progress: Full Bleed PDF Display
-
-Working on removing margins/gutter for edge-to-edge PDF display. Current issues:
-- Margins visible around PDF content
-- Gutter visible between pages in landscape (switched to single-page mode as workaround)
-- Status bar/home indicator still showing in TestFlight
-
-## Outstanding Todo Items
-
-1. **Full bleed display** — Remove remaining margins, hide status bar properly
-2. **Add to Setlist button** — Add to PDF viewer controls
-3. **Setlist badge position** — Shows catalog position (12/735) instead of setlist position (6/7)
-4. **Setlist swipe navigation** — Erratic, sometimes flashes back to setlist
-5. **Spin animation** — Make more engaging (grows/expands)
+### Catalog Uploaded
+- New catalog.db with note ranges uploaded to S3
+- Fly.io restarted to pick up new catalog
 
 ---
 
-## Completed This Session: Note Range Extraction
+## Outstanding Todo Items
 
-Successfully implemented MIDI-based note range extraction for the catalog.
-
-### What Was Built
-
-1. **`build_catalog.py`** - New script that:
-   - Scans `*Standard.ly` wrapper files
-   - Runs LilyPond to generate MIDI (skips PDF with `-dno-print-pages`)
-   - Parses MIDI to extract melody note range (program 29 = "overdriven guitar")
-   - Filters outlier notes >12 semitones below median (catches `\voiceTwo` bass fills)
-   - Stores `low_note_midi`, `high_note_midi` in catalog.db
-   - Generates `outlier_report.txt` listing filtered notes
-   - Fails build completely on any MIDI generation error
-
-2. **`db.py` updates**:
-   - Added `get_song_note_range(title)` function
-   - Updated `get_song_by_title()` to include note range columns
-
-3. **Configuration** (top of `build_catalog.py`):
-   ```python
-   OUTLIER_THRESHOLD_SEMITONES = 12  # 1 octave below median
-   ```
-
-### Build Results
-- **739 songs** processed successfully
-- **43 songs** had outlier notes filtered (documented in `outlier_report.txt`)
-- Build takes ~10-15 minutes for all songs
-
-### Next Steps (After PDF Fix)
-
-1. **Integrate note ranges into `app.py`**
-   - Use `low_note_midi` to calculate octave marker for bass clef
-   - Set `whatKey` with `,` suffix when needed to keep melody in readable range
-
-2. **Upload new catalog.db to S3**
-   ```bash
-   aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
-   fly apps restart jazz-picker
-   ```
-
-3. **Clear S3 cache** (bass clef PDFs will need regeneration)
-   ```bash
-   aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
-   ```
+1. **Add to Setlist button** — Add to PDF viewer top controls
+2. **Fix setlist badge** — Shows catalog position (12/735) instead of setlist position (6/7)
+3. **Fix setlist swipe navigation** — Erratic, sometimes flashes back
+4. **Improve Spin animation** — More engaging visual feedback
+5. **bassKey octave calculation** — Use note ranges to set octave for bass clef
 
 ---
 
 ## Quick Reference
 
-### MIDI Note Numbers
-```
-C2 = 36, E2 = 40 (target low for bass clef)
-C3 = 48, C4 = 60 (middle C), C5 = 72
-```
+### Key Files Changed This Session
 
-### LilyPond Octave Notation
-```
-c, = C2    c = C3    c' = C4 (middle C)    c'' = C5
-```
-
-### Key Files
-
-| File | Purpose |
+| File | Changes |
 |------|---------|
-| `build_catalog.py` | Catalog builder with MIDI parsing |
-| `extract_note_ranges.py` | Standalone PoC for testing individual songs |
-| `outlier_report.txt` | Lists songs with filtered bass fill notes |
-| `app.py:generate_wrapper_content()` | Where octave calculation will be added |
+| `NativePDFViewController.swift` | 2-up landscape, 97% scale, chrome removal, timer fix |
+| `NativePDFPlugin.swift` | 300ms debounce for rapid opens |
+| `App.tsx` | Infinite scroll fix (isFetching check, dedup) |
+| `api.ts` | `normalizeKey()` for catalog key format |
+| `build_catalog.py` | Fixed key format (bb→bf, strip 'm') |
+
+### TestFlight
+Ready for new build - all iOS fixes committed and pushed.
 
 ---
 
@@ -108,17 +57,18 @@ c, = C2    c = C3    c' = C4 (middle C)    c'' = C5
 | Component | Location |
 |-----------|----------|
 | Web | jazzpicker.pianohouseproject.org (Vercel) |
-| iOS | TestFlight Build 9 (broken) |
+| iOS | TestFlight (pending new build) |
 | Backend | jazz-picker.fly.dev (Fly.io) |
 | PDFs | AWS S3 |
 | LilyPond source | lilypond-data/ submodule |
 
 ---
 
-## Previous Work (Dec 2-3)
+## Previous Sessions
 
+### Dec 2-3
 - Spin roulette wheel feature
 - PDF transition overlay
 - Catalog navigation (swipe through songs)
-- Offline caching attempt (reverted - caused PDF rendering failure)
-- MIDI note range extraction (completed)
+- MIDI note range extraction (739 songs)
+- TestFlight PDF rendering fix (plugin registration timing)
