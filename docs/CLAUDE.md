@@ -100,3 +100,12 @@ docs/
 ├── ROADMAP.md     # Phases, current state, session history
 └── SETLIST_UX.md  # UX spec for Phase 2
 ```
+
+## Key Components
+
+| File | Purpose |
+|------|---------|
+| `Views/Components/KeyPickerSheet.swift` | 12-key grid picker for Change Key |
+| `Views/Components/KeyPill.swift` | Key badge on song cards |
+| `Views/Setlists/SetlistDetailView.swift` | Setlist song list + perform mode |
+| `Views/PDF/PDFViewerView.swift` | PDF display with edge-tap navigation |

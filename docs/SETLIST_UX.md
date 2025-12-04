@@ -69,9 +69,7 @@ Do NOT appear on: swipe between songs
 ### Edit Mode
 
 - Drag handles for reordering
-- Multi-select → "New Setlist from Selected"
-- Insert **Set Break** between songs
-- Delete songs
+- Delete songs (swipe to delete already implemented)
 
 ---
 
@@ -89,10 +87,9 @@ struct Setlist: Codable, Identifiable {
 
 struct SetlistItem: Codable, Identifiable {
     let id: UUID
-    var songTitle: String      // Empty for set breaks
+    var songTitle: String
     var concertKey: String
     var position: Int
-    var isSetBreak: Bool       // True = divider, not a song
 }
 ```
 
@@ -133,3 +130,5 @@ struct SetlistItem: Codable, Identifiable {
 - Sharing setlists between users
 - Un-delete UI
 - Tap "3/10" to jump
+- Set breaks
+- Multi-select → "New Setlist from Selected"

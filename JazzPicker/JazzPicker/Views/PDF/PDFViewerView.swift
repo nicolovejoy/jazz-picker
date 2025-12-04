@@ -43,7 +43,6 @@ struct PDFViewerView: View {
                         onPageChange: handlePageChange
                     )
                     .ignoresSafeArea()
-                    .gesture(horizontalSwipeGesture)
                 }
 
                 // Loading overlay
@@ -75,8 +74,57 @@ struct PDFViewerView: View {
                         .buttonStyle(.bordered)
                     }
                 }
+
+                // MARK: - Edge Navigation Zones
+                HStack(spacing: 0) {
+                    // Left edge - previous song
+                    Color.clear
+                        .frame(width: 70)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            handleTapPrevious()
+                        }
+
+                    Spacer()
+
+                    // Right edge - next song
+                    Color.clear
+                        .frame(width: 70)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            handleTapNext()
+                        }
+                }
+
+                // MARK: - Chevron Indicators
+                if showControls {
+                    HStack {
+                        // Left chevron
+                        if navigationContext.canGoPrevious {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 48, weight: .medium))
+                                .foregroundStyle(.primary.opacity(0.3))
+                                .frame(width: 70)
+                        } else {
+                            Spacer().frame(width: 70)
+                        }
+
+                        Spacer()
+
+                        // Right chevron
+                        if navigationContext.canGoNext {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 48, weight: .medium))
+                                .foregroundStyle(.primary.opacity(0.3))
+                                .frame(width: 70)
+                        } else {
+                            Spacer().frame(width: 70)
+                        }
+                    }
+                    .allowsHitTesting(false) // Chevrons are visual only, tap zones handle input
+                }
             }
-            .contentShape(Rectangle()) // Make entire area tappable/swipeable
+            .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {
                     showControls.toggle()
@@ -191,55 +239,27 @@ struct PDFViewerView: View {
             }
     }
 
-    private var horizontalSwipeGesture: some Gesture {
-        DragGesture(minimumDistance: 50)
-            .onEnded { value in
-                let horizontalDistance = value.translation.width
-                let verticalDistance = abs(value.translation.height)
+    // MARK: - Edge Tap Navigation
 
-                // Only handle horizontal swipes
-                guard abs(horizontalDistance) > verticalDistance else { return }
-                guard abs(horizontalDistance) > 100 else { return }
-
-                if horizontalDistance < 0 {
-                    // Swipe left → next
-                    handleSwipeNext()
-                } else {
-                    // Swipe right → previous
-                    handleSwipePrevious()
-                }
-            }
-    }
-
-    private func handleSwipeNext() {
-        print("👆 handleSwipeNext - isAtLastPage: \(isAtLastPage), pageCount: \(pageCount)")
-        // If not at last page of current PDF, let PDFKit handle it
-        guard isAtLastPage else {
-            print("👆 Not at last page, ignoring swipe")
-            return
-        }
-
-        // At last page - try to go to next song
+    private func handleTapNext() {
         if let next = navigationContext.nextSong() {
-            print("👆 Navigating to next: \(next.song.title)")
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
             navigateToSong(next.song, concertKey: next.concertKey, context: next.newContext)
         } else {
-            print("👆 No next song, haptic feedback")
-            // Boundary - provide haptic feedback
+            // Boundary - provide warning haptic
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.warning)
         }
     }
 
-    private func handleSwipePrevious() {
-        // If not at first page of current PDF, let PDFKit handle it
-        guard isAtFirstPage else { return }
-
-        // At first page - try to go to previous song
+    private func handleTapPrevious() {
         if let prev = navigationContext.previousSong() {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
             navigateToSong(prev.song, concertKey: prev.concertKey, context: prev.newContext)
         } else {
-            // Boundary - provide haptic feedback
+            // Boundary - provide warning haptic
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.warning)
         }
@@ -273,7 +293,7 @@ struct PDFViewerView: View {
     private func scheduleHideControls() {
         hideControlsTask?.cancel()
         hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(8))
+            try? await Task.sleep(for: .seconds(2))
             if !Task.isCancelled {
                 withAnimation {
                     showControls = false

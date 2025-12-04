@@ -1,4 +1,4 @@
-Update all docs (CLAUDE.md, HANDOFF.md, ROADMAP.md) with recent changes.
+Update all docs (CLAUDE.md, ROADMAP.md, anything else in docs/) with recent changes. If more than 4 markdown files, propose simplifying somehow.
 
 Then present 3 ideas for the most useful next step, considering:
 
@@ -8,3 +8,5 @@ Then present 3 ideas for the most useful next step, considering:
 
 Keep suggestions brief with effort estimate (small/medium/large).
 remove most of the "we did this" stuff unless it's relevant. succinct. germaine. not aspirational.
+
+Remind user to update JazzPicker/Resources/BuildHistory.json if he is doing a build. propose an update statement.

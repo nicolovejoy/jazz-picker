@@ -47,11 +47,20 @@ struct SetlistDetailView: View {
                             try? setlistStore.removeItem(from: currentSetlist, item: item)
                         }
                     }
+                    .onMove { source, destination in
+                        guard let sourceIndex = source.first else { return }
+                        setlistStore.moveItem(in: currentSetlist, from: sourceIndex, to: destination)
+                    }
                 }
                 .listStyle(.plain)
             }
         }
         .navigationTitle(currentSetlist.name)
+        .toolbar {
+            if !currentSetlist.items.isEmpty {
+                EditButton()
+            }
+        }
         .onAppear {
             setlistStore.markOpened(currentSetlist)
         }

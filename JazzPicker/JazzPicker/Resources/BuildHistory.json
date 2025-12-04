@@ -1,0 +1,17 @@
+[
+  {
+    "build": 2,
+    "date": "2025-12-04",
+    "notes": "Setlist reordering, About page with build history"
+  },
+  {
+    "build": 2,
+    "date": "2025-12-04",
+    "notes": "setlists working somewhat"
+  },
+  {
+    "build": 1,
+    "date": "2025-12-04",
+    "notes": "Initial TestFlight build"
+  }
+]
