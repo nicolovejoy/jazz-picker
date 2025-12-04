@@ -14,6 +14,7 @@ struct PDFViewerView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @Environment(SetlistStore.self) private var setlistStore
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -23,6 +24,7 @@ struct PDFViewerView: View {
     @State private var hideControlsTask: Task<Void, Never>?
     @State private var isLandscape = false
     @State private var showKeyPicker = false
+    @State private var showAddToSetlist = false
 
     // Page tracking for boundary detection
     @State private var isAtFirstPage = true
@@ -83,7 +85,7 @@ struct PDFViewerView: View {
                     scheduleHideControls()
                 }
             }
-            .gesture(swipeDownGesture)
+            .highPriorityGesture(swipeDownGesture)
             .onChange(of: geometry.size) { _, newSize in
                 isLandscape = newSize.width > newSize.height
             }
@@ -102,6 +104,11 @@ struct PDFViewerView: View {
                     } label: {
                         Label("Change Key", systemImage: "music.quarternote.3")
                     }
+                    Button {
+                        showAddToSetlist = true
+                    } label: {
+                        Label("Add to Setlist", systemImage: "text.badge.plus")
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -118,6 +125,7 @@ struct PDFViewerView: View {
             }
         }
         .toolbarVisibility(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls && error == nil)
         .task(id: "\(song.id)-\(concertKey)") {
             await loadPDF()
@@ -132,6 +140,9 @@ struct PDFViewerView: View {
             ) { newKey in
                 changeKey(to: newKey)
             }
+        }
+        .sheet(isPresented: $showAddToSetlist) {
+            AddToSetlistSheet(songTitle: song.title, concertKey: concertKey)
         }
     }
 
@@ -487,4 +498,5 @@ struct PDFKitView: UIViewRepresentable {
         )
     }
     .environment(CachedKeysStore())
+    .environment(SetlistStore())
 }

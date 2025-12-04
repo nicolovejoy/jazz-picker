@@ -28,14 +28,14 @@ struct ContentView: View {
                 .tag(0)
 
             // Spin - acts as action button, not a real tab
-            Color.clear
+            // Use BrowseView as placeholder so no flash when tapped
+            BrowseView(instrument: instrument)
                 .tabItem {
                     Label("Spin", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
                 }
                 .tag(1)
 
-            // Setlists - placeholder for Phase 2
-            Text("Setlists")
+            SetlistListView()
                 .tabItem {
                     Label("Setlists", systemImage: "music.note.list")
                 }
@@ -82,4 +82,5 @@ struct ContentView: View {
     ContentView()
         .environment(CatalogStore())
         .environment(CachedKeysStore())
+        .environment(SetlistStore())
 }

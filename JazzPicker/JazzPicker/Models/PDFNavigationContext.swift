@@ -96,11 +96,3 @@ enum PDFNavigationContext {
     }
 }
 
-// MARK: - Setlist Types (placeholder until Phase 2)
-
-struct SetlistItem: Codable, Identifiable {
-    let id: UUID
-    var songTitle: String
-    var concertKey: String
-    var position: Int
-}
