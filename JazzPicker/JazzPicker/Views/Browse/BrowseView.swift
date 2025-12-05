@@ -111,4 +111,5 @@ struct BrowseView: View {
     BrowseView(instrument: .piano)
         .environment(CatalogStore())
         .environment(CachedKeysStore())
+        .environment(PDFCacheService.shared)
 }

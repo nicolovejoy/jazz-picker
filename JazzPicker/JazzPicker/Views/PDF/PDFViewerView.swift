@@ -15,6 +15,7 @@ struct PDFViewerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(CachedKeysStore.self) private var cachedKeysStore
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(PDFCacheService.self) private var pdfCacheService
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -312,7 +313,35 @@ struct PDFViewerView: View {
         error = nil
         // Keep pdfDocument intact during load for smooth transition
 
+        // Check cache first
+        let cacheResult = pdfCacheService.getCachedPDF(
+            songTitle: song.title,
+            concertKey: concertKey,
+            transposition: instrument.transposition,
+            clef: instrument.clef
+        )
+
+        // If cached, show immediately while we check for updates
+        if case .hit(let cachedData, let cachedCrop) = cacheResult {
+            if let document = PDFDocument(data: cachedData) {
+                self.pdfDocument = document
+                self.cropBounds = cachedCrop
+                self.pageCount = document.pageCount
+                self.isAtFirstPage = true
+                self.isAtLastPage = document.pageCount <= (isLandscape ? 2 : 1)
+                print("📦 Serving from cache: \(song.title)")
+            }
+        }
+
         do {
+            // Get ETag for conditional request
+            let existingETag = pdfCacheService.getETag(
+                songTitle: song.title,
+                concertKey: concertKey,
+                transposition: instrument.transposition,
+                clef: instrument.clef
+            )
+
             let response = try await APIClient.shared.generatePDF(
                 song: song.title,
                 concertKey: concertKey,
@@ -327,38 +356,79 @@ struct PDFViewerView: View {
                 throw PDFError.invalidURL
             }
 
+            // Build request with conditional header if we have cached version
+            var request = URLRequest(url: url)
+            if let etag = existingETag {
+                request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+            }
+
             // Download PDF data
-            let (data, httpResponse) = try await URLSession.shared.data(from: url)
-            print("📄 Downloaded \(data.count) bytes")
+            let (data, httpResponse) = try await URLSession.shared.data(for: request)
 
-            if let httpResponse = httpResponse as? HTTPURLResponse, httpResponse.statusCode != 200 {
-                print("❌ HTTP error: \(httpResponse.statusCode)")
-                throw PDFError.downloadFailed(statusCode: httpResponse.statusCode)
+            if let httpResponse = httpResponse as? HTTPURLResponse {
+                if httpResponse.statusCode == 304 {
+                    // Not modified - cache is fresh
+                    print("✅ Cache validated (304): \(song.title)")
+                    pdfCacheService.updateETag(
+                        songTitle: song.title,
+                        concertKey: concertKey,
+                        transposition: instrument.transposition,
+                        clef: instrument.clef,
+                        etag: httpResponse.value(forHTTPHeaderField: "ETag")
+                    )
+                    // pdfDocument already set from cache above
+                    isLoading = false
+                    return
+                } else if httpResponse.statusCode != 200 {
+                    print("❌ HTTP error: \(httpResponse.statusCode)")
+                    throw PDFError.downloadFailed(statusCode: httpResponse.statusCode)
+                }
+
+                // Got fresh data - cache it
+                let newETag = httpResponse.value(forHTTPHeaderField: "ETag")
+                print("📄 Downloaded \(data.count) bytes")
+
+                guard let document = PDFDocument(data: data) else {
+                    print("❌ PDFDocument init failed")
+                    throw PDFError.invalidPDF
+                }
+
+                // Cache the PDF
+                pdfCacheService.cachePDF(
+                    data: data,
+                    songTitle: song.title,
+                    concertKey: concertKey,
+                    transposition: instrument.transposition,
+                    clef: instrument.clef,
+                    etag: newETag,
+                    cropBounds: response.crop
+                )
+
+                self.pdfDocument = document
+                self.cropBounds = response.crop
+                self.error = nil
+                print("✅ PDF loaded: \(document.pageCount) pages")
+
+                // Initialize page tracking
+                self.pageCount = document.pageCount
+                self.isAtFirstPage = true
+                self.isAtLastPage = document.pageCount <= (isLandscape ? 2 : 1)
             }
-
-            guard let document = PDFDocument(data: data) else {
-                print("❌ PDFDocument init failed")
-                throw PDFError.invalidPDF
-            }
-
-            self.pdfDocument = document
-            self.cropBounds = response.crop
-            self.error = nil
-            print("✅ PDF loaded: \(document.pageCount) pages")
-
-            // Initialize page tracking
-            self.pageCount = document.pageCount
-            self.isAtFirstPage = true
-            self.isAtLastPage = document.pageCount <= (isLandscape ? 2 : 1)
 
         } catch is CancellationError {
             print("⚠️ PDF load cancelled for: \(song.title)")
             // Don't set error for cancellation - another load is in progress
         } catch {
             print("❌ PDF load failed: \(error)")
-            self.error = error
-            // Clear document on error so error view shows
-            self.pdfDocument = nil
+            // If we have cached data, keep showing it
+            if case .hit = cacheResult {
+                print("📦 Offline - using cached version")
+                self.error = nil
+            } else {
+                self.error = error
+                // Clear document on error so error view shows
+                self.pdfDocument = nil
+            }
         }
 
         isLoading = false
@@ -396,6 +466,8 @@ struct PDFKitView: UIViewRepresentable {
         pdfView.document = document
         pdfView.autoScales = true
         pdfView.backgroundColor = .white
+        pdfView.pageShadowsEnabled = false
+        pdfView.pageBreakMargins = .zero
 
         // Apply crop bounds if available
         if let crop = cropBounds {
@@ -519,4 +591,5 @@ struct PDFKitView: UIViewRepresentable {
     }
     .environment(CachedKeysStore())
     .environment(SetlistStore())
+    .environment(PDFCacheService.shared)
 }

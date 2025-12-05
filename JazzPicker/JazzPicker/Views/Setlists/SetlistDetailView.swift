@@ -8,6 +8,7 @@ import SwiftUI
 struct SetlistDetailView: View {
     @Environment(SetlistStore.self) private var setlistStore
     @Environment(CatalogStore.self) private var catalogStore
+    @Environment(PDFCacheService.self) private var pdfCacheService
     @AppStorage("selectedInstrument") private var selectedInstrument: String = Instrument.piano.rawValue
 
     let setlist: Setlist
@@ -20,6 +21,20 @@ struct SetlistDetailView: View {
 
     private var currentSetlist: Setlist {
         setlistStore.setlists.first { $0.id == setlist.id } ?? setlist
+    }
+
+    /// Download all uncached songs in background
+    private func downloadUncachedSongs() async {
+        let songItems = currentSetlist.items
+            .filter { !$0.isSetBreak }
+            .map { (songTitle: $0.songTitle, concertKey: $0.concertKey) }
+
+        await pdfCacheService.downloadSetlistForOffline(
+            items: songItems,
+            transposition: instrument.transposition,
+            clef: instrument.clef,
+            instrumentLabel: instrument.label
+        )
     }
 
     var body: some View {
@@ -36,7 +51,15 @@ struct SetlistDetailView: View {
                         if item.isSetBreak {
                             SetBreakRow()
                         } else {
-                            SongItemRow(item: item) {
+                            SongItemRow(
+                                item: item,
+                                isCached: pdfCacheService.isCached(
+                                    songTitle: item.songTitle,
+                                    concertKey: item.concertKey,
+                                    transposition: instrument.transposition,
+                                    clef: instrument.clef
+                                )
+                            ) {
                                 selectedItem = item
                             }
                         }
@@ -64,6 +87,10 @@ struct SetlistDetailView: View {
         .onAppear {
             setlistStore.markOpened(currentSetlist)
         }
+        .task {
+            // Auto-download uncached songs for offline use
+            await downloadUncachedSongs()
+        }
         .navigationDestination(item: $selectedItem) { item in
             let items = currentSetlist.items.filter { !$0.isSetBreak }
             let index = items.firstIndex { $0.id == item.id } ?? 0
@@ -81,6 +108,7 @@ struct SetlistDetailView: View {
 
 struct SongItemRow: View {
     let item: SetlistItem
+    let isCached: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -89,6 +117,14 @@ struct SongItemRow: View {
                 Text(item.songTitle)
                     .foregroundStyle(.primary)
                 Spacer()
+
+                // Subtle cache indicator
+                if isCached {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary.opacity(0.4))
+                }
+
                 Text(formatKey(item.concertKey))
                     .foregroundStyle(.secondary)
             }
@@ -143,4 +179,5 @@ struct SetBreakRow: View {
     .environment(store)
     .environment(CatalogStore())
     .environment(CachedKeysStore())
+    .environment(PDFCacheService.shared)
 }

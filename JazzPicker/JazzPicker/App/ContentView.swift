@@ -83,4 +83,5 @@ struct ContentView: View {
         .environment(CatalogStore())
         .environment(CachedKeysStore())
         .environment(SetlistStore())
+        .environment(PDFCacheService.shared)
 }

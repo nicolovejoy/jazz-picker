@@ -12,6 +12,7 @@ struct JazzPickerApp: App {
     @State private var catalogStore = CatalogStore()
     @State private var cachedKeysStore = CachedKeysStore()
     @State private var setlistStore = SetlistStore()
+    @State private var pdfCacheService = PDFCacheService.shared
 
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,7 @@ struct JazzPickerApp: App {
                 .environment(catalogStore)
                 .environment(cachedKeysStore)
                 .environment(setlistStore)
+                .environment(pdfCacheService)
         }
     }
 }

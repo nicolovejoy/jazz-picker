@@ -29,16 +29,18 @@ JazzPicker/JazzPicker/
 ├── App/        # Entry point, ContentView with tabs
 ├── Models/     # Song, Instrument, PDFNavigationContext, Setlist
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Components/
-└── Services/   # APIClient, CatalogStore, CachedKeysStore, SetlistStore
+└── Services/   # APIClient, CatalogStore, CachedKeysStore, SetlistStore, PDFCacheService
 ```
 
 **Key patterns:**
 
-- `@Observable` for stores (CatalogStore, CachedKeysStore, SetlistStore)
+- `@Observable` for stores (CatalogStore, CachedKeysStore, SetlistStore, PDFCacheService)
 - Environment injection from JazzPickerApp
 - `async/await` throughout
 - PDFKit for rendering with crop bounds
-- UserDefaults for setlist persistence (iCloud later)
+- UserDefaults for setlist persistence (server sync planned)
+- PDFKit with full-bleed display (no shadows/margins)
+- Offline PDF caching in Documents/PDFCache/ with JSON manifest
 
 **TestFlight:** Any iOS Device (arm64) → Archive → Distribute
 
@@ -96,16 +98,21 @@ Example: `blue-bossa-ef-Bb-treble.pdf`
 
 ```
 docs/
-├── CLAUDE.md      # This file
-├── ROADMAP.md     # Phases, current state, session history
-└── SETLIST_UX.md  # UX spec for Phase 2
+├── CLAUDE.md          # This file
+├── ROADMAP.md         # Phases, current state, session history
+├── SETLIST_UX.md      # UX spec for Phase 2
+└── PHASE_3_4_PLAN.md  # Offline storage + shared setlists spec
 ```
 
 ## Key Components
 
 | File | Purpose |
 |------|---------|
+| `Services/PDFCacheService.swift` | Offline PDF cache with ETag freshness |
 | `Views/Components/KeyPickerSheet.swift` | 12-key grid picker for Change Key |
 | `Views/Components/KeyPill.swift` | Key badge on song cards |
-| `Views/Setlists/SetlistDetailView.swift` | Setlist song list + perform mode |
-| `Views/PDF/PDFViewerView.swift` | PDF display with edge-tap navigation |
+| `Views/Setlists/SetlistDetailView.swift` | Setlist song list + perform mode + reorder |
+| `Views/PDF/PDFViewerView.swift` | PDF display with edge-tap navigation + caching |
+| `Views/Settings/SettingsView.swift` | Instrument picker + cache info + About page |
+| `Resources/BuildHistory.json` | Release notes for About page |
+| `Scripts/increment_build.sh` | Auto-increment build on Archive |

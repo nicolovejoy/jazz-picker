@@ -142,6 +142,7 @@ struct SetlistCard: View {
         .environment(store)
         .environment(CatalogStore())
         .environment(CachedKeysStore())
+        .environment(PDFCacheService.shared)
 }
 
 #Preview("Empty") {
@@ -149,4 +150,5 @@ struct SetlistCard: View {
         .environment(SetlistStore())
         .environment(CatalogStore())
         .environment(CachedKeysStore())
+        .environment(PDFCacheService.shared)
 }

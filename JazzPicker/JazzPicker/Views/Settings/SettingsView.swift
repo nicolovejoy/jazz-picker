@@ -13,6 +13,8 @@ struct BuildEntry: Codable {
 
 struct SettingsView: View {
     @Binding var selectedInstrument: String
+    @Environment(PDFCacheService.self) private var pdfCacheService
+    @State private var showClearCacheConfirm = false
 
     var instrument: Instrument {
         Instrument(rawValue: selectedInstrument) ?? .piano
@@ -61,6 +63,29 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Offline Storage") {
+                    HStack {
+                        Text("Cached Songs")
+                        Spacer()
+                        Text("\(pdfCacheService.cachedCount)")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Storage Used")
+                        Spacer()
+                        Text(pdfCacheService.formattedCacheSize)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button(role: .destructive) {
+                        showClearCacheConfirm = true
+                    } label: {
+                        Text("Clear Cache")
+                    }
+                    .disabled(pdfCacheService.cachedCount == 0)
+                }
+
                 Section("About") {
                     HStack {
                         Text("Version")
@@ -96,10 +121,19 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .alert("Clear Cache?", isPresented: $showClearCacheConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Clear", role: .destructive) {
+                    pdfCacheService.clearCache()
+                }
+            } message: {
+                Text("This will remove all \(pdfCacheService.cachedCount) cached songs. They will be re-downloaded when you view them.")
+            }
         }
     }
 }
 
 #Preview {
     SettingsView(selectedInstrument: .constant(Instrument.trumpet.rawValue))
+        .environment(PDFCacheService.shared)
 }
