@@ -1,47 +1,36 @@
 # Jazz Picker Roadmap
 
-## Current State
+## Next Up: Octave Offset (iOS)
 
-Phase 4 complete. Setlists sync to server.
+Key transposition sometimes renders charts an octave too high/low.
 
-**Working:**
-- Browse → PDF viewer with edge-tap song navigation
-- Change Key with 12-key picker
-- Setlists: CRUD, reorder, perform mode (server-synced)
-- Offline PDF caching
-- Pull-to-refresh, offline detection
+**Plan:** `.claude/plans/snazzy-prancing-locket.md`
+
+- Manual octave +/- buttons in PDF viewer menu
+- Server-synced per device+song+key
+- Auto-calculate (fewest ledger lines) comes later
 
 ---
 
-## Phases
+## Working
 
-### Phase 1-3: Complete
-- Browse, search, PDF viewer
-- Setlists with perform mode
-- Offline PDF caching
+- Browse, search, PDF viewer with edge-tap navigation
+- Change Key (12-key picker)
+- Setlists: CRUD, reorder, perform mode, server-synced
+- Offline PDF caching, pull-to-refresh, offline detection
 
-### Phase 4: Shared Setlists ✓
-- Server API for setlists
-- iOS: optimistic UI, pull-to-refresh, offline detection
-- Device ID in Keychain
+---
 
-### Phase 5: Future
+## Backlog
+
+- Octave auto-calculate from note ranges
+- Web: decide whether to keep key picker or disable
 - Apple Sign-In
-- Private/public setlist toggle
-- LiteFS for consistent data across Fly machines
-
----
-
-## Architecture
-
-- **Stores:** `@Observable` (CatalogStore, SetlistStore, etc.)
-- **Setlists:** Server API with optimistic UI
-- **Network:** NWPathMonitor for connectivity
-- **Auth:** Device ID now → Apple Sign-In later
+- LiteFS for multi-machine consistency
 
 ---
 
 ## Known Issues
 
-- **Web:** Spin → PDF → swipe down returns to Spin (should return to Browse with song visible)
+- **Web:** Spin → PDF → close returns to Spin (should return to Browse)
 - 2 Fly machines = possible data inconsistency (fine for dev)

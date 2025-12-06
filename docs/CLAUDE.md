@@ -57,9 +57,12 @@ fly deploy              # Deploy to Fly.io
 
 | Term | Definition |
 |------|------------|
-| Concert Key | Key audience hears (stored in DB) |
+| Concert Key | Key audience hears (stored in DB, shared in setlists) |
 | Written Key | What player sees on chart |
 | Transposition | Instrument: C, Bb, Eb |
+| Octave Offset | Per-device adjustment when transposition lands in wrong octave |
+
+**Setlist sharing:** Concert key is shared. Each device applies its own transposition + clef + octave.
 
 ---
 
