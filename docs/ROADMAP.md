@@ -41,7 +41,7 @@ Phase 4 complete. Setlists sync to server.
 
 ---
 
-## Notes
+## Known Issues
 
-- Large setlist support not needed today (full PUT replacement)
+- **Web:** Spin → PDF → swipe down returns to Spin (should return to Browse with song visible)
 - 2 Fly machines = possible data inconsistency (fine for dev)
