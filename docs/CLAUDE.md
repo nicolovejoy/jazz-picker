@@ -63,6 +63,17 @@ fly deploy              # Deploy to Fly.io
 
 ---
 
+## Testing
+
+Test against production (not local dev):
+- **Web:** https://jazzpicker.pianohouseproject.org
+- **API:** https://jazz-picker.fly.dev
+- **iOS:** TestFlight build pointing to production API
+
+Local dev only needed when changing backend code before `fly deploy`.
+
+---
+
 ## Key Files
 
 | File | Purpose |
