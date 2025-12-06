@@ -294,7 +294,7 @@ struct PDFViewerView: View {
     private func scheduleHideControls() {
         hideControlsTask?.cancel()
         hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(5))
             if !Task.isCancelled {
                 withAnimation {
                     showControls = false

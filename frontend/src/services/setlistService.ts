@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase';
 import type {
   Setlist,
   SetlistItem,
@@ -7,172 +6,149 @@ import type {
   AddSetlistItemInput,
 } from '@/types/setlist';
 
-export const setlistService = {
-  // Get all setlists for current user
-  async getSetlists(): Promise<Setlist[]> {
-    const { data, error } = await supabase
-      .from('setlists')
-      .select('*')
-      .order('updated_at', { ascending: false });
+// Web uses relative URLs (Vite proxy in dev, same origin in prod)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+const API_BASE = `${BACKEND_URL}/api/v2`;
 
-    if (error) throw error;
-    return data || [];
+export const setlistService = {
+  // Get all setlists (shared across all users)
+  async getSetlists(): Promise<Setlist[]> {
+    const response = await fetch(`${API_BASE}/setlists`);
+    if (!response.ok) throw new Error('Failed to fetch setlists');
+    const data = await response.json();
+    return data.setlists || [];
   },
 
   // Get a single setlist by ID
   async getSetlist(id: string): Promise<Setlist | null> {
-    const { data, error } = await supabase
-      .from('setlists')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
-      throw error;
-    }
-    return data;
+    const response = await fetch(`${API_BASE}/setlists/${id}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to fetch setlist');
+    return response.json();
   },
 
   // Get a single setlist with its items
   async getSetlistWithItems(id: string): Promise<SetlistWithItems | null> {
-    const { data: setlist, error: setlistError } = await supabase
-      .from('setlists')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (setlistError) throw setlistError;
-    if (!setlist) return null;
-
-    const { data: items, error: itemsError } = await supabase
-      .from('setlist_items')
-      .select('*')
-      .eq('setlist_id', id)
-      .order('position', { ascending: true });
-
-    if (itemsError) throw itemsError;
-
-    return {
-      ...setlist,
-      items: items || [],
-    };
+    const response = await fetch(`${API_BASE}/setlists/${id}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error('Failed to fetch setlist');
+    return response.json();
   },
 
   // Create a new setlist
   async createSetlist(input: CreateSetlistInput): Promise<Setlist> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('setlists')
-      .insert({ name: input.name, user_id: user.id })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response = await fetch(`${API_BASE}/setlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: input.name }),
+    });
+    if (!response.ok) throw new Error('Failed to create setlist');
+    return response.json();
   },
 
-  // Update setlist name
+  // Update setlist (name and/or items)
   async updateSetlist(id: string, name: string): Promise<Setlist> {
-    const { data, error } = await supabase
-      .from('setlists')
-      .update({ name, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response = await fetch(`${API_BASE}/setlists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) throw new Error('Failed to update setlist');
+    return response.json();
   },
 
-  // Delete a setlist (cascade deletes items via FK)
+  // Delete a setlist (soft delete)
   async deleteSetlist(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('setlists')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    const response = await fetch(`${API_BASE}/setlists/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to delete setlist');
   },
 
   // Add a song to a setlist
   async addItem(input: AddSetlistItemInput): Promise<SetlistItem> {
-    // Get current max position
-    const { data: existing } = await supabase
-      .from('setlist_items')
-      .select('position')
-      .eq('setlist_id', input.setlist_id)
-      .order('position', { ascending: false })
-      .limit(1);
+    // First get the current setlist to know item count
+    const setlist = await this.getSetlistWithItems(input.setlist_id);
+    if (!setlist) throw new Error('Setlist not found');
 
-    const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 0;
+    const newItem: SetlistItem = {
+      id: crypto.randomUUID(),
+      setlist_id: input.setlist_id,
+      song_title: input.song_title,
+      concert_key: input.concert_key || null,
+      position: setlist.items.length,
+      notes: input.notes || null,
+      created_at: new Date().toISOString(),
+    };
 
-    const { data, error } = await supabase
-      .from('setlist_items')
-      .insert({
-        setlist_id: input.setlist_id,
-        song_title: input.song_title,
-        concert_key: input.concert_key || null,
-        notes: input.notes || null,
-        position: nextPosition,
-      })
-      .select()
-      .single();
+    // Add the new item to existing items
+    const updatedItems = [...setlist.items, newItem];
 
-    if (error) throw error;
+    // Update the setlist with new items
+    const response = await fetch(`${API_BASE}/setlists/${input.setlist_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: updatedItems.map(item => ({
+          song_title: item.song_title,
+          concert_key: item.concert_key,
+        })),
+      }),
+    });
 
-    // Update setlist's updated_at
-    await supabase
-      .from('setlists')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', input.setlist_id);
-
-    return data;
+    if (!response.ok) throw new Error('Failed to add item');
+    return newItem;
   },
 
-  // Remove a song from a setlist
-  async removeItem(itemId: string): Promise<void> {
-    // Get the item first to know which setlist to update
-    const { data: item } = await supabase
-      .from('setlist_items')
-      .select('setlist_id')
-      .eq('id', itemId)
-      .single();
+  // Remove a song from a setlist (requires setlist context)
+  async removeItem(_itemId: string): Promise<void> {
+    // This method requires setlist context - use removeItemFromSetlist instead
+    throw new Error('removeItem requires setlist context - use removeItemFromSetlist instead');
+  },
 
-    const { error } = await supabase
-      .from('setlist_items')
-      .delete()
-      .eq('id', itemId);
+  // Remove item with setlist context
+  async removeItemFromSetlist(setlistId: string, itemId: string): Promise<void> {
+    const setlist = await this.getSetlistWithItems(setlistId);
+    if (!setlist) throw new Error('Setlist not found');
 
-    if (error) throw error;
+    const updatedItems = setlist.items.filter(item => item.id !== itemId);
 
-    // Update setlist's updated_at
-    if (item) {
-      await supabase
-        .from('setlists')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', item.setlist_id);
-    }
+    const response = await fetch(`${API_BASE}/setlists/${setlistId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: updatedItems.map(item => ({
+          song_title: item.song_title,
+          concert_key: item.concert_key,
+        })),
+      }),
+    });
+
+    if (!response.ok) throw new Error('Failed to remove item');
   },
 
   // Reorder items in a setlist
   async reorderItems(setlistId: string, itemIds: string[]): Promise<void> {
-    // Update each item's position based on array index
-    const updates = itemIds.map((id, index) =>
-      supabase
-        .from('setlist_items')
-        .update({ position: index })
-        .eq('id', id)
-    );
+    const setlist = await this.getSetlistWithItems(setlistId);
+    if (!setlist) throw new Error('Setlist not found');
 
-    await Promise.all(updates);
+    // Reorder items based on itemIds array
+    const itemMap = new Map(setlist.items.map(item => [item.id, item]));
+    const reorderedItems = itemIds
+      .map(id => itemMap.get(id))
+      .filter((item): item is SetlistItem => item !== undefined);
 
-    // Update setlist's updated_at
-    await supabase
-      .from('setlists')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', setlistId);
+    const response = await fetch(`${API_BASE}/setlists/${setlistId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: reorderedItems.map(item => ({
+          song_title: item.song_title,
+          concert_key: item.concert_key,
+        })),
+      }),
+    });
+
+    if (!response.ok) throw new Error('Failed to reorder items');
   },
 };

@@ -1,22 +1,21 @@
-// Setlist types for Supabase integration
+// Setlist types for Flask API integration
 
 export interface Setlist {
   id: string;
-  user_id: string;
   name: string;
-  public: boolean;
   created_at: string;
   updated_at: string;
+  created_by_device?: string;
 }
 
 export interface SetlistItem {
   id: string;
-  setlist_id: string;
+  setlist_id?: string;
   song_title: string;
   concert_key: string | null;
   position: number;
-  notes: string | null;
-  created_at: string;
+  notes?: string | null;
+  created_at?: string;
 }
 
 // For creating new setlists
@@ -32,16 +31,7 @@ export interface AddSetlistItemInput {
   notes?: string;
 }
 
-// Combined view for UI
+// Combined view for UI (returned by GET /api/v2/setlists/:id)
 export interface SetlistWithItems extends Setlist {
   items: SetlistItem[];
-}
-
-// For sharing (Phase 5)
-export interface SetlistShare {
-  id: string;
-  setlist_id: string;
-  shared_with_user_id: string;
-  permission: 'read' | 'edit';
-  created_at: string;
 }

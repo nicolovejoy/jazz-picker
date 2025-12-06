@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.tsx';
-import { AuthProvider } from './contexts/AuthContext';
 import { api } from './services/api';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
@@ -31,8 +30,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Prefetch songs immediately on app load (before password gate)
-// This way the data is ready when the user finishes authentication
+// Prefetch songs immediately on app load
 queryClient.prefetchQuery({
   queryKey: ['songs', 50, 0, ''],
   queryFn: () => api.getSongsV2(50, 0, ''),
@@ -41,9 +39,7 @@ queryClient.prefetchQuery({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </QueryClientProvider>
   </StrictMode>
 );

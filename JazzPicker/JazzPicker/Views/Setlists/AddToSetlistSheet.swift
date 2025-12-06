@@ -7,6 +7,7 @@ import SwiftUI
 
 struct AddToSetlistSheet: View {
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.dismiss) private var dismiss
 
     let songTitle: String
@@ -15,10 +16,20 @@ struct AddToSetlistSheet: View {
     @State private var showingCreateSheet = false
     @State private var newSetlistName = ""
     @State private var errorMessage: String?
+    @State private var isAdding = false
 
     var body: some View {
         NavigationStack {
             List {
+                if !networkMonitor.isConnected {
+                    HStack {
+                        Image(systemName: "wifi.slash")
+                            .foregroundStyle(.red)
+                        Text("You must be online to modify setlists")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 if setlistStore.activeSetlists.isEmpty {
                     Text("No setlists yet")
                         .foregroundStyle(.secondary)
@@ -44,7 +55,8 @@ struct AddToSetlistSheet: View {
                                 }
                             }
                         }
-                        .disabled(setlistStore.containsSong(songTitle, in: setlist))
+                        .disabled(setlistStore.containsSong(songTitle, in: setlist) || !networkMonitor.isConnected || isAdding)
+                        .opacity(networkMonitor.isConnected ? 1 : 0.5)
                     }
                 }
 
@@ -54,6 +66,8 @@ struct AddToSetlistSheet: View {
                 } label: {
                     Label("New Setlist...", systemImage: "plus")
                 }
+                .disabled(!networkMonitor.isConnected || isAdding)
+                .opacity(networkMonitor.isConnected ? 1 : 0.5)
             }
             .navigationTitle("Add to Setlist")
             .navigationBarTitleDisplayMode(.inline)
@@ -68,9 +82,15 @@ struct AddToSetlistSheet: View {
                 TextField("Setlist name", text: $newSetlistName)
                 Button("Cancel", role: .cancel) { }
                 Button("Create") {
-                    if !newSetlistName.trimmingCharacters(in: .whitespaces).isEmpty {
-                        let setlist = setlistStore.createSetlist(name: newSetlistName.trimmingCharacters(in: .whitespaces))
-                        addToSetlist(setlist)
+                    let name = newSetlistName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty {
+                        Task {
+                            isAdding = true
+                            if let setlist = await setlistStore.createSetlist(name: name) {
+                                await addToSetlistAsync(setlist)
+                            }
+                            isAdding = false
+                        }
                     }
                 }
             } message: {
@@ -91,8 +111,16 @@ struct AddToSetlistSheet: View {
     }
 
     private func addToSetlist(_ setlist: Setlist) {
+        Task {
+            isAdding = true
+            await addToSetlistAsync(setlist)
+            isAdding = false
+        }
+    }
+
+    private func addToSetlistAsync(_ setlist: Setlist) async {
         do {
-            try setlistStore.addSong(to: setlist, songTitle: songTitle, concertKey: concertKey)
+            try await setlistStore.addSong(to: setlist, songTitle: songTitle, concertKey: concertKey)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -103,4 +131,5 @@ struct AddToSetlistSheet: View {
 #Preview {
     AddToSetlistSheet(songTitle: "Blue Bossa", concertKey: "c")
         .environment(SetlistStore())
+        .environment(NetworkMonitor())
 }

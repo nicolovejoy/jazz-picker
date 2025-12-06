@@ -8,7 +8,7 @@ export const setlistKeys = {
   detail: (id: string) => ['setlists', id] as const,
 };
 
-// Get all setlists for current user
+// Get all setlists (shared across all users)
 export function useSetlists() {
   return useQuery({
     queryKey: setlistKeys.all,
@@ -81,8 +81,8 @@ export function useRemoveSetlistItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ itemId }: { itemId: string; setlistId: string }) =>
-      setlistService.removeItem(itemId),
+    mutationFn: ({ itemId, setlistId }: { itemId: string; setlistId: string }) =>
+      setlistService.removeItemFromSetlist(setlistId, itemId),
     onSuccess: (_, { setlistId }) => {
       queryClient.invalidateQueries({ queryKey: setlistKeys.detail(setlistId) });
       queryClient.invalidateQueries({ queryKey: setlistKeys.all });

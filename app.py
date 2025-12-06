@@ -223,6 +223,8 @@ def index():
             'songs_v2': '/api/v2/songs?limit=20&offset=0&q=',
             'cached_keys': '/api/v2/songs/{title}/cached',
             'generate': '/api/v2/generate',
+            'setlists': '/api/v2/setlists',
+            'setlist': '/api/v2/setlists/{id}',
         },
         'frontend': 'https://jazzpicker.pianohouseproject.org'
     })
@@ -736,6 +738,150 @@ def serve_generated(filename):
     return send_from_directory(str(GENERATED_DIR), filename, mimetype='application/pdf')
 
 
+# =============================================================================
+# Setlists API
+# =============================================================================
+
+@app.route('/api/v2/setlists', methods=['GET'])
+@requires_auth
+def list_setlists():
+    """
+    Get all setlists.
+
+    Returns:
+    {
+        "setlists": [
+            {
+                "id": "uuid",
+                "name": "Friday Gig",
+                "created_at": "2025-12-04T...",
+                "updated_at": "2025-12-04T...",
+                "created_by_device": "uuid",
+                "items": [
+                    {"id": "uuid", "song_title": "502 Blues", "concert_key": "ef", "position": 0, "is_set_break": false},
+                    ...
+                ]
+            },
+            ...
+        ]
+    }
+    """
+    setlists = db.get_all_setlists()
+    return jsonify({'setlists': setlists})
+
+
+@app.route('/api/v2/setlists', methods=['POST'])
+@requires_auth
+def create_setlist():
+    """
+    Create a new setlist.
+
+    Request body:
+    {
+        "name": "Friday Gig",
+        "items": [
+            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false},
+            {"song_title": "", "concert_key": "", "is_set_break": true}
+        ]
+    }
+
+    Headers:
+        X-Device-ID: Optional device UUID for attribution
+
+    Returns: The created setlist
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body must be JSON'}), 400
+
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Missing required field: name'}), 400
+
+    items = data.get('items', [])
+    device_id = request.headers.get('X-Device-ID')
+
+    # Validate items structure (song_title and concert_key required unless is_set_break)
+    for item in items:
+        is_set_break = item.get('is_set_break', False)
+        if not is_set_break:
+            if 'song_title' not in item or 'concert_key' not in item:
+                return jsonify({'error': 'Each item must have song_title and concert_key (unless is_set_break)'}), 400
+
+    setlist = db.create_setlist(name=name, items=items, device_id=device_id)
+    return jsonify(setlist), 201
+
+
+@app.route('/api/v2/setlists/<setlist_id>', methods=['GET'])
+@requires_auth
+def get_setlist(setlist_id):
+    """
+    Get a single setlist by ID.
+
+    Returns: The setlist, or 404 if not found
+    """
+    setlist = db.get_setlist(setlist_id)
+    if not setlist:
+        return jsonify({'error': 'Setlist not found'}), 404
+    return jsonify(setlist)
+
+
+@app.route('/api/v2/setlists/<setlist_id>', methods=['PUT'])
+@requires_auth
+def update_setlist(setlist_id):
+    """
+    Update a setlist.
+
+    Request body (all fields optional):
+    {
+        "name": "New Name",
+        "items": [
+            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false},
+            ...
+        ]
+    }
+
+    Note: If items is provided, it replaces ALL existing items.
+
+    Returns: The updated setlist, or 404 if not found
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body must be JSON'}), 400
+
+    name = data.get('name')
+    items = data.get('items')
+
+    # Validate items structure if provided (song_title and concert_key required unless is_set_break)
+    if items is not None:
+        for item in items:
+            is_set_break = item.get('is_set_break', False)
+            if not is_set_break:
+                if 'song_title' not in item or 'concert_key' not in item:
+                    return jsonify({'error': 'Each item must have song_title and concert_key (unless is_set_break)'}), 400
+
+    setlist = db.update_setlist(setlist_id, name=name, items=items)
+    if not setlist:
+        return jsonify({'error': 'Setlist not found'}), 404
+
+    return jsonify(setlist)
+
+
+@app.route('/api/v2/setlists/<setlist_id>', methods=['DELETE'])
+@requires_auth
+def delete_setlist(setlist_id):
+    """
+    Delete a setlist (soft delete).
+
+    Returns: 204 No Content on success, 404 if not found
+    """
+    deleted = db.delete_setlist(setlist_id)
+    if not deleted:
+        return jsonify({'error': 'Setlist not found'}), 404
+
+    return '', 204
+
+
 def validate_startup():
     """Validate required configuration on startup."""
     errors = []
@@ -747,6 +893,13 @@ def validate_startup():
         errors.append(f"{DB_FILE} not found. Run build_catalog.py first!")
     except Exception as e:
         errors.append(f"Failed to load catalog database: {e}")
+
+    # Initialize setlists database
+    try:
+        db.init_setlists_db()
+        print("✅ Setlists database initialized")
+    except Exception as e:
+        errors.append(f"Failed to initialize setlists database: {e}")
 
     # Validate S3 configuration if enabled
     if USE_S3:

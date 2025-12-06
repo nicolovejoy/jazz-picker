@@ -7,14 +7,17 @@ import SwiftUI
 
 struct SetlistListView: View {
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @State private var showingCreateSheet = false
     @State private var newSetlistName = ""
     @State private var setlistToDelete: Setlist?
+    @State private var showingOfflineToast = false
+    @State private var showingErrorToast = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if setlistStore.activeSetlists.isEmpty {
+                if setlistStore.activeSetlists.isEmpty && !setlistStore.isLoading {
                     emptyState
                 } else {
                     setlistList
@@ -24,19 +27,36 @@ struct SetlistListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        newSetlistName = ""
-                        showingCreateSheet = true
+                        if networkMonitor.isConnected {
+                            newSetlistName = ""
+                            showingCreateSheet = true
+                        } else {
+                            showingOfflineToast = true
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .opacity(networkMonitor.isConnected ? 1 : 0.5)
+                }
+            }
+            .refreshable {
+                await setlistStore.refresh()
+            }
+            .task {
+                // Load setlists on first appear
+                if setlistStore.setlists.isEmpty {
+                    await setlistStore.refresh()
                 }
             }
             .alert("Create Setlist", isPresented: $showingCreateSheet) {
                 TextField("Setlist name", text: $newSetlistName)
                 Button("Cancel", role: .cancel) { }
                 Button("Create") {
-                    if !newSetlistName.trimmingCharacters(in: .whitespaces).isEmpty {
-                        _ = setlistStore.createSetlist(name: newSetlistName.trimmingCharacters(in: .whitespaces))
+                    let name = newSetlistName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty {
+                        Task {
+                            _ = await setlistStore.createSetlist(name: name)
+                        }
                     }
                 }
             } message: {
@@ -51,13 +71,33 @@ struct SetlistListView: View {
                 }
                 Button("Delete", role: .destructive) {
                     if let setlist = setlistToDelete {
-                        setlistStore.deleteSetlist(setlist)
+                        Task {
+                            await setlistStore.deleteSetlist(setlist)
+                        }
                     }
                     setlistToDelete = nil
                 }
             } message: {
                 if let setlist = setlistToDelete {
                     Text("Are you sure you want to delete \"\(setlist.name)\"?")
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if showingOfflineToast {
+                    offlineToast
+                }
+                if showingErrorToast, let error = setlistStore.lastError {
+                    errorToast(error)
+                }
+            }
+            .onChange(of: setlistStore.lastError) { _, newValue in
+                if newValue != nil {
+                    showingErrorToast = true
+                    // Auto-dismiss after 4 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                        showingErrorToast = false
+                        setlistStore.clearError()
+                    }
                 }
             }
         }
@@ -70,10 +110,15 @@ struct SetlistListView: View {
             Text("Create a setlist to organize songs for your gig")
         } actions: {
             Button("Create Setlist") {
-                newSetlistName = ""
-                showingCreateSheet = true
+                if networkMonitor.isConnected {
+                    newSetlistName = ""
+                    showingCreateSheet = true
+                } else {
+                    showingOfflineToast = true
+                }
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!networkMonitor.isConnected)
         }
     }
 
@@ -85,6 +130,10 @@ struct SetlistListView: View {
                 }
             }
             .onDelete { indexSet in
+                if !networkMonitor.isConnected {
+                    showingOfflineToast = true
+                    return
+                }
                 if let index = indexSet.first {
                     setlistToDelete = setlistStore.activeSetlists[index]
                 }
@@ -94,6 +143,31 @@ struct SetlistListView: View {
         .navigationDestination(for: Setlist.self) { setlist in
             SetlistDetailView(setlist: setlist)
         }
+    }
+
+    private var offlineToast: some View {
+        Text("You must be online to modify setlists")
+            .font(.subheadline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.red.opacity(0.9), in: Capsule())
+            .padding(.bottom, 20)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    showingOfflineToast = false
+                }
+            }
+    }
+
+    private func errorToast(_ message: String) -> some View {
+        Text(message)
+            .font(.subheadline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.orange.opacity(0.9), in: Capsule())
+            .padding(.bottom, 20)
     }
 }
 
@@ -132,14 +206,9 @@ struct SetlistCard: View {
 }
 
 #Preview("With Setlists") {
-    let store = SetlistStore()
-    let setlist = store.createSetlist(name: "Friday Gig")
-    try? store.addSong(to: setlist, songTitle: "Blue Bossa", concertKey: "c")
-    try? store.addSong(to: setlist, songTitle: "Autumn Leaves", concertKey: "g")
-    try? store.addSong(to: setlist, songTitle: "All The Things You Are", concertKey: "af")
-
-    return SetlistListView()
-        .environment(store)
+    SetlistListView()
+        .environment(SetlistStore())
+        .environment(NetworkMonitor())
         .environment(CatalogStore())
         .environment(CachedKeysStore())
         .environment(PDFCacheService.shared)
@@ -148,6 +217,7 @@ struct SetlistCard: View {
 #Preview("Empty") {
     SetlistListView()
         .environment(SetlistStore())
+        .environment(NetworkMonitor())
         .environment(CatalogStore())
         .environment(CachedKeysStore())
         .environment(PDFCacheService.shared)

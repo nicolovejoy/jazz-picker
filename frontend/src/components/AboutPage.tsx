@@ -1,5 +1,7 @@
 import { FiX } from 'react-icons/fi';
 
+declare const __BUILD_TIME__: string;
+
 interface AboutPageProps {
   onClose: () => void;
 }
@@ -26,10 +28,10 @@ export function AboutPage({ onClose }: AboutPageProps) {
           <section>
             <h2 className="text-lg font-semibold text-white mb-3">What is this?</h2>
             <p className="leading-relaxed">
-              Jazz Picker is an iPad-first web app for browsing and viewing jazz lead sheets
-              at the gig. It provides access to Eric's collection of over 735 jazz standards,
-              dynamically generated in any of the 12 concert keys for your specific instrument
-              and clef.
+              Jazz Picker is a web app for browsing and viewing jazz lead sheets.
+              It provides access to Eric's collection of over 735 jazz standards,
+              dynamically generated in any of the 12 concert keys for your specific
+              instrument and clef.
             </p>
           </section>
 
@@ -42,61 +44,55 @@ export function AboutPage({ onClose }: AboutPageProps) {
               <li>Multi-instrument support (Piano, Trumpet, Alto Sax, Bass, and more)</li>
               <li>Search by song title</li>
               <li>Spin the wheel for a random song</li>
-              <li>Create setlists for gigs with swipe navigation</li>
-              <li>iPad-optimized PDF viewer with landscape side-by-side mode</li>
+              <li>Create and share setlists for gigs</li>
+              <li>PDF viewer with landscape side-by-side mode</li>
             </ul>
           </section>
 
           {/* Native iOS App */}
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">Native iOS App (Recommended)</h2>
+            <h2 className="text-lg font-semibold text-white mb-3">Native iOS App</h2>
             <p className="mb-4 leading-relaxed">
-              For the best experience with true fullscreen PDF viewing and hidden status bars,
-              join our TestFlight beta for the native iOS app.
+              For the best experience with offline PDF caching, join our TestFlight
+              beta for the native iOS app.
             </p>
 
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-              <p className="text-blue-300 mb-2 font-medium">🚀 Join TestFlight Beta</p>
+              <p className="text-blue-300 mb-2 font-medium">Join TestFlight Beta</p>
               <p className="text-sm text-gray-300">
-                Contact Nico for a TestFlight invite to get the native app with enhanced
-                iPad features and offline support.
+                Contact Nico for a TestFlight invite to get the native app with
+                offline support.
               </p>
             </div>
           </section>
 
           {/* Install as PWA */}
           <section>
-            <h2 className="text-lg font-semibold text-white mb-3">Add to Home Screen (Web)</h2>
+            <h2 className="text-lg font-semibold text-white mb-3">Add to Home Screen</h2>
             <p className="mb-4 leading-relaxed">
-              You can also use this web version as a progressive web app by adding it
+              You can use this web version as a progressive web app by adding it
               to your home screen.
             </p>
 
             <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">1</span>
-                <p>Open <strong className="text-white">jazzpicker.pianohouseproject.org</strong> in Safari</p>
+                <p>Open in Safari on your iPad or iPhone</p>
               </div>
 
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">2</span>
-                <p>Tap the <strong className="text-white">Share button</strong> (square with arrow pointing up)</p>
+                <p>Tap the <strong className="text-white">Share button</strong> (square with arrow)</p>
               </div>
 
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">3</span>
-                <p>Scroll down and tap <strong className="text-white">"Add to Home Screen"</strong></p>
-              </div>
-
-              <div className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">4</span>
-                <p>Tap <strong className="text-white">"Add"</strong> in the top right</p>
+                <p>Tap <strong className="text-white">"Add to Home Screen"</strong></p>
               </div>
             </div>
 
             <p className="mt-4 text-sm text-gray-400">
-              Note: This only works in Safari. Chrome and other browsers don't support
-              adding web apps to the home screen on iOS.
+              Note: This only works in Safari.
             </p>
           </section>
 
@@ -112,7 +108,10 @@ export function AboutPage({ onClose }: AboutPageProps) {
           {/* Version */}
           <section className="pt-4 border-t border-white/10">
             <p className="text-sm text-gray-500">
-              Jazz Picker v2.1 — The Piano House Project
+              Jazz Picker — The Piano House Project
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              Built: {__BUILD_TIME__} PST
             </p>
           </section>
         </div>

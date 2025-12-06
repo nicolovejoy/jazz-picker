@@ -1,8 +1,13 @@
 [
   {
+    "build": 5,
+    "date": "2025-12-06 10am",
+    "notes": "Setlists sync to server - shared across devices, pull-to-refresh, offline detection with disabled editing"
+  },
+  {
     "build": 4,
     "date": "2025-12-04",
-    "notes": "Offline PDF caching - songs load instantly when cached"
+    "notes": "Offline PDF caching - songs load instantly when cached, usable offline for a gig"
   },
   {
     "build": 3,

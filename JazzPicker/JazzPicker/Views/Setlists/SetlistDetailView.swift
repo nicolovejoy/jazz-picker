@@ -9,11 +9,13 @@ struct SetlistDetailView: View {
     @Environment(SetlistStore.self) private var setlistStore
     @Environment(CatalogStore.self) private var catalogStore
     @Environment(PDFCacheService.self) private var pdfCacheService
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @AppStorage("selectedInstrument") private var selectedInstrument: String = Instrument.piano.rawValue
 
     let setlist: Setlist
 
     @State private var selectedItem: SetlistItem?
+    @State private var showingOfflineToast = false
 
     private var instrument: Instrument {
         Instrument(rawValue: selectedInstrument) ?? .piano
@@ -65,14 +67,26 @@ struct SetlistDetailView: View {
                         }
                     }
                     .onDelete { indexSet in
+                        if !networkMonitor.isConnected {
+                            showingOfflineToast = true
+                            return
+                        }
                         for index in indexSet {
                             let item = currentSetlist.items[index]
-                            try? setlistStore.removeItem(from: currentSetlist, item: item)
+                            Task {
+                                try? await setlistStore.removeItem(from: currentSetlist, item: item)
+                            }
                         }
                     }
                     .onMove { source, destination in
+                        if !networkMonitor.isConnected {
+                            showingOfflineToast = true
+                            return
+                        }
                         guard let sourceIndex = source.first else { return }
-                        setlistStore.moveItem(in: currentSetlist, from: sourceIndex, to: destination)
+                        Task {
+                            await setlistStore.moveItem(in: currentSetlist, from: sourceIndex, to: destination)
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -82,7 +96,11 @@ struct SetlistDetailView: View {
         .toolbar {
             if !currentSetlist.items.isEmpty {
                 EditButton()
+                    .disabled(!networkMonitor.isConnected)
             }
+        }
+        .refreshable {
+            await setlistStore.refresh()
         }
         .onAppear {
             setlistStore.markOpened(currentSetlist)
@@ -103,6 +121,26 @@ struct SetlistDetailView: View {
                 navigationContext: .setlist(items: items, currentIndex: index)
             )
         }
+        .overlay(alignment: .bottom) {
+            if showingOfflineToast {
+                offlineToast
+            }
+        }
+    }
+
+    private var offlineToast: some View {
+        Text("You must be online to modify setlists")
+            .font(.subheadline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.red.opacity(0.9), in: Capsule())
+            .padding(.bottom, 20)
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    showingOfflineToast = false
+                }
+            }
     }
 }
 
@@ -168,15 +206,11 @@ struct SetBreakRow: View {
 }
 
 #Preview {
-    let store = SetlistStore()
-    let setlist = store.createSetlist(name: "Friday Gig")
-    try? store.addSong(to: setlist, songTitle: "Blue Bossa", concertKey: "c")
-    try? store.addSong(to: setlist, songTitle: "Autumn Leaves", concertKey: "g")
-
-    return NavigationStack {
-        SetlistDetailView(setlist: setlist)
+    NavigationStack {
+        SetlistDetailView(setlist: Setlist(name: "Friday Gig"))
     }
-    .environment(store)
+    .environment(SetlistStore())
+    .environment(NetworkMonitor())
     .environment(CatalogStore())
     .environment(CachedKeysStore())
     .environment(PDFCacheService.shared)
