@@ -2,7 +2,7 @@
   {
     "build": 5,
     "date": "2025-12-06 10am",
-    "notes": "Setlists sync to server - shared across devices, pull-to-refresh, offline detection with disabled editing"
+    "notes": "iOS: Pull-to-refresh now works inside setlists. Setlists sync to server via device ID - edits from web appear after refresh. Edit controls disabled when offline. Web: Removed Supabase auth in favor of device ID (simpler, no login required). Removed Capacitor bridge since we now have native SwiftUI app. Setlists are now shared across iOS and web using the same server API."
   },
   {
     "build": 4,

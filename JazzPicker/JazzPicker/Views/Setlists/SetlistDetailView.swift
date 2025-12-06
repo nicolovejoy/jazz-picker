@@ -90,6 +90,9 @@ struct SetlistDetailView: View {
                     }
                 }
                 .listStyle(.plain)
+                .refreshable {
+                    await setlistStore.refresh()
+                }
             }
         }
         .navigationTitle(currentSetlist.name)
@@ -98,9 +101,6 @@ struct SetlistDetailView: View {
                 EditButton()
                     .disabled(!networkMonitor.isConnected)
             }
-        }
-        .refreshable {
-            await setlistStore.refresh()
         }
         .onAppear {
             setlistStore.markOpened(currentSetlist)

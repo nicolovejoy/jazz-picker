@@ -39,9 +39,6 @@ struct SetlistListView: View {
                     .opacity(networkMonitor.isConnected ? 1 : 0.5)
                 }
             }
-            .refreshable {
-                await setlistStore.refresh()
-            }
             .task {
                 // Load setlists on first appear
                 if setlistStore.setlists.isEmpty {
@@ -140,6 +137,9 @@ struct SetlistListView: View {
             }
         }
         .listStyle(.plain)
+        .refreshable {
+            await setlistStore.refresh()
+        }
         .navigationDestination(for: Setlist.self) { setlist in
             SetlistDetailView(setlist: setlist)
         }
