@@ -6,8 +6,8 @@ Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets 
 
 **Components:**
 - iOS App: `JazzPicker/` (SwiftUI) - main focus
-- Backend: `app.py` (Flask on Fly.io) - PDF gen + setlists
-- Web: `frontend/` (React) - no auth
+- Backend: `app.py` (Flask on Fly.io) - PDF gen, setlists, auto-octave
+- Web: `frontend/` (React) - functional for gigs, no auth
 
 ---
 
@@ -42,7 +42,7 @@ JazzPicker/JazzPicker/
 
 ```
 GET  /api/v2/catalog              # All songs
-POST /api/v2/generate             # Generate PDF (accepts octave_offset)
+POST /api/v2/generate             # Generate PDF (auto-octave when instrument_label provided)
 GET  /api/v2/setlists             # List setlists
 POST /api/v2/setlists             # Create setlist
 PUT  /api/v2/setlists/<id>        # Update setlist
@@ -56,7 +56,17 @@ DELETE /api/v2/setlists/<id>      # Delete setlist
 - **Concert Key**: What audience hears (stored, shared)
 - **Written Key**: What player sees on chart
 - **Transposition**: Instrument offset (C, Bb, Eb)
-- **Octave Offset**: Per-song adjustment (±2), saved in setlist items
+- **Octave Offset**: Per-song ±2, auto-calculated from instrument range or manual
+
+---
+
+## Auto-Octave
+
+Backend calculates optimal octave offset when `instrument_label` is provided without explicit `octave_offset`. Uses song's MIDI note range + instrument's written range to maximize fit.
+
+**Requires:** Catalog rebuilt with MIDI extraction (`python3 build_catalog.py`)
+
+Supported instruments with ranges: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sax, Trombone, Flute. Piano/Guitar/Bass skip calculation (no range limits).
 
 ---
 
@@ -64,4 +74,4 @@ DELETE /api/v2/setlists/<id>      # Delete setlist
 
 - [ROADMAP.md](ROADMAP.md) - Priorities
 - [INFRASTRUCTURE.md](INFRASTRUCTURE.md) - Services
-- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth (backlog)
+- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth plan (backlog)
