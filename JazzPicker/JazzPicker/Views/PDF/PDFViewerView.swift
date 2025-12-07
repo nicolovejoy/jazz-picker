@@ -232,7 +232,7 @@ struct PDFViewerView: View {
             }
         }
         .sheet(isPresented: $showAddToSetlist) {
-            AddToSetlistSheet(songTitle: song.title, concertKey: concertKey)
+            AddToSetlistSheet(songTitle: song.title, concertKey: concertKey, octaveOffset: octaveOffset)
         }
     }
 

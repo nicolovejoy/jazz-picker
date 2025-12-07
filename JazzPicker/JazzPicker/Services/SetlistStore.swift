@@ -148,7 +148,7 @@ class SetlistStore {
 
     // MARK: - Item Operations (Optimistic UI)
 
-    func addSong(to setlist: Setlist, songTitle: String, concertKey: String) async throws {
+    func addSong(to setlist: Setlist, songTitle: String, concertKey: String, octaveOffset: Int = 0) async throws {
         lastError = nil
 
         guard let index = setlists.firstIndex(where: { $0.id == setlist.id }) else {
@@ -163,7 +163,7 @@ class SetlistStore {
 
         // Optimistic update
         let position = setlists[index].items.count
-        let item = SetlistItem.song(songTitle, key: concertKey, position: position)
+        let item = SetlistItem(songTitle: songTitle, concertKey: concertKey, position: position, octaveOffset: octaveOffset)
         setlists[index].items.append(item)
 
         do {
@@ -305,6 +305,10 @@ class SetlistStore {
 
     func containsSong(_ songTitle: String, in setlist: Setlist) -> Bool {
         setlist.items.contains { $0.songTitle == songTitle && !$0.isSetBreak }
+    }
+
+    func findItem(_ songTitle: String, in setlist: Setlist) -> SetlistItem? {
+        setlist.items.first { $0.songTitle == songTitle && !$0.isSetBreak }
     }
 
     // MARK: - Helpers
