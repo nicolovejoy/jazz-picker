@@ -65,3 +65,17 @@ setlists/{setlistId}
 2. Deploy security rules
 3. Create profile on first sign-in
 4. Instrument picker in onboarding
+
+**Phase 4: Firestore setlists**
+1. Add Firestore SDK to web (`getFirestore`)
+2. Replace `setlistService.ts` with Firestore queries
+3. Real-time listeners (`onSnapshot`)
+4. Remove setlist endpoints from Flask
+5. Enable offline persistence
+
+**Phase 5: iOS auth**
+1. Add Firebase SDK via SPM (FirebaseAuth, FirebaseFirestore)
+2. Create `GoogleService-Info.plist` from Firebase console
+3. Implement Apple Sign-In in `AuthService.swift`
+4. Replace `SetlistStore.swift` with Firestore
+5. Remove DeviceID auth from `APIClient.swift`
