@@ -7,7 +7,7 @@ Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets 
 **Components:**
 - iOS App: `JazzPicker/` (SwiftUI) - main focus
 - Backend: `app.py` (Flask on Fly.io) - PDF gen, catalog
-- Web: `frontend/` (React) - Firebase Auth required
+- Web: `frontend/` (React + Vite) - requires Firebase Auth
 
 ---
 
@@ -18,6 +18,8 @@ python3 app.py              # Backend: localhost:5001
 cd frontend && npm run dev  # Web: localhost:5173
 open JazzPicker/JazzPicker.xcodeproj  # iOS
 ```
+
+**Environment:** Web requires `frontend/.env.local` with Firebase config (see `.env.example`).
 
 ---
 
@@ -38,6 +40,20 @@ JazzPicker/JazzPicker/
 
 ---
 
+## Web App Structure
+
+```
+frontend/src/
+├── contexts/   # AuthContext, UserProfileContext
+├── components/ # UI components
+├── services/   # api.ts, setlistService.ts, userProfileService.ts
+└── types/      # TypeScript types
+```
+
+**Auth flow:** Sign in → Onboarding (if no profile) → Main app. Instrument synced via Firestore.
+
+---
+
 ## Backend API
 
 ```
@@ -45,7 +61,7 @@ GET  /api/v2/catalog              # All songs
 POST /api/v2/generate             # Generate PDF (auto-octave when instrument_label provided)
 ```
 
-Setlist endpoints exist but will be removed when Firestore migration completes.
+Setlist endpoints exist but moving to Firestore.
 
 ---
 
@@ -54,17 +70,23 @@ Setlist endpoints exist but will be removed when Firestore migration completes.
 - **Concert Key**: What audience hears (stored, shared)
 - **Written Key**: What player sees on chart
 - **Transposition**: Instrument offset (C, Bb, Eb)
-- **Octave Offset**: Per-song ±2, auto-calculated from instrument range or manual
+- **Octave Offset**: Per-song ±2, auto-calculated or manual
 
 ---
 
-## Auto-Octave
+## Firestore Schema
 
-Backend calculates optimal octave offset when `instrument_label` is provided without explicit `octave_offset`. Uses song's MIDI note range + instrument's written range.
+```
+users/{uid}
+  - instrument: string
+  - displayName: string
+  - createdAt, updatedAt: timestamp
 
-**Requires:** Catalog rebuilt with MIDI extraction (`python3 build_catalog.py`)
-
-Supported: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sax, Trombone, Flute. Piano/Guitar/Bass skip calculation.
+setlists/{setlistId}  # Phase 4
+  - ownerId: string
+  - title: string
+  - songs: [{ songId, concertKey, octaveOffset }]
+```
 
 ---
 
@@ -72,4 +94,3 @@ Supported: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sax, Trombone, Flute. Pian
 
 - [ROADMAP.md](ROADMAP.md) - Priorities
 - [INFRASTRUCTURE.md](INFRASTRUCTURE.md) - Services
-- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth + Firestore migration

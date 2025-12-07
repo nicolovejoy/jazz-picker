@@ -2,12 +2,12 @@
 
 ## In Progress
 
-**Firebase Auth + Firestore Migration** ([plan](FIREBASE_AUTH_PLAN.md))
+**Firebase Auth + Firestore Migration**
 - [x] Phase 1: Web auth (Apple, Google, email)
 - [x] Phase 2: Flask token verification
-- [ ] Phase 3: Firestore user profiles + instrument
-- [ ] Phase 4: Firestore setlists
-- [ ] Phase 5: iOS auth
+- [x] Phase 3: Firestore user profiles + instrument
+- [ ] Phase 4: Firestore setlists (replace Flask endpoints)
+- [ ] Phase 5: iOS auth (Apple Sign-In + Firestore)
 
 ## Backlog
 
@@ -22,3 +22,4 @@
 - Setlists: CRUD, reorder, server-synced with key/octave
 - Add-to-Setlist from PDF viewer (iOS + Web)
 - Offline PDF caching
+- Web: Required sign-in, Firestore user profiles with instrument sync
