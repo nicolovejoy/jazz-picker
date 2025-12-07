@@ -1,5 +1,10 @@
 [
   {
+    "build": 7,
+    "date": "2025-12-07",
+    "notes": "iOS: Add-to-Setlist now captures current key and octave offset. If song already exists with different settings, shows Replace/Keep dialog instead of blocking. Web: Setlist songs now render with saved octave offset. New 'Add to Setlist' button in PDF viewer toolbar for parity with iOS."
+  },
+  {
     "build": 6,
     "date": "2025-12-06 6pm",
     "notes": "Octave +/- controls in PDF viewer menu. Adjusts chart up or down by octave (±2 range) when transposition lands notes too high or low. Shown in title bar when active. Resets on key or song change. Each octave variant cached separately for offline use."
