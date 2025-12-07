@@ -5,15 +5,39 @@ import type {
   CreateSetlistInput,
   AddSetlistItemInput,
 } from '@/types/setlist';
+import { auth } from '../firebase';
 
 // Web uses relative URLs (Vite proxy in dev, same origin in prod)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 const API_BASE = `${BACKEND_URL}/api/v2`;
 
+/**
+ * Get headers with Firebase auth token if user is signed in.
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (e) {
+      console.warn('Failed to get ID token:', e);
+    }
+  }
+
+  return headers;
+}
+
 export const setlistService = {
   // Get all setlists (shared across all users)
   async getSetlists(): Promise<Setlist[]> {
-    const response = await fetch(`${API_BASE}/setlists`);
+    const response = await fetch(`${API_BASE}/setlists`, {
+      headers: await getAuthHeaders(),
+    });
     if (!response.ok) throw new Error('Failed to fetch setlists');
     const data = await response.json();
     return data.setlists || [];
@@ -21,7 +45,9 @@ export const setlistService = {
 
   // Get a single setlist by ID
   async getSetlist(id: string): Promise<Setlist | null> {
-    const response = await fetch(`${API_BASE}/setlists/${id}`);
+    const response = await fetch(`${API_BASE}/setlists/${id}`, {
+      headers: await getAuthHeaders(),
+    });
     if (response.status === 404) return null;
     if (!response.ok) throw new Error('Failed to fetch setlist');
     return response.json();
@@ -29,7 +55,9 @@ export const setlistService = {
 
   // Get a single setlist with its items
   async getSetlistWithItems(id: string): Promise<SetlistWithItems | null> {
-    const response = await fetch(`${API_BASE}/setlists/${id}`);
+    const response = await fetch(`${API_BASE}/setlists/${id}`, {
+      headers: await getAuthHeaders(),
+    });
     if (response.status === 404) return null;
     if (!response.ok) throw new Error('Failed to fetch setlist');
     return response.json();
@@ -39,7 +67,7 @@ export const setlistService = {
   async createSetlist(input: CreateSetlistInput): Promise<Setlist> {
     const response = await fetch(`${API_BASE}/setlists`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ name: input.name }),
     });
     if (!response.ok) throw new Error('Failed to create setlist');
@@ -50,7 +78,7 @@ export const setlistService = {
   async updateSetlist(id: string, name: string): Promise<Setlist> {
     const response = await fetch(`${API_BASE}/setlists/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ name }),
     });
     if (!response.ok) throw new Error('Failed to update setlist');
@@ -61,6 +89,7 @@ export const setlistService = {
   async deleteSetlist(id: string): Promise<void> {
     const response = await fetch(`${API_BASE}/setlists/${id}`, {
       method: 'DELETE',
+      headers: await getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to delete setlist');
   },
@@ -88,7 +117,7 @@ export const setlistService = {
     // Update the setlist with new items
     const response = await fetch(`${API_BASE}/setlists/${input.setlist_id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         items: updatedItems.map(item => ({
           song_title: item.song_title,
@@ -117,7 +146,7 @@ export const setlistService = {
 
     const response = await fetch(`${API_BASE}/setlists/${setlistId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         items: updatedItems.map(item => ({
           song_title: item.song_title,
@@ -143,7 +172,7 @@ export const setlistService = {
 
     const response = await fetch(`${API_BASE}/setlists/${setlistId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         items: reorderedItems.map(item => ({
           song_title: item.song_title,

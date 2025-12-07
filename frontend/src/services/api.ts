@@ -1,9 +1,32 @@
 import type { SongListResponse, SongSummary, Transposition, Clef } from '@/types/catalog';
 import type { CropBounds } from '@/types/pdf';
+import { auth } from '../firebase';
 
 // Web uses relative URLs (Vite proxy in dev, same origin in prod)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 const API_BASE = `${BACKEND_URL}/api`;
+
+/**
+ * Get headers with Firebase auth token if user is signed in.
+ * Returns plain headers if not authenticated (for iOS compatibility).
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (e) {
+      console.warn('Failed to get ID token:', e);
+    }
+  }
+
+  return headers;
+}
 
 // Normalize key format from catalog (am, bb) to LilyPond notation (a, bf)
 // TODO: Remove once catalog is rebuilt with correct format
@@ -45,7 +68,9 @@ export const api = {
       offset: offset.toString(),
       q: query,
     });
-    const response = await fetch(`${API_BASE}/v2/songs?${params}`);
+    const response = await fetch(`${API_BASE}/v2/songs?${params}`, {
+      headers: await getAuthHeaders(),
+    });
     if (!response.ok) throw new Error('Failed to fetch songs');
     return response.json();
   },
@@ -73,7 +98,7 @@ export const api = {
 
     const response = await fetch(`${API_BASE}/v2/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     });
 
@@ -95,7 +120,8 @@ export const api = {
       clef,
     });
     const response = await fetch(
-      `${API_BASE}/v2/songs/${encodeURIComponent(songTitle)}/cached?${params}`
+      `${API_BASE}/v2/songs/${encodeURIComponent(songTitle)}/cached?${params}`,
+      { headers: await getAuthHeaders() }
     );
     if (!response.ok) {
       throw new Error('Failed to fetch cached keys');
@@ -104,7 +130,9 @@ export const api = {
   },
 
   async getCatalog(): Promise<CatalogResponse> {
-    const response = await fetch(`${API_BASE}/v2/catalog`);
+    const response = await fetch(`${API_BASE}/v2/catalog`, {
+      headers: await getAuthHeaders(),
+    });
     if (!response.ok) throw new Error('Failed to fetch catalog');
     return response.json();
   },

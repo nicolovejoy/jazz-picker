@@ -3,7 +3,7 @@
 Jazz Picker - A web interface for browsing Eric's lilypond lead sheets.
 """
 
-from flask import Flask, jsonify, request, send_from_directory, make_response
+from flask import Flask, jsonify, request, send_from_directory, make_response, g
 from flask_cors import CORS
 import subprocess
 import os
@@ -18,6 +18,17 @@ import time
 
 import db  # SQLite database module
 import json
+
+# Firebase Admin SDK (optional - for token verification)
+try:
+    import firebase_admin
+    from firebase_admin import auth as firebase_auth
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    firebase_admin = None
+    firebase_auth = None
+    FIREBASE_AVAILABLE = False
+    print("⚠️  firebase-admin not installed - token verification disabled")
 
 # Crop detector is optional - may not be available in all environments
 # Note: This try/except may be cruft now that Dockerfile includes crop_detector.py
@@ -65,6 +76,20 @@ if USE_S3:
 # Create cache directory on startup
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+# Firebase Admin initialization (optional - for token verification)
+FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', 'jazz-picker')
+firebase_app = None
+if FIREBASE_AVAILABLE:
+    try:
+        # Initialize with project ID (uses Application Default Credentials on Fly.io)
+        firebase_app = firebase_admin.initialize_app(options={
+            'projectId': FIREBASE_PROJECT_ID
+        })
+        print(f"✅ Firebase Admin initialized (project: {FIREBASE_PROJECT_ID})")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not initialize Firebase Admin: {e}")
+        print("   Token verification disabled")
+
 # Basic Auth Configuration
 BASIC_AUTH_USERNAME = os.getenv('BASIC_AUTH_USERNAME', 'admin')
 BASIC_AUTH_PASSWORD = os.getenv('BASIC_AUTH_PASSWORD', 'changeme')
@@ -92,6 +117,43 @@ def requires_auth(f):
         auth = request.authorization
         if not auth or not check_auth(auth.username, auth.password):
             return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+
+def verify_firebase_token(f):
+    """
+    Decorator to verify Firebase ID tokens (optional auth).
+
+    - If valid token: sets g.firebase_uid and g.firebase_user
+    - If no/invalid token: g.firebase_uid = None (allows unauthenticated)
+    - Never blocks requests (iOS compatibility)
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        g.firebase_uid = None
+        g.firebase_user = None
+
+        if not firebase_app:
+            return f(*args, **kwargs)
+
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return f(*args, **kwargs)
+
+        token = auth_header[7:]  # Strip "Bearer "
+
+        try:
+            decoded = firebase_auth.verify_id_token(token)
+            g.firebase_uid = decoded['uid']
+            g.firebase_user = decoded  # Contains email, name, etc.
+        except firebase_auth.InvalidIdTokenError:
+            print("⚠️  Invalid Firebase token")
+        except firebase_auth.ExpiredIdTokenError:
+            print("⚠️  Expired Firebase token")
+        except Exception as e:
+            print(f"⚠️  Token verification failed: {e}")
+
         return f(*args, **kwargs)
     return decorated
 
@@ -245,6 +307,7 @@ def health():
 
 @app.route('/api/v2/catalog')
 @requires_auth
+@verify_firebase_token
 def get_catalog():
     """
     Get full catalog of song titles (lightweight, for navigation).
@@ -267,6 +330,7 @@ def get_catalog():
 
 @app.route('/api/v2/songs')
 @requires_auth
+@verify_firebase_token
 def get_songs_v2():
     """API v2: Get paginated, slim song list."""
     # Query parameters with validation
@@ -486,6 +550,7 @@ whatClef = "{clef}"
 
 @app.route('/api/v2/cached-keys')
 @requires_auth
+@verify_firebase_token
 def get_all_cached_keys():
     """
     Get all cached keys for all songs in a single request.
@@ -559,6 +624,7 @@ def get_all_cached_keys():
 
 @app.route('/api/v2/songs/<path:song_title>/cached')
 @requires_auth
+@verify_firebase_token
 def get_cached_keys(song_title):
     """
     Get list of cached concert keys for a song, filtered by transposition.
@@ -627,6 +693,7 @@ def get_cached_keys(song_title):
 
 @app.route('/api/v2/generate', methods=['POST'])
 @requires_auth
+@verify_firebase_token
 def generate_pdf():
     """
     Generate a PDF for any song in any concert key.
@@ -870,6 +937,7 @@ def serve_generated(filename):
 
 @app.route('/api/v2/setlists', methods=['GET'])
 @requires_auth
+@verify_firebase_token
 def list_setlists():
     """
     Get all setlists.
@@ -898,6 +966,7 @@ def list_setlists():
 
 @app.route('/api/v2/setlists', methods=['POST'])
 @requires_auth
+@verify_firebase_token
 def create_setlist():
     """
     Create a new setlist.
@@ -940,6 +1009,7 @@ def create_setlist():
 
 @app.route('/api/v2/setlists/<setlist_id>', methods=['GET'])
 @requires_auth
+@verify_firebase_token
 def get_setlist(setlist_id):
     """
     Get a single setlist by ID.
@@ -954,6 +1024,7 @@ def get_setlist(setlist_id):
 
 @app.route('/api/v2/setlists/<setlist_id>', methods=['PUT'])
 @requires_auth
+@verify_firebase_token
 def update_setlist(setlist_id):
     """
     Update a setlist.
@@ -995,6 +1066,7 @@ def update_setlist(setlist_id):
 
 @app.route('/api/v2/setlists/<setlist_id>', methods=['DELETE'])
 @requires_auth
+@verify_firebase_token
 def delete_setlist(setlist_id):
     """
     Delete a setlist (soft delete).

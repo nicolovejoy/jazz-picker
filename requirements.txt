@@ -4,3 +4,4 @@ boto3
 gunicorn
 pymupdf
 mido
+firebase-admin

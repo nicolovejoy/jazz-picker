@@ -4,7 +4,7 @@
 
 **Firebase Auth + Firestore Migration** ([plan](FIREBASE_AUTH_PLAN.md))
 - [x] Phase 1: Web auth (Apple, Google, email)
-- [ ] Phase 2: Flask token verification
+- [x] Phase 2: Flask token verification
 - [ ] Phase 3: Firestore user profiles + instrument
 - [ ] Phase 4: Firestore setlists
 - [ ] Phase 5: iOS auth
