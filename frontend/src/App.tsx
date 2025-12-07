@@ -4,13 +4,15 @@ import { Header } from './components/Header';
 import { BottomNav, type AppContext } from './components/BottomNav';
 import { SongList } from './components/SongList';
 import { PDFViewer } from './components/PDFViewer';
-import { WelcomeScreen } from './components/WelcomeScreen';
 import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
 import { SignIn } from './components/SignIn';
+import { OnboardingModal } from './components/OnboardingModal';
+import { InstrumentPickerModal } from './components/InstrumentPickerModal';
 import { useAuth } from './contexts/AuthContext';
+import { useUserProfile } from './contexts/UserProfileContext';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
@@ -40,31 +42,19 @@ export interface CatalogNavigation {
   catalog: SongSummary[];
 }
 
-const STORAGE_KEY = 'jazz-picker-instrument-id';
-
-function getStoredInstrument(): Instrument | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const instrument = getInstrumentById(stored);
-      if (instrument) return instrument;
-    }
-  } catch {
-    // localStorage not available
-  }
-  return null;
-}
-
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const storedInstrument = getStoredInstrument();
-  const [instrument, setInstrument] = useState<Instrument | null>(storedInstrument);
+  const { profile, loading: profileLoading, updateProfile } = useUserProfile();
+
+  // Derive instrument from profile
+  const instrument = profile?.instrument ? getInstrumentById(profile.instrument) : null;
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfMetadata, setPdfMetadata] = useState<PdfMetadata | null>(null);
   const [activeContext, setActiveContext] = useState<AppContext>('browse');
   const [activeSetlist, setActiveSetlist] = useState<Setlist | null>(null);
   const [setlistNav, setSetlistNav] = useState<SetlistNavigation | null>(null);
   const [showAbout, setShowAbout] = useState(false);
+  const [showInstrumentPicker, setShowInstrumentPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -192,14 +182,13 @@ function App() {
     setSearchQuery(query);
   }, []);
 
-  const handleInstrumentChange = useCallback((inst: Instrument) => {
-    setInstrument(inst);
+  const handleInstrumentChange = useCallback(async (inst: Instrument) => {
     try {
-      localStorage.setItem(STORAGE_KEY, inst.id);
-    } catch {
-      // localStorage not available
+      await updateProfile({ instrument: inst.id });
+    } catch (err) {
+      console.error('Failed to update instrument:', err);
     }
-  }, []);
+  }, [updateProfile]);
 
   // Use refs to access current nav state in callbacks
   const setlistNavRef = useRef(setlistNav);
@@ -374,8 +363,8 @@ function App() {
     }, 800);
   }, [catalog, openSongFromCatalog, isSpinning]);
 
-  // Show loading while checking auth state
-  if (authLoading) {
+  // Show loading while checking auth/profile state
+  if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
@@ -388,9 +377,14 @@ function App() {
     return <SignIn />;
   }
 
-  // Show welcome screen if no instrument selected
+  // Show onboarding modal if no profile exists
+  if (!profile) {
+    return <OnboardingModal />;
+  }
+
+  // At this point we have a profile but instrument lookup failed - shouldn't happen
   if (!instrument) {
-    return <WelcomeScreen onSelectInstrument={handleInstrumentChange} />;
+    return <OnboardingModal />;
   }
 
   return (
@@ -481,7 +475,7 @@ function App() {
               </div>
 
               <button
-                onClick={() => setInstrument(null)}
+                onClick={() => setShowInstrumentPicker(true)}
                 className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
               >
                 <span>Instrument</span>
@@ -561,6 +555,17 @@ function App() {
 
       {showAbout && (
         <AboutPage onClose={() => setShowAbout(false)} />
+      )}
+
+      {showInstrumentPicker && instrument && (
+        <InstrumentPickerModal
+          currentInstrument={instrument}
+          onSelect={(inst) => {
+            handleInstrumentChange(inst);
+            setShowInstrumentPicker(false);
+          }}
+          onClose={() => setShowInstrumentPicker(false)}
+        />
       )}
     </div>
   );
