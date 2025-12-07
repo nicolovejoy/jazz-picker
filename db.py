@@ -228,7 +228,8 @@ def init_setlists_db(db_path=None):
             setlist_id TEXT NOT NULL REFERENCES setlists(id) ON DELETE CASCADE,
             song_title TEXT NOT NULL,
             concert_key TEXT NOT NULL,
-            position INTEGER NOT NULL
+            position INTEGER NOT NULL,
+            is_set_break INTEGER DEFAULT 0
         );
 
         CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist_id

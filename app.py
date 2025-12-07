@@ -355,13 +355,24 @@ def slugify(text):
     return text.strip('-')
 
 
-def generate_wrapper_content(core_file, target_key, clef, instrument=""):
-    """Generate LilyPond wrapper file content."""
+def generate_wrapper_content(core_file, target_key, clef, instrument="", octave_offset=0):
+    """Generate LilyPond wrapper file content.
+
+    Args:
+        octave_offset: Integer from -2 to +2. Positive = up, negative = down.
+                       LilyPond syntax: ' = up one octave, , = down one octave
+    """
     # bassKey is always the key without octave modifier
     bass_key = target_key.rstrip(',')
 
-    # For bass clef, whatKey needs octave-down comma
+    # For bass clef, whatKey starts one octave down
     what_key = f"{target_key}," if clef == "bass" else target_key
+
+    # Apply octave offset: ' = up, , = down
+    if octave_offset > 0:
+        what_key += "'" * octave_offset
+    elif octave_offset < 0:
+        what_key += "," * abs(octave_offset)
 
     return f'''%% -*- Mode: LilyPond -*-
 
@@ -531,12 +542,13 @@ def generate_pdf():
         "concert_key": "eb",           // Concert key (what the audience hears)
         "transposition": "Bb",         // Instrument transposition: C, Bb, or Eb
         "clef": "treble",              // "treble" or "bass"
-        "instrument_label": "Trumpet"  // Optional label for PDF subtitle
+        "instrument_label": "Trumpet", // Optional label for PDF subtitle
+        "octave_offset": 0             // Optional: -2 to +2, shifts octave up/down
     }
 
     Returns:
     {
-        "url": "https://s3.../502-blues-eb-Bb-treble.pdf",
+        "url": "https://s3.../502-blues-eb-Bb-treble-0.pdf",
         "cached": true/false,
         "generation_time_ms": 2340
     }
@@ -553,6 +565,7 @@ def generate_pdf():
     transposition = data.get('transposition', 'C')
     clef = data.get('clef', 'treble').lower()
     instrument_label = data.get('instrument_label', '').strip()
+    octave_offset = data.get('octave_offset', 0)
 
     # Validate inputs
     if not song_title:
@@ -570,6 +583,15 @@ def generate_pdf():
     if clef not in VALID_CLEFS:
         return jsonify({'error': f'Invalid clef. Must be one of: {", ".join(VALID_CLEFS)}'}), 400
 
+    # Validate octave_offset
+    try:
+        octave_offset = int(octave_offset)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'octave_offset must be an integer'}), 400
+
+    if octave_offset < -2 or octave_offset > 2:
+        return jsonify({'error': 'octave_offset must be between -2 and 2'}), 400
+
     # Look up song in database
     core_files = db.get_core_files(song_title)
     if not core_files:
@@ -581,9 +603,9 @@ def generate_pdf():
     # Calculate written key for LilyPond
     written_key = concert_to_written(concert_key, transposition)
 
-    # Generate S3 key: {slug}-{concert_key}-{transposition}-{clef}.pdf
+    # Generate S3 key: {slug}-{concert_key}-{transposition}-{clef}-{octave}.pdf
     slug = slugify(song_title)
-    s3_key = f"generated/{slug}-{concert_key}-{transposition}-{clef}.pdf"
+    s3_key = f"generated/{slug}-{concert_key}-{transposition}-{clef}-{octave_offset}.pdf"
 
     # Check if already cached in S3
     if s3_client:
@@ -624,10 +646,10 @@ def generate_pdf():
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate wrapper file (use written_key for LilyPond, instrument_label for subtitle)
-    wrapper_content = generate_wrapper_content(core_file, written_key, clef, instrument_label)
+    wrapper_content = generate_wrapper_content(core_file, written_key, clef, instrument_label, octave_offset)
 
     # Local filename matches S3 key format
-    file_base = f"{slug}-{concert_key}-{transposition}-{clef}"
+    file_base = f"{slug}-{concert_key}-{transposition}-{clef}-{octave_offset}"
 
     wrapper_filename = f"{file_base}.ly"
     wrapper_path = GENERATED_DIR / wrapper_filename

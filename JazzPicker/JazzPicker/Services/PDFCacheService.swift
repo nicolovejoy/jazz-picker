@@ -15,6 +15,7 @@ struct CachedPDF: Codable, Identifiable {
     let concertKey: String
     let transposition: String
     let clef: String
+    let octaveOffset: Int
     let cachedAt: Date
     let etag: String?
     let filePath: String  // relative to PDFCache directory
@@ -22,7 +23,35 @@ struct CachedPDF: Codable, Identifiable {
     let cropBounds: CropBounds?
 
     var cacheKey: String {
-        "\(songTitle)-\(concertKey)-\(transposition)-\(clef)"
+        "\(songTitle)-\(concertKey)-\(transposition)-\(clef)-\(octaveOffset)"
+    }
+
+    // Migration: decode old entries without octaveOffset as 0
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        songTitle = try container.decode(String.self, forKey: .songTitle)
+        concertKey = try container.decode(String.self, forKey: .concertKey)
+        transposition = try container.decode(String.self, forKey: .transposition)
+        clef = try container.decode(String.self, forKey: .clef)
+        octaveOffset = try container.decodeIfPresent(Int.self, forKey: .octaveOffset) ?? 0
+        cachedAt = try container.decode(Date.self, forKey: .cachedAt)
+        etag = try container.decodeIfPresent(String.self, forKey: .etag)
+        filePath = try container.decode(String.self, forKey: .filePath)
+        fileSize = try container.decode(Int64.self, forKey: .fileSize)
+        cropBounds = try container.decodeIfPresent(CropBounds.self, forKey: .cropBounds)
+    }
+
+    init(songTitle: String, concertKey: String, transposition: String, clef: String, octaveOffset: Int, cachedAt: Date, etag: String?, filePath: String, fileSize: Int64, cropBounds: CropBounds?) {
+        self.songTitle = songTitle
+        self.concertKey = concertKey
+        self.transposition = transposition
+        self.clef = clef
+        self.octaveOffset = octaveOffset
+        self.cachedAt = cachedAt
+        self.etag = etag
+        self.filePath = filePath
+        self.fileSize = fileSize
+        self.cropBounds = cropBounds
     }
 }
 
@@ -66,14 +95,14 @@ class PDFCacheService {
     // MARK: - Public API
 
     /// Check if a PDF is cached for the given parameters
-    func isCached(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) -> Bool {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func isCached(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> Bool {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         return cachedPDFs.contains { $0.cacheKey == key }
     }
 
     /// Get cached PDF if available
-    func getCachedPDF(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) -> CacheResult {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func getCachedPDF(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> CacheResult {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
 
         guard let cached = cachedPDFs.first(where: { $0.cacheKey == key }) else {
             return .miss
@@ -91,8 +120,8 @@ class PDFCacheService {
     }
 
     /// Get ETag for cached PDF (for conditional requests)
-    func getETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) -> String? {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func getETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> String? {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         return cachedPDFs.first { $0.cacheKey == key }?.etag
     }
 
@@ -103,10 +132,11 @@ class PDFCacheService {
         concertKey: String,
         transposition: Transposition,
         clef: Clef,
+        octaveOffset: Int = 0,
         etag: String?,
         cropBounds: CropBounds?
     ) {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         let fileName = "\(key).pdf"
         let fileURL = cacheDirectory.appendingPathComponent(fileName)
 
@@ -121,6 +151,7 @@ class PDFCacheService {
                 concertKey: concertKey,
                 transposition: transposition.rawValue,
                 clef: clef.rawValue,
+                octaveOffset: octaveOffset,
                 cachedAt: Date(),
                 etag: etag,
                 filePath: fileName,
@@ -139,8 +170,8 @@ class PDFCacheService {
     }
 
     /// Update ETag for existing cached PDF (after 304 response)
-    func updateETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, etag: String?) {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func updateETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0, etag: String?) {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
 
         if let index = cachedPDFs.firstIndex(where: { $0.cacheKey == key }) {
             let old = cachedPDFs[index]
@@ -149,6 +180,7 @@ class PDFCacheService {
                 concertKey: old.concertKey,
                 transposition: old.transposition,
                 clef: old.clef,
+                octaveOffset: old.octaveOffset,
                 cachedAt: Date(),  // Update timestamp on revalidation
                 etag: etag ?? old.etag,
                 filePath: old.filePath,
@@ -188,20 +220,20 @@ class PDFCacheService {
     // MARK: - Download Tracking
 
     /// Mark a key as currently downloading
-    func markDownloading(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func markDownloading(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         downloadingKeys.insert(key)
     }
 
     /// Mark download as complete
-    func markDownloadComplete(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func markDownloadComplete(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         downloadingKeys.remove(key)
     }
 
     /// Check if currently downloading
-    func isDownloading(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) -> Bool {
-        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef)
+    func isDownloading(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> Bool {
+        let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         return downloadingKeys.contains(key)
     }
 
@@ -294,8 +326,8 @@ class PDFCacheService {
 
     // MARK: - Private
 
-    private func cacheKey(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef) -> String {
-        "\(songTitle)-\(concertKey)-\(transposition.rawValue)-\(clef.rawValue)"
+    private func cacheKey(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> String {
+        "\(songTitle)-\(concertKey)-\(transposition.rawValue)-\(clef.rawValue)-\(octaveOffset)"
     }
 
     private func ensureCacheDirectoryExists() {

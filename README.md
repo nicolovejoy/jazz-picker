@@ -44,6 +44,5 @@ npm run dev
 
 ## Documentation
 
-- **[CLAUDE.md](docs/CLAUDE.md)**: Comprehensive development reference
-- **[HANDOFF.md](docs/HANDOFF.md)**: Session notes and recent changes
-- **[UX_VISION.md](docs/UX_VISION.md)**: Multi-context architecture vision
+- **[CLAUDE.md](docs/CLAUDE.md)**: Development reference
+- **[ROADMAP.md](docs/ROADMAP.md)**: Current priorities and backlog

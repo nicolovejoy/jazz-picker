@@ -46,7 +46,7 @@ fly deploy              # Deploy to Fly.io
 
 **API endpoints:**
 - `GET /api/v2/catalog` — All songs
-- `POST /api/v2/generate` — Generate PDF
+- `POST /api/v2/generate` — Generate PDF (supports `octave_offset`: -2 to +2)
 - `GET/POST/PUT/DELETE /api/v2/setlists` — Setlist CRUD
 
 **Note:** 2 Fly machines with separate SQLite files. Requests may hit different machines (data inconsistency possible). Fine for dev.
@@ -84,6 +84,6 @@ Local dev only needed when changing backend code before `fly deploy`.
 | `Services/SetlistStore.swift` | API sync, optimistic UI |
 | `Services/NetworkMonitor.swift` | Connectivity detection |
 | `Services/DeviceID.swift` | Keychain-persisted UUID |
-| `Services/PDFCacheService.swift` | Offline PDF cache |
+| `Services/PDFCacheService.swift` | Offline PDF cache (key: song+key+transposition+clef+octave) |
 | `Views/PDF/PDFViewerView.swift` | PDF display, edge-tap nav |
 | `Resources/BuildHistory.json` | Release notes for About page |

@@ -1,5 +1,10 @@
 [
   {
+    "build": 6,
+    "date": "2025-12-06",
+    "notes": "Octave +/- controls in PDF viewer menu. Adjusts chart up or down by octave (±2 range) when transposition lands notes too high or low. Shown in title bar when active. Resets on key or song change. Each octave variant cached separately for offline use."
+  },
+  {
     "build": 5,
     "date": "2025-12-06 10am",
     "notes": "iOS: Pull-to-refresh now works inside setlists. Setlists sync to server via device ID - edits from web appear after refresh. Edit controls disabled when offline. Web: Removed Supabase auth in favor of device ID (simpler, no login required). Removed Capacitor bridge since we now have native SwiftUI app. Setlists are now shared across iOS and web using the same server API."

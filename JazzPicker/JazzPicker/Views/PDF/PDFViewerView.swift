@@ -26,6 +26,7 @@ struct PDFViewerView: View {
     @State private var isLandscape = false
     @State private var showKeyPicker = false
     @State private var showAddToSetlist = false
+    @State private var octaveOffset: Int = 0
 
     // Page tracking for boundary detection
     @State private var isAtFirstPage = true
@@ -148,6 +149,23 @@ struct PDFViewerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
+                    // Octave controls
+                    Button {
+                        octaveOffset += 1
+                    } label: {
+                        Label("Octave +", systemImage: "arrow.up")
+                    }
+                    .disabled(octaveOffset >= 2)
+
+                    Button {
+                        octaveOffset -= 1
+                    } label: {
+                        Label("Octave −", systemImage: "arrow.down")
+                    }
+                    .disabled(octaveOffset <= -2)
+
+                    Divider()
+
                     Button {
                         showKeyPicker = true
                     } label: {
@@ -160,6 +178,7 @@ struct PDFViewerView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 24))
                 }
             }
 
@@ -167,16 +186,21 @@ struct PDFViewerView: View {
                 VStack(spacing: 2) {
                     Text(song.title)
                         .font(.headline)
-                    Text(formatKeyForDisplay(concertKey))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text(formatKeyForDisplay(concertKey))
+                        if octaveOffset != 0 {
+                            Text("(\(octaveOffset > 0 ? "+" : "")\(octaveOffset) oct)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
         }
         .toolbarVisibility(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls && error == nil)
-        .task(id: "\(song.id)-\(concertKey)") {
+        .task(id: "\(song.id)-\(concertKey)-\(octaveOffset)") {
             await loadPDF()
         }
         .onDisappear {
@@ -202,6 +226,9 @@ struct PDFViewerView: View {
 
         // Update sticky key in store
         cachedKeysStore.setStickyKey(newKey, for: song)
+
+        // Reset octave for new key
+        octaveOffset = 0
 
         // Update concert key (triggers PDF reload via task)
         concertKey = newKey
@@ -273,6 +300,7 @@ struct PDFViewerView: View {
             song = newSong
             concertKey = newKey
             navigationContext = newContext
+            octaveOffset = 0  // Reset for new song
             // Reset page tracking
             isAtFirstPage = true
             isAtLastPage = true
@@ -318,7 +346,8 @@ struct PDFViewerView: View {
             songTitle: song.title,
             concertKey: concertKey,
             transposition: instrument.transposition,
-            clef: instrument.clef
+            clef: instrument.clef,
+            octaveOffset: octaveOffset
         )
 
         // If cached, show immediately while we check for updates
@@ -339,7 +368,8 @@ struct PDFViewerView: View {
                 songTitle: song.title,
                 concertKey: concertKey,
                 transposition: instrument.transposition,
-                clef: instrument.clef
+                clef: instrument.clef,
+                octaveOffset: octaveOffset
             )
 
             let response = try await APIClient.shared.generatePDF(
@@ -347,7 +377,8 @@ struct PDFViewerView: View {
                 concertKey: concertKey,
                 transposition: instrument.transposition,
                 clef: instrument.clef,
-                instrumentLabel: instrument.label
+                instrumentLabel: instrument.label,
+                octaveOffset: octaveOffset
             )
             print("📄 Got URL: \(response.url.prefix(80))...")
 
@@ -374,6 +405,7 @@ struct PDFViewerView: View {
                         concertKey: concertKey,
                         transposition: instrument.transposition,
                         clef: instrument.clef,
+                        octaveOffset: octaveOffset,
                         etag: httpResponse.value(forHTTPHeaderField: "ETag")
                     )
                     // pdfDocument already set from cache above
@@ -400,6 +432,7 @@ struct PDFViewerView: View {
                     concertKey: concertKey,
                     transposition: instrument.transposition,
                     clef: instrument.clef,
+                    octaveOffset: octaveOffset,
                     etag: newETag,
                     cropBounds: response.crop
                 )

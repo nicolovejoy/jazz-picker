@@ -1,23 +1,18 @@
 # Jazz Picker Roadmap
 
-## Next Up: Octave Offset (iOS)
+## Next Up
 
-Key transposition sometimes renders charts an octave too high/low.
-
-**Plan:** `.claude/plans/snazzy-prancing-locket.md`
-
-- Manual octave +/- buttons in PDF viewer menu
-- Server-synced per device+song+key
-- Auto-calculate (fewest ledger lines) comes later
+- Octave offset persistence (server-synced per device+song+key)
+- Setlist "now playing" indicator in perform mode
 
 ---
 
 ## Working
 
 - Browse, search, PDF viewer with edge-tap navigation
-- Change Key (12-key picker)
+- Change Key (12-key picker), Octave +/- (±2 range, local state only)
 - Setlists: CRUD, reorder, perform mode, server-synced
-- Offline PDF caching, pull-to-refresh, offline detection
+- Offline PDF caching (includes octave in cache key)
 
 ---
 

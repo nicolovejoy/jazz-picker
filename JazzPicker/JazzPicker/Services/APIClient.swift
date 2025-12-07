@@ -65,7 +65,8 @@ final class APIClient: Sendable {
         concertKey: String,
         transposition: Transposition,
         clef: Clef,
-        instrumentLabel: String?
+        instrumentLabel: String?,
+        octaveOffset: Int = 0
     ) async throws -> GenerateResponse {
         let url = baseURL.appendingPathComponent("generate")
 
@@ -77,7 +78,8 @@ final class APIClient: Sendable {
             "song": song,
             "concert_key": concertKey,
             "transposition": transposition.rawValue,
-            "clef": clef.rawValue
+            "clef": clef.rawValue,
+            "octave_offset": octaveOffset
         ]
 
         if let label = instrumentLabel {
@@ -86,7 +88,7 @@ final class APIClient: Sendable {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("🌐 API Request: \(song) in \(concertKey) for \(transposition.rawValue)")
+        print("🌐 API Request: \(song) in \(concertKey) for \(transposition.rawValue) oct:\(octaveOffset)")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
