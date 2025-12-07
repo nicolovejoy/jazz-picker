@@ -21,6 +21,7 @@ export interface GenerateResponse {
   cached: boolean;
   generation_time_ms: number;
   crop?: CropBounds;
+  octave_offset?: number;
 }
 
 export interface CachedKeysResponse {

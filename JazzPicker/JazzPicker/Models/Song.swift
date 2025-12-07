@@ -31,12 +31,14 @@ struct GenerateResponse: Codable, Sendable {
     let cached: Bool
     let generationTimeMs: Int?
     let crop: CropBounds?
+    let octaveOffset: Int?
 
     enum CodingKeys: String, CodingKey {
         case url
         case cached
         case generationTimeMs = "generation_time_ms"
         case crop
+        case octaveOffset = "octave_offset"
     }
 }
 

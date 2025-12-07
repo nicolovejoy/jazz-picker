@@ -435,8 +435,15 @@ struct PDFViewerView: View {
                 transposition: instrument.transposition,
                 clef: instrument.clef,
                 instrumentLabel: instrument.label,
-                octaveOffset: octaveOffset
+                octaveOffset: octaveOffset == 0 ? nil : octaveOffset
             )
+
+            // Update octaveOffset from auto-calculated value if we got one
+            if let calculatedOctave = response.octaveOffset, octaveOffset == 0 {
+                await MainActor.run {
+                    self.octaveOffset = calculatedOctave
+                }
+            }
             print("📄 Got URL: \(response.url.prefix(80))...")
 
             guard let url = URL(string: response.url) else {
