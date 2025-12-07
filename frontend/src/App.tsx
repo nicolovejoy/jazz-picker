@@ -9,6 +9,8 @@ import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
 import { AddToSetlistModal } from './components/AddToSetlistModal';
+import { SignIn } from './components/SignIn';
+import { useAuth } from './contexts/AuthContext';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
@@ -54,6 +56,7 @@ function getStoredInstrument(): Instrument | null {
 }
 
 function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
   const storedInstrument = getStoredInstrument();
   const [instrument, setInstrument] = useState<Instrument | null>(storedInstrument);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -371,6 +374,20 @@ function App() {
     }, 800);
   }, [catalog, openSongFromCatalog, isSpinning]);
 
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+      </div>
+    );
+  }
+
+  // Show sign in if not authenticated
+  if (!user) {
+    return <SignIn />;
+  }
+
   // Show welcome screen if no instrument selected
   if (!instrument) {
     return <WelcomeScreen onSelectInstrument={handleInstrumentChange} />;
@@ -456,8 +473,13 @@ function App() {
           <div className="max-w-md mx-auto py-8 space-y-4">
             <h2 className="text-xl font-bold mb-6 text-gray-300">Settings</h2>
 
-            {/* Settings Section */}
+            {/* Account Section */}
             <div className="space-y-2">
+              <div className="p-4 bg-white/5 rounded border border-white/10">
+                <span className="text-gray-400 text-sm">Signed in as</span>
+                <p className="text-white truncate">{user.email || user.displayName || 'Unknown'}</p>
+              </div>
+
               <button
                 onClick={() => setInstrument(null)}
                 className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
@@ -472,6 +494,13 @@ function App() {
               >
                 <span>About</span>
                 <span className="text-gray-500">→</span>
+              </button>
+
+              <button
+                onClick={signOut}
+                className="w-full flex items-center justify-between p-4 bg-red-500/10 hover:bg-red-500/20 rounded border border-red-500/30 text-red-400 transition-colors"
+              >
+                <span>Sign Out</span>
               </button>
             </div>
 

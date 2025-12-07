@@ -6,8 +6,8 @@ Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets 
 
 **Components:**
 - iOS App: `JazzPicker/` (SwiftUI) - main focus
-- Backend: `app.py` (Flask on Fly.io) - PDF gen, setlists, auto-octave
-- Web: `frontend/` (React) - functional for gigs, no auth
+- Backend: `app.py` (Flask on Fly.io) - PDF gen, catalog
+- Web: `frontend/` (React) - Firebase Auth required
 
 ---
 
@@ -43,11 +43,9 @@ JazzPicker/JazzPicker/
 ```
 GET  /api/v2/catalog              # All songs
 POST /api/v2/generate             # Generate PDF (auto-octave when instrument_label provided)
-GET  /api/v2/setlists             # List setlists
-POST /api/v2/setlists             # Create setlist
-PUT  /api/v2/setlists/<id>        # Update setlist
-DELETE /api/v2/setlists/<id>      # Delete setlist
 ```
+
+Setlist endpoints exist but will be removed when Firestore migration completes.
 
 ---
 
@@ -62,11 +60,11 @@ DELETE /api/v2/setlists/<id>      # Delete setlist
 
 ## Auto-Octave
 
-Backend calculates optimal octave offset when `instrument_label` is provided without explicit `octave_offset`. Uses song's MIDI note range + instrument's written range to maximize fit.
+Backend calculates optimal octave offset when `instrument_label` is provided without explicit `octave_offset`. Uses song's MIDI note range + instrument's written range.
 
 **Requires:** Catalog rebuilt with MIDI extraction (`python3 build_catalog.py`)
 
-Supported instruments with ranges: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sax, Trombone, Flute. Piano/Guitar/Bass skip calculation (no range limits).
+Supported: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sax, Trombone, Flute. Piano/Guitar/Bass skip calculation.
 
 ---
 
@@ -74,4 +72,4 @@ Supported instruments with ranges: Trumpet, Clarinet, Tenor/Alto/Soprano/Bari Sa
 
 - [ROADMAP.md](ROADMAP.md) - Priorities
 - [INFRASTRUCTURE.md](INFRASTRUCTURE.md) - Services
-- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth plan (backlog)
+- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth + Firestore migration

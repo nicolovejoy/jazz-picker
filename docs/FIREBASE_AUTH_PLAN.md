@@ -1,79 +1,67 @@
-# Firebase Auth Plan
+# Firebase Auth + Firestore Plan
 
-*2025-12-06*
+## Status
 
-## Goal
+- [x] Phase 1: Web auth
+- [ ] Phase 2: Flask token verification
+- [ ] Phase 3: Firestore user profiles
+- [ ] Phase 4: Firestore setlists
+- [ ] Phase 5: iOS auth
 
-Add multi-provider authentication while keeping the rest of the stack simple.
+## Architecture
 
-## Problem
+```
+┌──────────────┐     ┌──────────────┐
+│  React/Vite  │     │   iOS App    │
+└──────┬───────┘     └──────┬───────┘
+       │                    │
+       └────────┬───────────┘
+                │
+         Firebase Auth
+                │
+       ┌────────┴───────────┐
+       │                    │
+       ▼                    ▼
+   Firestore            Flask (Fly.io)
+   - setlists           - catalog API
+   - user prefs         - PDF generation
+                              │
+                              ▼
+                           S3 (PDFs)
+```
 
-- iOS users want Apple Sign-In (native, frictionless)
-- Non-Apple users need email/password (web access for band members)
-- Both should get the same capabilities (setlists, sync)
+## Key Decisions
 
-## Approach
+- Apple Sign-In on both platforms (required for cross-device sync)
+- Instrument in user profile drives auto-transposition
+- Catalog stays in Flask/SQLite (read-only, coupled to PDF gen)
+- Setlists move to Firestore (real-time sync, offline)
 
-**Add Firebase Auth. Keep everything else as-is.**
+## Firestore Schema
 
-| What | Decision |
-|------|----------|
-| Auth | Firebase (Apple Sign-In + email/password) |
-| Backend | Fly.io (keep Flask, SQLite, PDF gen) |
-| Storage | S3 (keep) |
-| Database | SQLite on 1 Fly machine (keep) |
+```
+users/{uid}
+  - instrument: string
+  - createdAt: timestamp
 
-Firebase handles identity only. No Firestore migration planned.
+setlists/{setlistId}
+  - ownerId: string
+  - title: string
+  - songs: [{ songId, concertKey, octaveOffset }]
+  - sharedWith: [uid] (TBD)
+  - updatedAt: timestamp
+```
 
-## Phases
+## Next Steps
 
-| # | What | Platform | Status |
-|---|------|----------|--------|
-| 1 | Firebase Auth | iOS | Planned |
-| 2 | Firebase Auth | Web | Planned |
+**Phase 2: Flask token verification**
+1. Add `firebase-admin` to requirements.txt
+2. Middleware to verify ID tokens
+3. Extract uid for user context
+4. Deploy to Fly.io
 
-Work in small increments. Each phase is independently deployable.
-
----
-
-## Phase 1: iOS
-
-### Steps
-1. Create Firebase project, enable Auth
-2. Configure Apple Sign-In (Firebase + Apple Developer Portal)
-3. Add Firebase SDK via SPM
-4. Create `AuthService.swift` wrapper
-5. Update `APIClient.swift` to send Bearer token
-6. Update Flask backend to verify Firebase tokens
-7. Add sign-in UI in Settings
-
-### Files
-| File | Change |
-|------|--------|
-| `JazzPicker.xcodeproj` | Add Firebase SPM |
-| `GoogleService-Info.plist` | New |
-| `JazzPicker/App/JazzPickerApp.swift` | FirebaseApp.configure() |
-| `JazzPicker/Services/AuthService.swift` | New |
-| `JazzPicker/Services/APIClient.swift` | Bearer token |
-| `JazzPicker/Views/Settings/SettingsView.swift` | Sign-in UI |
-| `app.py` | Token verification |
-| `requirements.txt` | firebase-admin |
-
----
-
-## Phase 2: Web
-
-### Steps
-1. Add Firebase SDK to React app
-2. Create AuthContext
-3. Add login/register form
-4. Update API calls to send token
-
-### Files
-| File | Change |
-|------|--------|
-| `frontend/package.json` | firebase |
-| `frontend/src/firebase.ts` | New |
-| `frontend/src/contexts/AuthContext.tsx` | New |
-| `frontend/src/components/LoginForm.tsx` | New |
-| `frontend/src/App.tsx` | AuthProvider |
+**Phase 3: Firestore user profiles**
+1. Enable Firestore in console
+2. Deploy security rules
+3. Create profile on first sign-in
+4. Instrument picker in onboarding

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.tsx';
 import { api } from './services/api';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
 // pdfjs-dist 5.x uses URL.parse() which was only added in Safari 18 (Sept 2024).
@@ -38,8 +39,10 @@ queryClient.prefetchQuery({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </AuthProvider>
   </StrictMode>
 );

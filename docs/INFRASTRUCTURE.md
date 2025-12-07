@@ -1,25 +1,19 @@
 # Infrastructure
 
-## Current Stack
+## Stack
 
-| Service | Purpose | Notes |
-|---------|---------|-------|
-| **Fly.io** | Backend API (Flask, 1 machine) | SQLite, PDF generation |
-| **AWS S3** | Generated PDFs | ~$1/mo |
-| **Vercel** | Web frontend | Free tier |
+- **Fly.io** — Flask backend (1 machine), PDF generation, catalog API
+- **AWS S3** — Generated PDFs (~$1/mo)
+- **Vercel** — Web frontend (free tier)
+- **Firebase** — Auth (Apple, Google, email), Firestore (in progress)
 
 ## Auth
 
-| Platform | Method |
-|----------|--------|
-| iOS | DeviceID (Keychain UUID) |
-| Web | None |
+- **Web**: Firebase Auth (Apple Sign-In, Google, email/password)
+- **iOS**: DeviceID (Keychain UUID) — migrating to Firebase
 
-Planned: Firebase Auth for Apple Sign-In + email/password. See [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md).
+## Deployment
 
-## Scaling
-
-Single Fly machine is fine for this personal app. If needed later:
-- **LiteFS** for distributed SQLite
-- **Fly Postgres** for multi-machine
-- **Firestore** to replace backend
+- Backend: `fly deploy`
+- Frontend: Auto-deploy on push to main (Vercel)
+- iOS: Xcode → App Store Connect
