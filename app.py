@@ -322,6 +322,101 @@ TRANSPOSITION_INTERVALS = {
     'Eb': 9,  # Up a major 6th
 }
 
+# Instrument definitions with written pitch ranges (MIDI note numbers)
+# Range is None for instruments that don't need octave optimization
+INSTRUMENTS = {
+    'Trumpet':     {'transposition': 'Bb', 'clef': 'treble', 'range': (54, 84)},   # F#3-C6
+    'Clarinet':    {'transposition': 'Bb', 'clef': 'treble', 'range': (52, 91)},   # E3-G6
+    'Tenor Sax':   {'transposition': 'Bb', 'clef': 'treble', 'range': (58, 89)},   # Bb3-F6
+    'Alto Sax':    {'transposition': 'Eb', 'clef': 'treble', 'range': (58, 89)},   # Bb3-F6
+    'Soprano Sax': {'transposition': 'Bb', 'clef': 'treble', 'range': (58, 89)},   # Bb3-F6
+    'Bari Sax':    {'transposition': 'Eb', 'clef': 'treble', 'range': (58, 89)},   # Bb3-F6
+    'Trombone':    {'transposition': 'C',  'clef': 'bass',   'range': (40, 70)},   # E2-Bb4
+    'Flute':       {'transposition': 'C',  'clef': 'treble', 'range': (60, 96)},   # C4-C7
+    'Piano':       {'transposition': 'C',  'clef': 'treble', 'range': None},
+    'Guitar':      {'transposition': 'C',  'clef': 'treble', 'range': None},
+    'Bass':        {'transposition': 'C',  'clef': 'bass',   'range': None},
+}
+
+
+def get_key_offset(from_key, to_key):
+    """
+    Calculate semitone offset between two keys.
+    Example: get_key_offset('c', 'ef') => 3
+    """
+    # Normalize keys
+    from_key = from_key.lower().strip()
+    to_key = to_key.lower().strip()
+
+    # Handle enharmonic equivalents
+    enharmonic_map = {'df': 'cs', 'gf': 'fs', 'ds': 'ef', 'as': 'bf', 'gs': 'af'}
+    from_normalized = enharmonic_map.get(from_key, from_key)
+    to_normalized = enharmonic_map.get(to_key, to_key)
+
+    try:
+        from_index = KEYS_CHROMATIC.index(from_normalized)
+        to_index = KEYS_CHROMATIC.index(to_normalized)
+    except ValueError:
+        return 0  # Unknown key
+
+    return (to_index - from_index) % 12
+
+
+def calculate_optimal_octave(song_title, concert_key, instrument_label):
+    """
+    Calculate the optimal octave offset for a song/key/instrument combination.
+
+    Returns an integer from -2 to +2, or 0 if calculation isn't possible.
+    """
+    # Check if instrument needs octave optimization
+    instrument = INSTRUMENTS.get(instrument_label)
+    if not instrument or instrument['range'] is None:
+        return 0
+
+    # Get song's note range and default key
+    song_low, song_high = db.get_song_note_range(song_title)
+    if song_low is None or song_high is None:
+        return 0
+
+    default_key, _ = db.get_song_default_key(song_title)
+
+    # Calculate key offset (semitones from default to target concert key)
+    key_offset = get_key_offset(default_key, concert_key)
+
+    # Get instrument transposition offset
+    trans_offset = TRANSPOSITION_INTERVALS.get(instrument['transposition'], 0)
+
+    # Calculate written pitch range
+    written_low = song_low + key_offset + trans_offset
+    written_high = song_high + key_offset + trans_offset
+
+    inst_low, inst_high = instrument['range']
+
+    # Find best octave offset
+    best_offset = 0
+    best_score = -1
+
+    for octave in [-2, -1, 0, 1, 2]:
+        adj_low = written_low + (octave * 12)
+        adj_high = written_high + (octave * 12)
+
+        # Calculate overlap with instrument range
+        overlap_low = max(adj_low, inst_low)
+        overlap_high = min(adj_high, inst_high)
+
+        if overlap_high >= overlap_low:
+            overlap = overlap_high - overlap_low
+            total = adj_high - adj_low
+            score = overlap / total if total > 0 else 1.0
+        else:
+            score = 0
+
+        if score > best_score:
+            best_score = score
+            best_offset = octave
+
+    return best_offset
+
 
 def concert_to_written(concert_key, transposition):
     """
@@ -542,15 +637,16 @@ def generate_pdf():
         "concert_key": "eb",           // Concert key (what the audience hears)
         "transposition": "Bb",         // Instrument transposition: C, Bb, or Eb
         "clef": "treble",              // "treble" or "bass"
-        "instrument_label": "Trumpet", // Optional label for PDF subtitle
-        "octave_offset": 0             // Optional: -2 to +2, shifts octave up/down
+        "instrument_label": "Trumpet", // Optional label for PDF subtitle + auto-octave
+        "octave_offset": 0             // Optional: -2 to +2 (auto-calculated if omitted)
     }
 
     Returns:
     {
         "url": "https://s3.../502-blues-eb-Bb-treble-0.pdf",
         "cached": true/false,
-        "generation_time_ms": 2340
+        "generation_time_ms": 2340,
+        "octave_offset": 0             // The octave offset used (auto or provided)
     }
     """
     start_time = time.time()
@@ -565,6 +661,7 @@ def generate_pdf():
     transposition = data.get('transposition', 'C')
     clef = data.get('clef', 'treble').lower()
     instrument_label = data.get('instrument_label', '').strip()
+    octave_offset_provided = 'octave_offset' in data
     octave_offset = data.get('octave_offset', 0)
 
     # Validate inputs
@@ -600,6 +697,10 @@ def generate_pdf():
     # Use the first core file (most songs have exactly one)
     core_file = core_files[0]
 
+    # Auto-calculate octave offset if not explicitly provided
+    if not octave_offset_provided and instrument_label:
+        octave_offset = calculate_optimal_octave(song_title, concert_key, instrument_label)
+
     # Calculate written key for LilyPond
     written_key = concert_to_written(concert_key, transposition)
 
@@ -631,7 +732,8 @@ def generate_pdf():
             response_data = {
                 'url': url,
                 'cached': True,
-                'generation_time_ms': generation_time
+                'generation_time_ms': generation_time,
+                'octave_offset': octave_offset
             }
             if crop:
                 response_data['crop'] = crop
@@ -721,7 +823,8 @@ def generate_pdf():
                 response_data = {
                     'url': url,
                     'cached': False,
-                    'generation_time_ms': generation_time
+                    'generation_time_ms': generation_time,
+                    'octave_offset': octave_offset
                 }
                 if crop:
                     response_data['crop'] = crop
@@ -737,6 +840,7 @@ def generate_pdf():
             'url': f'/generated/{pdf_path.name}',
             'cached': False,
             'generation_time_ms': generation_time,
+            'octave_offset': octave_offset,
             'note': 'Local file (S3 not available)'
         }
         if crop:
