@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 
 // Set up worker - use local import for Vite
@@ -15,9 +15,10 @@ interface PDFViewerProps {
   setlistNav?: SetlistNavigation | null;
   isTransitioning?: boolean;
   onClose: () => void;
+  onAddToSetlist?: () => void;
 }
 
-export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, onAddToSetlist }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
   const [error, setError] = useState<string | null>(null);
@@ -453,6 +454,16 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
               <FiMaximize className="text-white text-lg" />
             )}
           </button>
+
+          {onAddToSetlist && (
+            <button
+              onClick={onAddToSetlist}
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Add to Setlist"
+            >
+              <FiList className="text-white text-lg" />
+            </button>
+          )}
 
           <button
             onClick={handleDownload}

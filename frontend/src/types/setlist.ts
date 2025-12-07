@@ -14,6 +14,7 @@ export interface SetlistItem {
   song_title: string;
   concert_key: string | null;
   position: number;
+  octave_offset?: number;
   notes?: string | null;
   created_at?: string;
 }
@@ -28,6 +29,7 @@ export interface AddSetlistItemInput {
   setlist_id: string;
   song_title: string;
   concert_key?: string;
+  octave_offset?: number;
   notes?: string;
 }
 

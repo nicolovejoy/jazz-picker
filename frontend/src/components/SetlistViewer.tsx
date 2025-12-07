@@ -74,7 +74,8 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                 concertKey,
                 instrument.transposition,
                 instrument.clef,
-                instrument.label
+                instrument.label,
+                item.octave_offset
               );
 
               // Prefetch as blob for faster display
@@ -143,7 +144,8 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         concertKey,
         instrument.transposition,
         instrument.clef,
-        instrument.label
+        instrument.label,
+        item.octave_offset
       );
 
       const metadata: PdfMetadata = {

@@ -6,11 +6,12 @@ import type { SongSummary } from '@/types/catalog';
 
 interface AddToSetlistModalProps {
   song: SongSummary;
+  concertKey?: string; // Override song.default_key when adding from PDF viewer
   onClose: () => void;
   onAdded: (setlist: Setlist) => void;
 }
 
-export function AddToSetlistModal({ song, onClose, onAdded }: AddToSetlistModalProps) {
+export function AddToSetlistModal({ song, concertKey, onClose, onAdded }: AddToSetlistModalProps) {
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -56,7 +57,7 @@ export function AddToSetlistModal({ song, onClose, onAdded }: AddToSetlistModalP
       await setlistService.addItem({
         setlist_id: setlistId,
         song_title: song.title,
-        concert_key: song.default_key
+        concert_key: concertKey || song.default_key
       });
       const setlist = setlists.find(s => s.id === setlistId);
       if (setlist) {

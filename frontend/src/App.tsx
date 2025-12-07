@@ -67,6 +67,7 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
+  const [addToSetlistKey, setAddToSetlistKey] = useState<string | undefined>(undefined);
   const [catalog, setCatalog] = useState<SongSummary[]>([]);
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -503,13 +504,25 @@ function App() {
             setPdfMetadata(null);
             setCatalogNav(null);
           }}
+          onAddToSetlist={pdfMetadata ? () => {
+            // Find the song in catalog by title
+            const song = catalog.find(s => s.title === pdfMetadata.songTitle);
+            if (song) {
+              setSongToAdd(song);
+              setAddToSetlistKey(pdfMetadata.key);
+            }
+          } : undefined}
         />
       )}
 
       {songToAdd && (
         <AddToSetlistModal
           song={songToAdd}
-          onClose={() => setSongToAdd(null)}
+          concertKey={addToSetlistKey}
+          onClose={() => {
+            setSongToAdd(null);
+            setAddToSetlistKey(undefined);
+          }}
           onAdded={(setlist) => {
             setActiveSetlist(setlist);
             setActiveContext('setlist');

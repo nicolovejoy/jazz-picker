@@ -77,6 +77,7 @@ export const setlistService = {
       song_title: input.song_title,
       concert_key: input.concert_key || null,
       position: setlist.items.length,
+      octave_offset: input.octave_offset,
       notes: input.notes || null,
       created_at: new Date().toISOString(),
     };
@@ -92,6 +93,7 @@ export const setlistService = {
         items: updatedItems.map(item => ({
           song_title: item.song_title,
           concert_key: item.concert_key,
+          octave_offset: item.octave_offset,
         })),
       }),
     });
@@ -120,6 +122,7 @@ export const setlistService = {
         items: updatedItems.map(item => ({
           song_title: item.song_title,
           concert_key: item.concert_key,
+          octave_offset: item.octave_offset,
         })),
       }),
     });
@@ -145,6 +148,7 @@ export const setlistService = {
         items: reorderedItems.map(item => ({
           song_title: item.song_title,
           concert_key: item.concert_key,
+          octave_offset: item.octave_offset,
         })),
       }),
     });

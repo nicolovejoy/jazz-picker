@@ -54,9 +54,10 @@ export const api = {
     concertKey: string,
     transposition: Transposition,
     clef: Clef,
-    instrumentLabel?: string
+    instrumentLabel?: string,
+    octaveOffset?: number
   ): Promise<GenerateResponse> {
-    const body: Record<string, string> = {
+    const body: Record<string, string | number> = {
       song,
       concert_key: normalizeKey(concertKey),
       transposition,
@@ -64,6 +65,9 @@ export const api = {
     };
     if (instrumentLabel) {
       body.instrument_label = instrumentLabel;
+    }
+    if (octaveOffset !== undefined && octaveOffset !== 0) {
+      body.octave_offset = octaveOffset;
     }
 
     const response = await fetch(`${API_BASE}/v2/generate`, {
