@@ -7,49 +7,53 @@ Jazz Picker is an iPad music stand. ~730 songs from Eric's lilypond-lead-sheets 
 | Component | Location | Notes |
 |-----------|----------|-------|
 | iOS App | `JazzPicker/` (SwiftUI) | Main focus |
-| Backend | `app.py` (Flask on Fly.io) | PDF gen + setlists API |
-| Web | `frontend/` (React) | Simplified, no auth |
+| Backend | `app.py` (Flask on Fly.io) | PDF gen + setlists |
+| Web | `frontend/` (React) | Simplified, no auth yet |
 
 ---
 
-## iOS App
+## Quick Start
 
 ```bash
+# Backend
+python3 app.py  # localhost:5001
+
+# Frontend
+cd frontend && npm run dev  # localhost:5173
+
+# iOS
 open JazzPicker/JazzPicker.xcodeproj
 ```
 
-**Structure:**
+---
+
+## iOS App Structure
+
 ```
 JazzPicker/JazzPicker/
 ├── App/        # Entry point, tabs
-├── Models/     # Song, Instrument, Setlist, etc.
+├── Models/     # Song, Instrument, Setlist
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/
-└── Services/   # APIClient, SetlistStore, PDFCacheService, NetworkMonitor, DeviceID
+└── Services/   # APIClient, SetlistStore, PDFCacheService
 ```
 
 **Key patterns:**
 - `@Observable` stores injected via environment
-- Setlists sync to server API (optimistic UI with rollback)
+- Setlists sync to server (optimistic UI with rollback)
 - Offline PDF caching in Documents/PDFCache/
-- NetworkMonitor disables edit controls when offline
-
-**TestFlight:** Any iOS Device (arm64) → Archive → Distribute
 
 ---
 
-## Backend
+## Backend API
 
-```bash
-python3 app.py          # localhost:5001
-fly deploy              # Deploy to Fly.io
 ```
-
-**API endpoints:**
-- `GET /api/v2/catalog` — All songs
-- `POST /api/v2/generate` — Generate PDF (supports `octave_offset`: -2 to +2)
-- `GET/POST/PUT/DELETE /api/v2/setlists` — Setlist CRUD
-
-**Note:** 2 Fly machines with separate SQLite files → data inconsistency. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+GET  /api/v2/catalog              # All songs
+POST /api/v2/generate             # Generate PDF
+GET  /api/v2/setlists             # List setlists
+POST /api/v2/setlists             # Create setlist
+PUT  /api/v2/setlists/<id>        # Update setlist
+DELETE /api/v2/setlists/<id>      # Delete setlist
+```
 
 ---
 
@@ -57,33 +61,25 @@ fly deploy              # Deploy to Fly.io
 
 | Term | Definition |
 |------|------------|
-| Concert Key | Key audience hears (stored in DB, shared in setlists) |
+| Concert Key | What audience hears (stored, shared) |
 | Written Key | What player sees on chart |
-| Transposition | Instrument: C, Bb, Eb |
-| Octave Offset | Per-device adjustment when transposition lands in wrong octave |
-
-**Setlist sharing:** Concert key + octave offset stored per item. Each device applies its own transposition + clef.
+| Transposition | Instrument offset: C, Bb, Eb |
+| Octave Offset | Per-device adjustment |
 
 ---
 
-## Testing
+## Current Work
 
-Test against production (not local dev):
-- **Web:** https://jazzpicker.pianohouseproject.org
-- **API:** https://jazz-picker.fly.dev
-- **iOS:** TestFlight build pointing to production API
+See [ROADMAP.md](ROADMAP.md) for priorities.
 
-Local dev only needed when changing backend code before `fly deploy`.
+**Next:** Firebase Auth (iOS) - Apple Sign-In
+
+**Principle:** Work in small, clear increments. Each change should be independently deployable and testable.
 
 ---
 
-## Key Files
+## Related Docs
 
-| File | Purpose |
-|------|---------|
-| `Services/SetlistStore.swift` | API sync, optimistic UI |
-| `Services/NetworkMonitor.swift` | Connectivity detection |
-| `Services/DeviceID.swift` | Keychain-persisted UUID |
-| `Services/PDFCacheService.swift` | Offline PDF cache (key: song+key+transposition+clef+octave) |
-| `Views/PDF/PDFViewerView.swift` | PDF display, edge-tap nav |
-| `Resources/BuildHistory.json` | Release notes for About page |
+- [ROADMAP.md](ROADMAP.md) - Current priorities
+- [INFRASTRUCTURE.md](INFRASTRUCTURE.md) - Services and scaling
+- [FIREBASE_AUTH_PLAN.md](FIREBASE_AUTH_PLAN.md) - Auth implementation plan

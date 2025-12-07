@@ -1,8 +1,8 @@
 # Jazz Picker
 
-A modern web interface for browsing and viewing jazz lead sheets, optimized for iPad music stands.
+A modern interface for browsing and viewing jazz lead sheets, optimized for iPad music stands.
 
-**Source charts:** [neonscribe/lilypond-lead-sheets](https://github.com/neonscribe/lilypond-lead-sheets) (Eric's LilyPond collection)
+**Source charts:** [neonscribe/lilypond-lead-sheets](https://github.com/neonscribe/lilypond-lead-sheets)
 
 ## Live URLs
 
@@ -12,47 +12,52 @@ A modern web interface for browsing and viewing jazz lead sheets, optimized for 
 ## Features
 
 - **735 songs** with dynamic PDF generation in any key
-- **4-context navigation** - Browse, Spin the Dial, Setlist, More
 - **Multi-instrument support** - charts render in your transposition + clef
-- **Shareable setlists** - public URLs, each band member sees their own parts
+- **Setlists** - create, reorder, perform mode, server-synced
 - **iPad-optimized** - gesture controls, auto-hide UI, landscape side-by-side
 - **PWA support** - full-screen mode, add to home screen
 
 ## Quick Start
 
-### 1. Backend (Flask)
+### Backend (Flask)
 ```bash
 pip install -r requirements.txt
 python3 app.py
-# Runs on http://localhost:5001
+# http://localhost:5001
 ```
 
-### 2. Frontend (React + Vite)
+### Frontend (React + Vite)
 ```bash
 cd frontend
 npm install
 npm run dev
-# Runs on http://localhost:5173
+# http://localhost:5173
+```
+
+### iOS App
+```bash
+open JazzPicker/JazzPicker.xcodeproj
 ```
 
 ## Deployment
 
-- **Backend:** `fly deploy` (Fly.io)
-- **Frontend:** Auto-deploys to Vercel from GitHub
-- **Storage:** S3 (`jazz-picker-pdfs`)
-
-## Infrastructure (2025-12-06)
-
-| Service | Purpose |
-|---------|---------|
-| Fly.io | Backend API (2 machines, SQLite) |
-| AWS S3 | Generated PDF storage |
-| Vercel | Web frontend hosting |
-
-**Known issue:** 2 Fly machines with separate SQLite causes data inconsistency for setlists. See [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for options.
+| Component | Deploy | Hosting |
+|-----------|--------|---------|
+| Backend | `fly deploy` | Fly.io (1 machine) |
+| Frontend | Auto (GitHub) | Vercel |
+| PDFs | Auto | AWS S3 |
 
 ## Documentation
 
-- **[CLAUDE.md](docs/CLAUDE.md)**: Development reference
-- **[ROADMAP.md](docs/ROADMAP.md)**: Current priorities and backlog
-- **[INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md)**: Database/auth problem statement
+| Doc | Purpose |
+|-----|---------|
+| [CLAUDE.md](docs/CLAUDE.md) | Development reference |
+| [ROADMAP.md](docs/ROADMAP.md) | Current priorities |
+| [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) | Services and scaling |
+| [FIREBASE_AUTH_PLAN.md](docs/FIREBASE_AUTH_PLAN.md) | Auth implementation plan |
+
+## Current Work
+
+**Next:** Firebase Auth for iOS (Apple Sign-In)
+
+See [ROADMAP.md](docs/ROADMAP.md) for details.
