@@ -1,7 +1,7 @@
 [
   {
     "build": 6,
-    "date": "2025-12-06",
+    "date": "2025-12-06 6pm",
     "notes": "Octave +/- controls in PDF viewer menu. Adjusts chart up or down by octave (±2 range) when transposition lands notes too high or low. Shown in title bar when active. Resets on key or song change. Each octave variant cached separately for offline use."
   },
   {

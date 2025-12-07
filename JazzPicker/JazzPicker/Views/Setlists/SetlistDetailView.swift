@@ -118,7 +118,7 @@ struct SetlistDetailView: View {
                 song: song,
                 concertKey: item.concertKey,
                 instrument: instrument,
-                navigationContext: .setlist(items: items, currentIndex: index)
+                navigationContext: .setlist(setlistID: currentSetlist.id, items: items, currentIndex: index)
             )
         }
         .overlay(alignment: .bottom) {

@@ -780,7 +780,7 @@ def list_setlists():
                 "updated_at": "2025-12-04T...",
                 "created_by_device": "uuid",
                 "items": [
-                    {"id": "uuid", "song_title": "502 Blues", "concert_key": "ef", "position": 0, "is_set_break": false},
+                    {"id": "uuid", "song_title": "502 Blues", "concert_key": "ef", "position": 0, "is_set_break": false, "octave_offset": 0},
                     ...
                 ]
             },
@@ -802,7 +802,7 @@ def create_setlist():
     {
         "name": "Friday Gig",
         "items": [
-            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false},
+            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false, "octave_offset": 0},
             {"song_title": "", "concert_key": "", "is_set_break": true}
         ]
     }
@@ -858,7 +858,7 @@ def update_setlist(setlist_id):
     {
         "name": "New Name",
         "items": [
-            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false},
+            {"song_title": "502 Blues", "concert_key": "ef", "is_set_break": false, "octave_offset": 0},
             ...
         ]
     }

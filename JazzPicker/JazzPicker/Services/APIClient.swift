@@ -136,7 +136,8 @@ final class APIClient: Sendable {
                 [
                     "song_title": item.songTitle,
                     "concert_key": item.concertKey,
-                    "is_set_break": item.isSetBreak
+                    "is_set_break": item.isSetBreak,
+                    "octave_offset": item.octaveOffset
                 ]
             }
         ]
@@ -176,7 +177,8 @@ final class APIClient: Sendable {
                     "id": item.id.uuidString,
                     "song_title": item.songTitle,
                     "concert_key": item.concertKey,
-                    "is_set_break": item.isSetBreak
+                    "is_set_break": item.isSetBreak,
+                    "octave_offset": item.octaveOffset
                 ]
             }
         ]
@@ -282,12 +284,14 @@ struct APISetlistItem: Codable {
     let concertKey: String
     let position: Int
     let isSetBreak: Bool
+    let octaveOffset: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, position
         case songTitle = "song_title"
         case concertKey = "concert_key"
         case isSetBreak = "is_set_break"
+        case octaveOffset = "octave_offset"
     }
 
     func toSetlistItem() -> SetlistItem? {
@@ -297,7 +301,8 @@ struct APISetlistItem: Codable {
             songTitle: songTitle,
             concertKey: concertKey,
             position: position,
-            isSetBreak: isSetBreak
+            isSetBreak: isSetBreak,
+            octaveOffset: octaveOffset ?? 0
         )
     }
 }

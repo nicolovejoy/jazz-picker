@@ -12,6 +12,16 @@ struct PDFViewerView: View {
     let instrument: Instrument
     @State var navigationContext: PDFNavigationContext
 
+    init(song: Song, concertKey: String, instrument: Instrument, navigationContext: PDFNavigationContext) {
+        self._song = State(initialValue: song)
+        self._concertKey = State(initialValue: concertKey)
+        self.instrument = instrument
+        self._navigationContext = State(initialValue: navigationContext)
+        // Initialize octave offset from setlist item if in setlist context
+        let initialOctave = navigationContext.currentSetlistItem?.octaveOffset ?? 0
+        self._octaveOffset = State(initialValue: initialOctave)
+    }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(CachedKeysStore.self) private var cachedKeysStore
     @Environment(SetlistStore.self) private var setlistStore
@@ -26,7 +36,8 @@ struct PDFViewerView: View {
     @State private var isLandscape = false
     @State private var showKeyPicker = false
     @State private var showAddToSetlist = false
-    @State private var octaveOffset: Int = 0
+    @State private var octaveOffset: Int
+    @State private var pendingOctaveSave: Task<Void, Never>?
 
     // Page tracking for boundary detection
     @State private var isAtFirstPage = true
@@ -205,6 +216,12 @@ struct PDFViewerView: View {
         }
         .onDisappear {
             hideControlsTask?.cancel()
+            pendingOctaveSave?.cancel()
+        }
+        .onChange(of: octaveOffset) { _, newOffset in
+            Task { @MainActor in
+                saveOctaveOffset(newOffset)
+            }
         }
         .sheet(isPresented: $showKeyPicker) {
             KeyPickerSheet(
@@ -216,6 +233,40 @@ struct PDFViewerView: View {
         }
         .sheet(isPresented: $showAddToSetlist) {
             AddToSetlistSheet(songTitle: song.title, concertKey: concertKey)
+        }
+    }
+
+    // MARK: - Octave Persistence
+
+    private func saveOctaveOffset(_ offset: Int) {
+        // Only save for setlist context
+        guard let setlistID = navigationContext.setlistID,
+              let item = navigationContext.currentSetlistItem else {
+            print("🎵 saveOctaveOffset: skipped (no setlist context)")
+            return
+        }
+
+        print("🎵 saveOctaveOffset: \(offset) for item \(item.id) in setlist \(setlistID)")
+
+        // Cancel any pending save
+        pendingOctaveSave?.cancel()
+
+        // Debounce: wait 500ms before saving to avoid rapid API calls
+        pendingOctaveSave = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else {
+                print("🎵 saveOctaveOffset: cancelled")
+                return
+            }
+
+            // Find the current setlist from the store
+            guard let setlist = setlistStore.setlists.first(where: { $0.id == setlistID }) else {
+                print("🎵 saveOctaveOffset: setlist not found in store")
+                return
+            }
+
+            print("🎵 saveOctaveOffset: calling updateItemOctaveOffset")
+            await setlistStore.updateItemOctaveOffset(in: setlist, itemID: item.id, octaveOffset: offset)
         }
     }
 
@@ -296,11 +347,15 @@ struct PDFViewerView: View {
     private func navigateToSong(_ newSong: Song, concertKey newKey: String, context newContext: PDFNavigationContext) {
         print("🔄 navigateToSong: \(newSong.title) (key: \(newKey))")
         print("🔄 Old song.id: \(song.id), New song.id: \(newSong.id)")
+
+        // Get octave offset from the new setlist item, or reset to 0
+        let newOctaveOffset = newContext.currentSetlistItem?.octaveOffset ?? 0
+
         withAnimation(.easeInOut(duration: 0.3)) {
             song = newSong
             concertKey = newKey
             navigationContext = newContext
-            octaveOffset = 0  // Reset for new song
+            octaveOffset = newOctaveOffset
             // Reset page tracking
             isAtFirstPage = true
             isAtLastPage = true
@@ -311,10 +366,12 @@ struct PDFViewerView: View {
     // MARK: - Page Tracking
 
     private func handlePageChange(currentPage: Int, totalPages: Int) {
-        pageCount = totalPages
-        isAtFirstPage = currentPage == 0
-        // In 2-up mode, last page might be pageCount-1 or pageCount-2 depending on odd/even
-        isAtLastPage = currentPage >= totalPages - (isLandscape ? 2 : 1)
+        Task { @MainActor in
+            pageCount = totalPages
+            isAtFirstPage = currentPage == 0
+            // In 2-up mode, last page might be pageCount-1 or pageCount-2 depending on odd/even
+            isAtLastPage = currentPage >= totalPages - (isLandscape ? 2 : 1)
+        }
     }
 
     // MARK: - Controls

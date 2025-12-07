@@ -39,10 +39,20 @@ npm run dev
 
 - **Backend:** `fly deploy` (Fly.io)
 - **Frontend:** Auto-deploys to Vercel from GitHub
-- **Database:** Supabase (auth + setlists)
 - **Storage:** S3 (`jazz-picker-pdfs`)
+
+## Infrastructure (2025-12-06)
+
+| Service | Purpose |
+|---------|---------|
+| Fly.io | Backend API (2 machines, SQLite) |
+| AWS S3 | Generated PDF storage |
+| Vercel | Web frontend hosting |
+
+**Known issue:** 2 Fly machines with separate SQLite causes data inconsistency for setlists. See [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for options.
 
 ## Documentation
 
 - **[CLAUDE.md](docs/CLAUDE.md)**: Development reference
 - **[ROADMAP.md](docs/ROADMAP.md)**: Current priorities and backlog
+- **[INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md)**: Database/auth problem statement

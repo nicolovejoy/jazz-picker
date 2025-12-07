@@ -229,12 +229,20 @@ def init_setlists_db(db_path=None):
             song_title TEXT NOT NULL,
             concert_key TEXT NOT NULL,
             position INTEGER NOT NULL,
-            is_set_break INTEGER DEFAULT 0
+            is_set_break INTEGER DEFAULT 0,
+            octave_offset INTEGER DEFAULT 0
         );
 
         CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist_id
             ON setlist_items(setlist_id);
     ''')
+
+    # Migration: add octave_offset column if missing (for existing databases)
+    try:
+        conn.execute('ALTER TABLE setlist_items ADD COLUMN octave_offset INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -277,7 +285,7 @@ def get_all_setlists():
             }
             # Get items for this setlist
             items_cursor = conn.execute('''
-                SELECT id, song_title, concert_key, position, is_set_break
+                SELECT id, song_title, concert_key, position, is_set_break, octave_offset
                 FROM setlist_items
                 WHERE setlist_id = ?
                 ORDER BY position
@@ -288,7 +296,8 @@ def get_all_setlists():
                     'song_title': item_row['song_title'],
                     'concert_key': item_row['concert_key'],
                     'position': item_row['position'],
-                    'is_set_break': bool(item_row['is_set_break'])
+                    'is_set_break': bool(item_row['is_set_break']),
+                    'octave_offset': item_row['octave_offset'] or 0
                 })
             setlists.append(setlist)
         return setlists
@@ -317,7 +326,7 @@ def get_setlist(setlist_id):
 
         # Get items
         items_cursor = conn.execute('''
-            SELECT id, song_title, concert_key, position, is_set_break
+            SELECT id, song_title, concert_key, position, is_set_break, octave_offset
             FROM setlist_items
             WHERE setlist_id = ?
             ORDER BY position
@@ -328,7 +337,8 @@ def get_setlist(setlist_id):
                 'song_title': item_row['song_title'],
                 'concert_key': item_row['concert_key'],
                 'position': item_row['position'],
-                'is_set_break': bool(item_row['is_set_break'])
+                'is_set_break': bool(item_row['is_set_break']),
+                'octave_offset': item_row['octave_offset'] or 0
             })
 
         return setlist
@@ -360,10 +370,11 @@ def create_setlist(name, items=None, device_id=None):
             for i, item in enumerate(items):
                 item_id = str(uuid.uuid4())
                 is_set_break = 1 if item.get('is_set_break', False) else 0
+                octave_offset = item.get('octave_offset', 0)
                 conn.execute('''
-                    INSERT INTO setlist_items (id, setlist_id, song_title, concert_key, position, is_set_break)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (item_id, setlist_id, item['song_title'], item['concert_key'], i, is_set_break))
+                    INSERT INTO setlist_items (id, setlist_id, song_title, concert_key, position, is_set_break, octave_offset)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (item_id, setlist_id, item['song_title'], item['concert_key'], i, is_set_break, octave_offset))
 
         conn.commit()
 
@@ -411,10 +422,11 @@ def update_setlist(setlist_id, name=None, items=None):
             for i, item in enumerate(items):
                 item_id = item.get('id') or str(uuid.uuid4())
                 is_set_break = 1 if item.get('is_set_break', False) else 0
+                octave_offset = item.get('octave_offset', 0)
                 conn.execute('''
-                    INSERT INTO setlist_items (id, setlist_id, song_title, concert_key, position, is_set_break)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (item_id, setlist_id, item['song_title'], item['concert_key'], i, is_set_break))
+                    INSERT INTO setlist_items (id, setlist_id, song_title, concert_key, position, is_set_break, octave_offset)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (item_id, setlist_id, item['song_title'], item['concert_key'], i, is_set_break, octave_offset))
 
         conn.commit()
 

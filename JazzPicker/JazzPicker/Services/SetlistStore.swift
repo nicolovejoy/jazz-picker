@@ -272,6 +272,37 @@ class SetlistStore {
         }
     }
 
+    func updateItemOctaveOffset(in setlist: Setlist, itemID: UUID, octaveOffset: Int) async {
+        lastError = nil
+
+        guard let setlistIndex = setlists.firstIndex(where: { $0.id == setlist.id }) else { return }
+        guard let itemIndex = setlists[setlistIndex].items.firstIndex(where: { $0.id == itemID }) else { return }
+
+        // Skip if no change
+        guard setlists[setlistIndex].items[itemIndex].octaveOffset != octaveOffset else { return }
+
+        // Backup for rollback
+        let oldOffset = setlists[setlistIndex].items[itemIndex].octaveOffset
+
+        // Optimistic update
+        setlists[setlistIndex].items[itemIndex].octaveOffset = octaveOffset
+
+        do {
+            let updated = try await api.updateSetlist(setlists[setlistIndex], deviceID: deviceID)
+            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
+                setlists[idx] = updated
+            }
+        } catch {
+            // Rollback
+            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }),
+               let iIdx = setlists[idx].items.firstIndex(where: { $0.id == itemID }) {
+                setlists[idx].items[iIdx].octaveOffset = oldOffset
+            }
+            lastError = "Couldn't save octave offset: \(error.localizedDescription)"
+            print("❌ Failed to update octave offset: \(error)")
+        }
+    }
+
     func containsSong(_ songTitle: String, in setlist: Setlist) -> Bool {
         setlist.items.contains { $0.songTitle == songTitle && !$0.isSetBreak }
     }

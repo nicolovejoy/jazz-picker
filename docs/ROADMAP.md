@@ -2,7 +2,6 @@
 
 ## Next Up
 
-- Octave offset persistence (server-synced per device+song+key)
 - Setlist "now playing" indicator in perform mode
 
 ---
@@ -10,9 +9,10 @@
 ## Working
 
 - Browse, search, PDF viewer with edge-tap navigation
-- Change Key (12-key picker), Octave +/- (±2 range, local state only)
+- Change Key (12-key picker), Octave +/- (±2 range)
 - Setlists: CRUD, reorder, perform mode, server-synced
 - Offline PDF caching (includes octave in cache key)
+- **Blocked:** Octave persistence (see Known Issues)
 
 ---
 
@@ -27,5 +27,5 @@
 
 ## Known Issues
 
+- **Octave persistence blocked:** 2 Fly machines with separate SQLite. Fix: `fly scale count 1` or migrate to Postgres. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 - **Web:** Spin → PDF → close returns to Spin (should return to Browse)
-- 2 Fly machines = possible data inconsistency (fine for dev)

@@ -13,7 +13,7 @@ enum PDFNavigationContext {
 
     /// Playing through a setlist - swipe navigates in setlist order
     /// Uses SetlistItem's concertKey which may differ from song's defaultKey
-    case setlist(items: [SetlistItem], currentIndex: Int)
+    case setlist(setlistID: UUID, items: [SetlistItem], currentIndex: Int)
 
     /// Random spin mode - swipe triggers another random song
     case spin(randomSongProvider: () -> Song?)
@@ -27,7 +27,7 @@ enum PDFNavigationContext {
         switch self {
         case .browse(let songs, let index):
             return index < songs.count - 1
-        case .setlist(let items, let index):
+        case .setlist(_, let items, let index):
             return index < items.count - 1
         case .spin:
             return true // Always can spin again
@@ -40,12 +40,32 @@ enum PDFNavigationContext {
         switch self {
         case .browse(_, let index):
             return index > 0
-        case .setlist(_, let index):
+        case .setlist(_, _, let index):
             return index > 0
         case .spin:
             return false // No "previous" in spin mode
         case .single:
             return false
+        }
+    }
+
+    /// Returns the current setlist item if in setlist context
+    var currentSetlistItem: SetlistItem? {
+        switch self {
+        case .setlist(_, let items, let index):
+            return items[index]
+        default:
+            return nil
+        }
+    }
+
+    /// Returns the setlist ID if in setlist context
+    var setlistID: UUID? {
+        switch self {
+        case .setlist(let id, _, _):
+            return id
+        default:
+            return nil
         }
     }
 
@@ -57,14 +77,12 @@ enum PDFNavigationContext {
             let song = songs[nextIndex]
             return (song, song.defaultKey, .browse(songs: songs, currentIndex: nextIndex))
 
-        case .setlist(let items, let index):
+        case .setlist(let setlistID, let items, let index):
             guard index < items.count - 1 else { return nil }
             let nextIndex = index + 1
             let item = items[nextIndex]
-            // TODO: Need to look up Song from title when setlists are implemented
-            // For now, create a minimal Song
             let song = Song(title: item.songTitle, defaultKey: item.concertKey, lowNoteMidi: nil, highNoteMidi: nil)
-            return (song, item.concertKey, .setlist(items: items, currentIndex: nextIndex))
+            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: nextIndex))
 
         case .spin(let provider):
             guard let song = provider() else { return nil }
@@ -83,12 +101,12 @@ enum PDFNavigationContext {
             let song = songs[prevIndex]
             return (song, song.defaultKey, .browse(songs: songs, currentIndex: prevIndex))
 
-        case .setlist(let items, let index):
+        case .setlist(let setlistID, let items, let index):
             guard index > 0 else { return nil }
             let prevIndex = index - 1
             let item = items[prevIndex]
             let song = Song(title: item.songTitle, defaultKey: item.concertKey, lowNoteMidi: nil, highNoteMidi: nil)
-            return (song, item.concertKey, .setlist(items: items, currentIndex: prevIndex))
+            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: prevIndex))
 
         case .spin, .single:
             return nil

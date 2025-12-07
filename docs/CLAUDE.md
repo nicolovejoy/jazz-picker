@@ -49,7 +49,7 @@ fly deploy              # Deploy to Fly.io
 - `POST /api/v2/generate` — Generate PDF (supports `octave_offset`: -2 to +2)
 - `GET/POST/PUT/DELETE /api/v2/setlists` — Setlist CRUD
 
-**Note:** 2 Fly machines with separate SQLite files. Requests may hit different machines (data inconsistency possible). Fine for dev.
+**Note:** 2 Fly machines with separate SQLite files → data inconsistency. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
 ---
 
@@ -62,7 +62,7 @@ fly deploy              # Deploy to Fly.io
 | Transposition | Instrument: C, Bb, Eb |
 | Octave Offset | Per-device adjustment when transposition lands in wrong octave |
 
-**Setlist sharing:** Concert key is shared. Each device applies its own transposition + clef + octave.
+**Setlist sharing:** Concert key + octave offset stored per item. Each device applies its own transposition + clef.
 
 ---
 
