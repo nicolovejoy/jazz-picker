@@ -77,18 +77,26 @@ if USE_S3:
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Firebase Admin initialization (optional - for token verification)
+# Note: Token verification requires GOOGLE_APPLICATION_CREDENTIALS env var to be set
+# On Fly.io without GCP credentials, we skip Firebase entirely to avoid repeated errors
 FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', 'jazz-picker')
+GOOGLE_CREDS_PATH = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '')
 firebase_app = None
-if FIREBASE_AVAILABLE:
+firebase_credentials_valid = False  # Track if we can actually verify tokens
+
+# Only initialize Firebase if credentials are explicitly configured
+if FIREBASE_AVAILABLE and GOOGLE_CREDS_PATH:
     try:
-        # Initialize with project ID (uses Application Default Credentials on Fly.io)
         firebase_app = firebase_admin.initialize_app(options={
             'projectId': FIREBASE_PROJECT_ID
         })
+        firebase_credentials_valid = True
         print(f"✅ Firebase Admin initialized (project: {FIREBASE_PROJECT_ID})")
     except Exception as e:
-        print(f"⚠️  Warning: Could not initialize Firebase Admin: {e}")
+        print(f"⚠️  Firebase Admin init failed: {e}")
         print("   Token verification disabled")
+elif FIREBASE_AVAILABLE:
+    print("ℹ️  Firebase Admin available but GOOGLE_APPLICATION_CREDENTIALS not set - token verification disabled")
 
 # Basic Auth Configuration
 BASIC_AUTH_USERNAME = os.getenv('BASIC_AUTH_USERNAME', 'admin')
@@ -128,13 +136,15 @@ def verify_firebase_token(f):
     - If valid token: sets g.firebase_uid and g.firebase_user
     - If no/invalid token: g.firebase_uid = None (allows unauthenticated)
     - Never blocks requests (iOS compatibility)
+    - Skips verification entirely if credentials aren't configured
     """
     @wraps(f)
     def decorated(*args, **kwargs):
         g.firebase_uid = None
         g.firebase_user = None
 
-        if not firebase_app:
+        # Skip if Firebase credentials aren't available (avoids repeated failures)
+        if not firebase_credentials_valid:
             return f(*args, **kwargs)
 
         auth_header = request.headers.get('Authorization', '')

@@ -2,15 +2,26 @@
 
 ## Stack
 
-- **Fly.io** — Flask backend (1 machine), PDF generation, catalog API
+- **Fly.io** — Flask backend (1GB RAM, always-on ~$10/mo), PDF generation, catalog API
 - **AWS S3** — Generated PDFs (~$1/mo)
-- **Vercel** — Web frontend (free tier), env vars for Firebase config
+- **Vercel** — Web frontend (free tier)
 - **Firebase** — Auth (Apple, Google, email), Firestore (user profiles, setlists)
+
+## Secrets
+
+**Fly.io** (`fly secrets list`):
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — S3 access
+- `FIREBASE_PROJECT_ID` — Firebase project
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — NOT SET (token verification disabled)
+
+**Vercel**:
+- `VITE_BACKEND_URL` — should be `https://jazz-picker.fly.dev`
 
 ## Auth
 
-- **Web**: Firebase Auth → Firestore user profiles + setlists
-- **iOS**: DeviceID (Keychain UUID) — migrating to Firebase in Phase 5
+- **Web**: Firebase Auth → Firestore
+- **iOS**: DeviceID (Keychain) — migrating to Firebase in Phase 5
+- **Backend**: Token verification disabled (no GCP credentials)
 
 ## Deployment
 

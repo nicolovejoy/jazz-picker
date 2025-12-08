@@ -273,7 +273,7 @@ Firestore Rules:
 - /setlists/{id}: read/write if request.auth != null (shared access)
 
 Flask Backend:
-- @verify_firebase_token decorator validates JWT
-- Sets g.firebase_uid for authenticated requests
-- Allows unauthenticated for catalog/generate endpoints
+- Token verification disabled (no GCP credentials on Fly.io)
+- All API requests allowed without authentication
+- To enable: add GOOGLE_APPLICATION_CREDENTIALS_JSON to Fly secrets
 ```
