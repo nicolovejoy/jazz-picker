@@ -6,6 +6,7 @@ import App from './App.tsx';
 import { api } from './services/api';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
+import { SetlistProvider } from './contexts/SetlistContext';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
 // pdfjs-dist 5.x uses URL.parse() which was only added in Safari 18 (Sept 2024).
@@ -42,9 +43,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <UserProfileProvider>
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
+        <SetlistProvider>
+          <QueryClientProvider client={queryClient}>
+            <App />
+          </QueryClientProvider>
+        </SetlistProvider>
       </UserProfileProvider>
     </AuthProvider>
   </StrictMode>

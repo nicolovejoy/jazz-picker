@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowLeft, FiTrash2, FiLink, FiCheck } from 'react-icons/fi';
 import { api } from '@/services/api';
-import { useSetlist, useRemoveSetlistItem } from '@/hooks/useSetlists';
+import { useSetlist, useSetlists } from '@/contexts/SetlistContext';
 import { formatKey, type Instrument } from '@/types/catalog';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Setlist, SetlistItem } from '@/types/setlist';
@@ -30,9 +30,10 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [resolvedInfo, setResolvedInfo] = useState<Record<number, ResolvedSongInfo>>({});
   const [copied, setCopied] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
-  const { data: setlistWithItems, isLoading: isLoadingItems } = useSetlist(setlist.id);
-  const removeItem = useRemoveSetlistItem();
+  const { setlist: setlistWithItems, loading: isLoadingItems } = useSetlist(setlist.id);
+  const { removeItem } = useSetlists();
 
   // In-memory cache of PDF blobs
   const pdfCache = useRef<Record<number, CachedPdf>>({});
@@ -59,10 +60,10 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
             setPrefetchStatus(prev => ({ ...prev, [index]: 'loading' }));
 
             try {
-              // Use stored concert_key if available, otherwise fetch default
-              let concertKey = item.concert_key;
+              // Use stored concertKey if available, otherwise fetch default
+              let concertKey = item.concertKey;
               if (!concertKey) {
-                const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+                const cachedInfo = await api.getCachedKeys(item.songTitle, instrument.transposition, instrument.clef);
                 concertKey = cachedInfo.default_key;
               }
 
@@ -70,12 +71,12 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
               setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 
               const result = await api.generatePDF(
-                item.song_title,
+                item.songTitle,
                 concertKey,
                 instrument.transposition,
                 instrument.clef,
                 instrument.label,
-                item.octave_offset
+                item.octaveOffset
               );
 
               // Prefetch as blob for faster display
@@ -86,7 +87,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
               pdfCache.current[index] = {
                 blobUrl,
                 metadata: {
-                  songTitle: item.song_title,
+                  songTitle: item.songTitle,
                   key: concertKey,
                   clef: instrument.clef,
                   cached: result.cached,
@@ -97,7 +98,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
 
               setPrefetchStatus(prev => ({ ...prev, [index]: 'done' }));
             } catch (err) {
-              console.error(`Failed to prefetch ${item.song_title}:`, err);
+              console.error(`Failed to prefetch ${item.songTitle}:`, err);
               setPrefetchStatus(prev => ({ ...prev, [index]: 'error' }));
             }
           })
@@ -130,26 +131,26 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
     setLoading(index);
 
     try {
-      // Use stored concert_key if available, otherwise fetch default
-      let concertKey = item.concert_key;
+      // Use stored concertKey if available, otherwise fetch default
+      let concertKey = item.concertKey;
       if (!concertKey) {
-        const cachedInfo = await api.getCachedKeys(item.song_title, instrument.transposition, instrument.clef);
+        const cachedInfo = await api.getCachedKeys(item.songTitle, instrument.transposition, instrument.clef);
         concertKey = cachedInfo.default_key;
       }
 
       setResolvedInfo(prev => ({ ...prev, [index]: { concertKey } }));
 
       const result = await api.generatePDF(
-        item.song_title,
+        item.songTitle,
         concertKey,
         instrument.transposition,
         instrument.clef,
         instrument.label,
-        item.octave_offset
+        item.octaveOffset
       );
 
       const metadata: PdfMetadata = {
-        songTitle: item.song_title,
+        songTitle: item.songTitle,
         key: concertKey,
         clef: instrument.clef,
         cached: result.cached,
@@ -168,7 +169,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
       onOpenPdfUrl(blobUrl, metadata);
     } catch (err) {
       console.error('Failed to load:', err);
-      alert(`Could not load "${item.song_title}". Check if it exists in the catalog.`);
+      alert(`Could not load "${item.songTitle}". Check if it exists in the catalog.`);
     } finally {
       setLoading(null);
     }
@@ -202,8 +203,9 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   }, [onSetlistNav]);
 
   const handleRemoveItem = async (item: SetlistItem, index: number) => {
+    setIsRemoving(true);
     try {
-      await removeItem.mutateAsync({ itemId: item.id, setlistId: setlist.id });
+      await removeItem(setlist.id, item.id);
       // Clear cached blob if exists
       if (pdfCache.current[index]) {
         URL.revokeObjectURL(pdfCache.current[index].blobUrl);
@@ -211,6 +213,8 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
       }
     } catch (err) {
       console.error('Failed to remove item:', err);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -284,7 +288,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                     className="flex-1 flex items-center gap-4"
                   >
                     <span className="text-gray-500 text-sm w-6">{index + 1}</span>
-                    <span className="flex-1 text-white font-medium">{item.song_title}</span>
+                    <span className="flex-1 text-white font-medium">{item.songTitle}</span>
                     {info && (
                       <span className="text-gray-400 text-sm">{formatKey(info.concertKey)}</span>
                     )}
@@ -298,7 +302,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                   </button>
                   <button
                     onClick={() => handleRemoveItem(item, index)}
-                    disabled={removeItem.isPending}
+                    disabled={isRemoving}
                     className="p-2 text-gray-500 hover:text-red-400 transition-colors"
                     aria-label="Remove from setlist"
                   >

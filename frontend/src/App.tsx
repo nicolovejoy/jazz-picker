@@ -16,7 +16,7 @@ import { useUserProfile } from './contexts/UserProfileContext';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
-import { setlistService } from './services/setlistService';
+import { getSetlist } from './services/setlistFirestoreService';
 import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
 import type { CropBounds } from '@/types/pdf';
 
@@ -145,7 +145,7 @@ function App() {
     const setlistId = params.get('setlist');
 
     if (setlistId && instrument) {
-      setlistService.getSetlist(setlistId).then(setlist => {
+      getSetlist(setlistId).then(setlist => {
         if (setlist) {
           setActiveSetlist(setlist);
           setActiveContext('setlist');

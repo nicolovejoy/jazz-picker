@@ -44,9 +44,9 @@ JazzPicker/JazzPicker/
 
 ```
 frontend/src/
-├── contexts/   # AuthContext, UserProfileContext
+├── contexts/   # AuthContext, UserProfileContext, SetlistContext
 ├── components/ # UI components
-├── services/   # api.ts, setlistService.ts, userProfileService.ts
+├── services/   # api.ts, setlistFirestoreService.ts, userProfileService.ts
 └── types/      # TypeScript types
 ```
 
@@ -61,7 +61,7 @@ GET  /api/v2/catalog              # All songs
 POST /api/v2/generate             # Generate PDF (auto-octave when instrument_label provided)
 ```
 
-Setlist endpoints exist but moving to Firestore.
+Setlist endpoints deprecated (Web uses Firestore, iOS still uses Flask).
 
 ---
 
@@ -82,10 +82,11 @@ users/{uid}
   - displayName: string
   - createdAt, updatedAt: timestamp
 
-setlists/{setlistId}  # Phase 4
+setlists/{setlistId}
+  - name: string
   - ownerId: string
-  - title: string
-  - songs: [{ songId, concertKey, octaveOffset }]
+  - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
+  - createdAt, updatedAt: timestamp
 ```
 
 ---

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FiX, FiPlus } from 'react-icons/fi';
-import { setlistService } from '../services/setlistService';
+import { useSetlists } from '@/contexts/SetlistContext';
 import type { Setlist } from '@/types/setlist';
 import type { SongSummary } from '@/types/catalog';
 
@@ -12,26 +12,11 @@ interface AddToSetlistModalProps {
 }
 
 export function AddToSetlistModal({ song, concertKey, onClose, onAdded }: AddToSetlistModalProps) {
-  const [setlists, setSetlists] = useState<Setlist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [newSetlistName, setNewSetlistName] = useState('');
+  const [creating, setCreating] = useState(false);
   const [addingToId, setAddingToId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSetlists();
-  }, []);
-
-  const loadSetlists = async () => {
-    try {
-      const data = await setlistService.getSetlists();
-      setSetlists(data);
-    } catch (error) {
-      console.error('Failed to load setlists:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { setlists, loading, createSetlist, addItem } = useSetlists();
 
   const handleCreateSetlist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +24,12 @@ export function AddToSetlistModal({ song, concertKey, onClose, onAdded }: AddToS
 
     setCreating(true);
     try {
-      const newSetlist = await setlistService.createSetlist({ name: newSetlistName });
-      setSetlists([newSetlist, ...setlists]);
+      const newSetlistId = await createSetlist(newSetlistName);
       setNewSetlistName('');
       // Auto-add to the new setlist
-      await handleAddToSetlist(newSetlist.id);
+      await handleAddToSetlist(newSetlistId);
     } catch (error) {
       console.error('Failed to create setlist:', error);
-    } finally {
       setCreating(false);
     }
   };
@@ -54,10 +37,9 @@ export function AddToSetlistModal({ song, concertKey, onClose, onAdded }: AddToS
   const handleAddToSetlist = async (setlistId: string) => {
     setAddingToId(setlistId);
     try {
-      await setlistService.addItem({
-        setlist_id: setlistId,
-        song_title: song.title,
-        concert_key: concertKey || song.default_key
+      await addItem(setlistId, {
+        songTitle: song.title,
+        concertKey: concertKey || song.default_key,
       });
       const setlist = setlists.find(s => s.id === setlistId);
       if (setlist) {

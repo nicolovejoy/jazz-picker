@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FiPlus, FiTrash2, FiMusic } from 'react-icons/fi';
-import { useSetlists, useCreateSetlist, useDeleteSetlist } from '@/hooks/useSetlists';
+import { useSetlists } from '@/contexts/SetlistContext';
 import type { Setlist } from '@/types/setlist';
 
 interface SetlistManagerProps {
@@ -12,30 +12,43 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
   const [newSetlistName, setNewSetlistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
 
-  const { data: setlists, isLoading, error } = useSetlists();
-  const createSetlist = useCreateSetlist();
-  const deleteSetlist = useDeleteSetlist();
+  const { setlists, loading, createSetlist, deleteSetlist } = useSetlists();
 
   const handleCreate = async () => {
     if (!newSetlistName.trim()) return;
 
+    setIsPending(true);
     try {
-      const created = await createSetlist.mutateAsync({ name: newSetlistName.trim() });
+      const id = await createSetlist(newSetlistName.trim());
+      const created: Setlist = {
+        id,
+        name: newSetlistName.trim(),
+        ownerId: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: [],
+      };
       setNewSetlistName('');
       setIsCreating(false);
       onSelectSetlist(created);
     } catch (err) {
       console.error('Failed to create setlist:', err);
+    } finally {
+      setIsPending(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    setIsPending(true);
     try {
-      await deleteSetlist.mutateAsync(id);
+      await deleteSetlist(id);
       setDeleteConfirm(null);
     } catch (err) {
       console.error('Failed to delete setlist:', err);
+    } finally {
+      setIsPending(false);
     }
   };
 
@@ -70,10 +83,10 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
-                disabled={!newSetlistName.trim() || createSetlist.isPending}
+                disabled={!newSetlistName.trim() || isPending}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 rounded-lg text-white font-medium"
               >
-                {createSetlist.isPending ? 'Creating...' : 'Create'}
+                {isPending ? 'Creating...' : 'Create'}
               </button>
               <button
                 onClick={() => setIsCreating(false)}
@@ -94,22 +107,14 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
         )}
 
         {/* Loading State */}
-        {isLoading && (
+        {loading && (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
           </div>
         )}
 
-        {/* Error State */}
-        {error && (
-          <div className="text-center py-12 text-red-400">
-            <p>Failed to load setlists</p>
-            <p className="text-sm mt-1">{(error as Error).message}</p>
-          </div>
-        )}
-
         {/* Empty State */}
-        {!isLoading && !error && setlists?.length === 0 && (
+        {!loading && setlists.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             <FiMusic className="text-4xl mx-auto mb-3 opacity-50" />
             <p>No setlists yet</p>
@@ -118,7 +123,7 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
         )}
 
         {/* Setlist List */}
-        {setlists && setlists.length > 0 && (
+        {setlists.length > 0 && (
           <div className="space-y-2">
             {setlists.map((setlist) => (
               <div
@@ -131,7 +136,7 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                 >
                   <div className="text-white font-medium">{setlist.name}</div>
                   <div className="text-gray-500 text-sm">
-                    Updated {new Date(setlist.updated_at).toLocaleDateString()}
+                    Updated {setlist.updatedAt.toLocaleDateString()}
                   </div>
                 </button>
 
@@ -139,10 +144,10 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDelete(setlist.id)}
-                      disabled={deleteSetlist.isPending}
+                      disabled={isPending}
                       className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-white text-sm"
                     >
-                      {deleteSetlist.isPending ? '...' : 'Delete'}
+                      {isPending ? '...' : 'Delete'}
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(null)}

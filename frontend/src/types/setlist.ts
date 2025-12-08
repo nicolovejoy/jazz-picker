@@ -1,22 +1,32 @@
-// Setlist types for Flask API integration
+// Setlist types for Firestore
+
+import type { Timestamp } from 'firebase/firestore';
+
+export interface SetlistItem {
+  id: string;
+  songTitle: string;
+  concertKey: string | null;
+  position: number;
+  octaveOffset: number;
+  notes: string | null;
+}
 
 export interface Setlist {
   id: string;
   name: string;
-  created_at: string;
-  updated_at: string;
-  created_by_device?: string;
+  ownerId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items: SetlistItem[];
 }
 
-export interface SetlistItem {
-  id: string;
-  setlist_id?: string;
-  song_title: string;
-  concert_key: string | null;
-  position: number;
-  octave_offset?: number;
-  notes?: string | null;
-  created_at?: string;
+// Raw Firestore data (before conversion)
+export interface SetlistData {
+  name: string;
+  ownerId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  items: SetlistItem[];
 }
 
 // For creating new setlists
@@ -26,14 +36,8 @@ export interface CreateSetlistInput {
 
 // For adding songs to a setlist
 export interface AddSetlistItemInput {
-  setlist_id: string;
-  song_title: string;
-  concert_key?: string;
-  octave_offset?: number;
-  notes?: string;
-}
-
-// Combined view for UI (returned by GET /api/v2/setlists/:id)
-export interface SetlistWithItems extends Setlist {
-  items: SetlistItem[];
+  songTitle: string;
+  concertKey?: string | null;
+  octaveOffset?: number;
+  notes?: string | null;
 }
