@@ -7,7 +7,12 @@
 - [x] Phase 2: Flask token verification
 - [x] Phase 3: Firestore user profiles + instrument
 - [x] Phase 4: Firestore setlists (Web) - real-time sync, offline support
-- [ ] Phase 5: iOS auth (Apple Sign-In + Firestore)
+- [ ] Phase 5: iOS auth (Apple Sign-In + Firestore) — require sign-in, no anonymous access
+- [ ] Phase 6: iOS setlists via Firestore (replace Flask approach, fresh start)
+
+## Design Decisions
+
+- **Shared setlists:** All authenticated users can read/write all setlists. Intentional simplification — only 2 users today (same band). Revisit if user base grows.
 
 ## Backlog
 
