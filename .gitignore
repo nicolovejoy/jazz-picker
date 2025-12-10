@@ -40,6 +40,13 @@ Wrappers/*.midi
 *.swo
 *~
 
+# Xcode user data
+*.xcuserstate
+xcuserdata/
+
+# Local databases
+setlists.db
+
 # OS
 .DS_Store
 Thumbs.db
