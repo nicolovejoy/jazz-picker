@@ -50,6 +50,9 @@ setlists.db
 # OS
 .DS_Store
 Thumbs.db
+
+# Firebase config (contains API keys)
+GoogleService-Info.plist
 .claude/settings.json
 catalog.db
 
