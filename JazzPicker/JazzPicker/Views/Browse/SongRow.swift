@@ -30,6 +30,13 @@ struct SongRow: View {
 
                     HStack(spacing: 8) {
                         KeyPill(concertKey: song.defaultKey, instrument: instrument)
+
+                        if let composer = song.composer {
+                            Text(composer)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
 
@@ -54,8 +61,8 @@ struct SongRow: View {
 
 #Preview {
     List {
-        SongRow(song: Song(title: "Blue Bossa", defaultKey: "c", lowNoteMidi: nil, highNoteMidi: nil), instrument: .trumpet) {}
-        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "g", lowNoteMidi: nil, highNoteMidi: nil), instrument: .piano) {}
+        SongRow(song: Song(title: "Blue Bossa", defaultKey: "c", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil), instrument: .trumpet) {}
+        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "g", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil), instrument: .piano) {}
     }
     .environment(PDFCacheService.shared)
 }

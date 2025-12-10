@@ -2,16 +2,13 @@
 
 ## Project Overview
 
-Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets repo.
+Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead-sheets repo.
 
-**Components:**
-
+**Stack:**
 - iOS App: `JazzPicker/` (SwiftUI) — primary client
-- Backend: `app.py` (Flask on Fly.io) — PDF generation, catalog API
 - Web: `frontend/` (React + Vite) — secondary client
-- Firebase: Auth + Firestore (setlists, user profiles)
-
-**Note:** Developing in production for now.
+- Backend: `app.py` (Flask on Fly.io) — PDF generation only
+- Firebase: Auth + Firestore (users, setlists)
 
 ---
 
@@ -23,45 +20,44 @@ cd frontend && npm run dev  # Web: localhost:5173
 open JazzPicker/JazzPicker.xcodeproj  # iOS
 ```
 
-Web requires `frontend/.env.local` with Firebase config (see `.env.example`).
-
 ---
 
 ## iOS App Structure
 
 ```
 JazzPicker/JazzPicker/
-├── App/        # JazzPickerApp, RootView, ContentView
+├── App/        # JazzPickerApp, ContentView
 ├── Models/     # Song, Instrument, Setlist, UserProfile
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
-└── Services/   # APIClient, SetlistStore, SetlistFirestoreService, AuthStore, UserProfileStore
+└── Services/   # APIClient, SetlistStore, AuthStore, UserProfileStore
 ```
 
 **Patterns:**
-
 - `@Observable` stores via SwiftUI environment
-- Optimistic UI with rollback
-- Offline PDF caching in Documents/PDFCache/
+- Optimistic UI with rollback on error
 - Real-time Firestore listeners for setlists
-- DO NOT expose any secrets in the codebase, as it's a public repo on github
+- Offline PDF caching in Documents/PDFCache/
 
 ---
 
 ## Backend API
 
 ```
-GET  /api/v2/catalog    # All songs
-POST /api/v2/generate   # Generate PDF {title, key, transposition, clef, instrument_label}
+GET  /api/v2/catalog    # Song list (title, default_key, composer, note range)
+POST /api/v2/generate   # PDF {song, concert_key, transposition, clef, instrument_label}
 ```
 
----
+PDFs cached in S3. LilyPond generates on cache miss.
 
-## Transposition Model
+## Catalog Build
 
-- **Concert Key**: What audience hears (stored, shared)
-- **Written Key**: What player sees on chart
-- **Transposition**: Instrument offset (C, Bb, Eb)
-- **Octave Offset**: Per-song ±2, auto-calculated or manual
+```bash
+python build_catalog.py              # Full build with MIDI note ranges
+python build_catalog.py --skip-midi  # Fast rebuild (no note ranges)
+```
+
+Parses LilyPond Core files for: title, default key, composer, MIDI note range.
+Upload to S3: `aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db`
 
 ---
 
@@ -71,15 +67,23 @@ POST /api/v2/generate   # Generate PDF {title, key, transposition, clef, instrum
 users/{uid}
   - instrument, displayName, createdAt, updatedAt
 
-setlists/{setlistId}
+setlists/{id}
   - name, ownerId, createdAt, updatedAt
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
 ```
 
+Security: Users own their profile. All authenticated users share setlists (2-person band).
+
 ---
 
-## Related Docs
+## Transposition
 
-- [ROADMAP.md](ROADMAP.md) — Current priorities
-- [INFRASTRUCTURE.md](INFRASTRUCTURE.md) — Services & deployment
-- [ARCHITECTURE.md](ARCHITECTURE.md) — Data flows
+- **Concert Key**: What audience hears (stored in setlist)
+- **Written Key**: What player sees (calculated from instrument)
+- **Octave Offset**: ±2 adjustment when transposition lands too high/low
+
+---
+
+## Secrets
+
+Public repo - never commit secrets. GoogleService-Info.plist is gitignored.

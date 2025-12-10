@@ -2,9 +2,10 @@
 
 ## Backlog
 
-- Catalog rebuild with MIDI note ranges (enables auto-octave)
 - Setlist "now playing" indicator
 - Setlist UX: key closer to song name in landscape
+- Composer filter: add search within the picker (400+ composers)
+- Note range warnings based on MIDI data + instrument range
 
 ## Design Decisions
 

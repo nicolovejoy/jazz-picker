@@ -147,12 +147,32 @@ def parse_midi_note_range(midi_path: Path) -> tuple[int, int, list[int]]:
 # WRAPPER FILE PARSING
 # =============================================================================
 
+def extract_composer_from_core(core_filename: str) -> str | None:
+    """
+    Extract composer from a Core LilyPond file's header block.
+
+    Returns composer name or None if not found.
+    """
+    core_path = LILYPOND_DATA / "Core" / core_filename
+    if not core_path.exists():
+        return None
+
+    content = core_path.read_text()
+
+    # Match: composer = "Name" or composer = "Name Name"
+    match = re.search(r'composer\s*=\s*"([^"]+)"', content)
+    if match:
+        return match.group(1)
+
+    return None
+
+
 def extract_song_info(wrapper_path: Path) -> dict:
     """
     Extract song info from wrapper filename and content.
 
     Filename format: 'Song Title - Ly - Key Variant.ly'
-    Returns: {'title': str, 'default_key': str, 'core_files': list[str]}
+    Returns: {'title': str, 'default_key': str, 'core_files': list[str], 'composer': str|None}
     """
     name = wrapper_path.stem  # Remove .ly extension
 
@@ -178,10 +198,16 @@ def extract_song_info(wrapper_path: Path) -> dict:
     content = wrapper_path.read_text()
     core_files = re.findall(r'\\include\s+"\.\.\/Core\/([^"]+)"', content)
 
+    # Extract composer from first core file
+    composer = None
+    if core_files:
+        composer = extract_composer_from_core(core_files[0])
+
     return {
         'title': title,
         'default_key': default_key,
         'core_files': core_files,
+        'composer': composer,
     }
 
 
@@ -216,6 +242,7 @@ def create_database(db_path: Path) -> sqlite3.Connection:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT UNIQUE NOT NULL,
             default_key TEXT DEFAULT 'c',
+            composer TEXT,
             core_files TEXT,
             low_note_midi INTEGER,
             high_note_midi INTEGER,
@@ -223,6 +250,7 @@ def create_database(db_path: Path) -> sqlite3.Connection:
         );
 
         CREATE INDEX idx_songs_title ON songs(title);
+        CREATE INDEX idx_songs_composer ON songs(composer);
 
         CREATE TABLE metadata (
             key TEXT PRIMARY KEY,
@@ -238,11 +266,12 @@ def insert_song(conn: sqlite3.Connection, song: dict):
     import json
 
     conn.execute("""
-        INSERT INTO songs (title, default_key, core_files, low_note_midi, high_note_midi)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
         song['title'],
         song['default_key'],
+        song.get('composer'),
         json.dumps(song.get('core_files', [])),
         song.get('low_note_midi'),
         song.get('high_note_midi'),

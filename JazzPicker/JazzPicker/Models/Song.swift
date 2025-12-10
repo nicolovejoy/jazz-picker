@@ -10,12 +10,14 @@ struct Song: Codable, Identifiable, Hashable, Sendable {
 
     let title: String
     let defaultKey: String
+    let composer: String?
     let lowNoteMidi: Int?
     let highNoteMidi: Int?
 
     enum CodingKeys: String, CodingKey {
         case title
         case defaultKey = "default_key"
+        case composer
         case lowNoteMidi = "low_note_midi"
         case highNoteMidi = "high_note_midi"
     }

@@ -61,14 +61,14 @@ def get_total_songs():
 def get_all_songs():
     """
     Get all songs sorted alphabetically.
-    Returns lightweight list with just title and default_key.
+    Returns lightweight list with title, default_key, and composer.
     """
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT title, default_key FROM songs ORDER BY title"
+            "SELECT title, default_key, composer FROM songs ORDER BY title"
         )
         return [
-            {'title': row['title'], 'default_key': row['default_key']}
+            {'title': row['title'], 'default_key': row['default_key'], 'composer': row['composer']}
             for row in cursor.fetchall()
         ]
 
@@ -82,7 +82,7 @@ def search_songs(query='', limit=50, offset=0):
         params = []
 
         # Base query
-        base_query = "SELECT id, title, default_key FROM songs"
+        base_query = "SELECT id, title, default_key, composer FROM songs"
 
         # Build WHERE clause for search
         if query:
@@ -101,6 +101,7 @@ def search_songs(query='', limit=50, offset=0):
             songs.append({
                 'title': row['title'],
                 'default_key': row['default_key'],
+                'composer': row['composer'],
             })
 
         # Get total count (without pagination)

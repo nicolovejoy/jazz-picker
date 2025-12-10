@@ -13,13 +13,14 @@ struct BrowseView: View {
 
     @State private var searchText = ""
     @State private var selectedSong: SelectedSong?
+    @State private var selectedComposer: String?
 
     private var useGrid: Bool {
         horizontalSizeClass == .regular
     }
 
     var filteredSongs: [Song] {
-        catalogStore.search(searchText)
+        catalogStore.search(searchText, composer: selectedComposer)
     }
 
     var body: some View {
@@ -41,6 +42,26 @@ struct BrowseView: View {
             }
             .navigationTitle("Browse")
             .searchable(text: $searchText, prompt: "Search songs")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button("All Composers") {
+                            selectedComposer = nil
+                        }
+                        Divider()
+                        ForEach(catalogStore.composers, id: \.self) { composer in
+                            Button(composer) {
+                                selectedComposer = composer
+                            }
+                        }
+                    } label: {
+                        Label(
+                            selectedComposer ?? "Composer",
+                            systemImage: selectedComposer != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
+                        )
+                    }
+                }
+            }
             .refreshable {
                 await catalogStore.refresh()
                 await cachedKeysStore.refresh(for: instrument)
