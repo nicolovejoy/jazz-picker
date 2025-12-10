@@ -10,13 +10,13 @@ import SwiftUI
 struct ContentView: View {
     @Environment(CatalogStore.self) private var catalogStore
     @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @Environment(UserProfileStore.self) private var userProfileStore
     @State private var selectedTab = 0
     @State private var previousTab = 0
     @State private var spinSong: Song?
-    @AppStorage("selectedInstrument") private var selectedInstrument: String = Instrument.piano.rawValue
 
     var instrument: Instrument {
-        Instrument(rawValue: selectedInstrument) ?? .piano
+        userProfileStore.profile?.instrument ?? .piano
     }
 
     var body: some View {
@@ -41,7 +41,7 @@ struct ContentView: View {
                 }
                 .tag(2)
 
-            SettingsView(selectedInstrument: $selectedInstrument)
+            SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
@@ -84,4 +84,5 @@ struct ContentView: View {
         .environment(CachedKeysStore())
         .environment(SetlistStore())
         .environment(PDFCacheService.shared)
+        .environment(UserProfileStore())
 }

@@ -4,8 +4,9 @@
 
 **Phase 5: iOS Firebase Auth (Apple Sign-In)**
 - [x] Firebase SDK + GoogleService-Info.plist + Sign in with Apple capability
-- [ ] AuthService, UserProfileService, auth UI views
-- [ ] Integrate with existing app
+- [x] AuthStore, UserProfileStore, auth UI views
+- [x] Integrate with existing app
+- [ ] Test on device
 
 ## Next
 
@@ -13,6 +14,7 @@
 
 ## Backlog
 
+- Rotate Firebase API key (exposed in git history)
 - Catalog rebuild with MIDI note ranges (enables auto-octave)
 - Setlist "now playing" indicator
 - Setlist drag-and-drop reordering

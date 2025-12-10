@@ -10,7 +10,7 @@ struct SetlistDetailView: View {
     @Environment(CatalogStore.self) private var catalogStore
     @Environment(PDFCacheService.self) private var pdfCacheService
     @Environment(NetworkMonitor.self) private var networkMonitor
-    @AppStorage("selectedInstrument") private var selectedInstrument: String = Instrument.piano.rawValue
+    @Environment(UserProfileStore.self) private var userProfileStore
 
     let setlist: Setlist
 
@@ -18,7 +18,7 @@ struct SetlistDetailView: View {
     @State private var showingOfflineToast = false
 
     private var instrument: Instrument {
-        Instrument(rawValue: selectedInstrument) ?? .piano
+        userProfileStore.profile?.instrument ?? .piano
     }
 
     private var currentSetlist: Setlist {
@@ -214,4 +214,5 @@ struct SetBreakRow: View {
     .environment(CatalogStore())
     .environment(CachedKeysStore())
     .environment(PDFCacheService.shared)
+    .environment(UserProfileStore())
 }
