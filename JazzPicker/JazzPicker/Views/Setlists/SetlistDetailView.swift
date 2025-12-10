@@ -90,9 +90,6 @@ struct SetlistDetailView: View {
                     }
                 }
                 .listStyle(.plain)
-                .refreshable {
-                    await setlistStore.refresh()
-                }
             }
         }
         .navigationTitle(currentSetlist.name)
@@ -207,7 +204,7 @@ struct SetBreakRow: View {
 
 #Preview {
     NavigationStack {
-        SetlistDetailView(setlist: Setlist(name: "Friday Gig"))
+        SetlistDetailView(setlist: Setlist(name: "Friday Gig", ownerId: "preview-user"))
     }
     .environment(SetlistStore())
     .environment(NetworkMonitor())

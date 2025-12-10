@@ -3,6 +3,7 @@
 //  JazzPicker
 //
 
+import FirebaseFirestore
 import Foundation
 import Observation
 
@@ -10,6 +11,7 @@ enum SetlistError: LocalizedError {
     case songAlreadyInSetlist(songTitle: String)
     case setlistNotFound
     case itemNotFound
+    case notAuthenticated
     case networkError(String)
 
     var errorDescription: String? {
@@ -20,6 +22,8 @@ enum SetlistError: LocalizedError {
             return "Setlist not found"
         case .itemNotFound:
             return "Item not found"
+        case .notAuthenticated:
+            return "You must be signed in"
         case .networkError(let message):
             return message
         }
@@ -33,63 +37,67 @@ class SetlistStore {
     private(set) var lastError: String?
 
     @ObservationIgnored
-    private let api = APIClient.shared
+    private var listener: ListenerRegistration?
 
     @ObservationIgnored
-    private let deviceID = DeviceID.getOrCreate()
+    private var currentOwnerId: String?
 
-    init() {
-        // Wipe old UserDefaults data (one-time migration)
-        UserDefaults.standard.removeObject(forKey: "setlists")
-    }
+    @ObservationIgnored
+    private let lastOpenedKey = "setlistLastOpened"
 
     /// Active setlists sorted by most recently opened
     var activeSetlists: [Setlist] {
-        setlists
-            .filter { !$0.isDeleted }
-            .sorted { $0.lastOpenedAt > $1.lastOpenedAt }
+        setlists.sorted { lastOpened($0.id) > lastOpened($1.id) }
     }
 
-    // MARK: - Refresh
+    // MARK: - Listening
 
-    /// Fetch all setlists from the server
-    func refresh() async {
+    func startListening(ownerId: String) {
+        guard listener == nil else { return }
+
         isLoading = true
         lastError = nil
+        currentOwnerId = ownerId
 
-        do {
-            let fetched = try await api.fetchSetlists()
-            setlists = fetched
-            print("📋 Fetched \(fetched.count) setlists from server")
-        } catch {
-            lastError = "Couldn't load setlists: \(error.localizedDescription)"
-            print("❌ Failed to fetch setlists: \(error)")
+        listener = SetlistFirestoreService.subscribeToSetlists { [weak self] setlists in
+            self?.setlists = setlists
+            self?.isLoading = false
+            print("📋 Received \(setlists.count) setlists from Firestore")
         }
+    }
 
+    func stopListening() {
+        listener?.remove()
+        listener = nil
+        setlists = []
+        currentOwnerId = nil
         isLoading = false
     }
 
     // MARK: - CRUD Operations (Optimistic UI)
 
     func createSetlist(name: String) async -> Setlist? {
+        guard let ownerId = currentOwnerId else {
+            lastError = SetlistError.notAuthenticated.localizedDescription
+            return nil
+        }
+
         lastError = nil
 
         // Optimistic: create local setlist immediately
-        let tempSetlist = Setlist(name: name)
-        setlists.append(tempSetlist)
+        let tempId = UUID().uuidString
+        let tempSetlist = Setlist(id: tempId, name: name, ownerId: ownerId)
+        setlists.insert(tempSetlist, at: 0)
 
         do {
-            // API call
-            let serverSetlist = try await api.createSetlist(name: name, deviceID: deviceID)
-
-            // Replace temp with server response
-            if let index = setlists.firstIndex(where: { $0.id == tempSetlist.id }) {
-                setlists[index] = serverSetlist
-            }
-            return serverSetlist
+            let serverId = try await SetlistFirestoreService.createSetlist(name: name, ownerId: ownerId)
+            // The listener will update with the real setlist, remove temp
+            setlists.removeAll { $0.id == tempId }
+            // Return a setlist with the server ID for immediate use
+            return Setlist(id: serverId, name: name, ownerId: ownerId)
         } catch {
             // Rollback
-            setlists.removeAll { $0.id == tempSetlist.id }
+            setlists.removeAll { $0.id == tempId }
             lastError = "Couldn't create setlist: \(error.localizedDescription)"
             print("❌ Failed to create setlist: \(error)")
             return nil
@@ -101,19 +109,17 @@ class SetlistStore {
 
         guard let index = setlists.firstIndex(where: { $0.id == setlist.id }) else { return }
 
-        // Optimistic: mark as deleted locally
+        // Optimistic: remove locally
         let backup = setlists[index]
-        setlists[index].deletedAt = Date()
+        setlists.remove(at: index)
 
         do {
-            try await api.deleteSetlist(id: setlist.id)
-            // Success - remove from local array entirely
-            setlists.removeAll { $0.id == setlist.id }
+            try await SetlistFirestoreService.deleteSetlist(id: setlist.id)
+            // Clear last opened data
+            clearLastOpened(setlist.id)
         } catch {
             // Rollback
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = backup
-            }
+            setlists.insert(backup, at: min(index, setlists.count))
             lastError = "Couldn't delete setlist: \(error.localizedDescription)"
             print("❌ Failed to delete setlist: \(error)")
         }
@@ -129,7 +135,7 @@ class SetlistStore {
         setlists[index].name = name
 
         do {
-            _ = try await api.updateSetlist(setlists[index], deviceID: deviceID)
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, name: name)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
@@ -141,9 +147,7 @@ class SetlistStore {
     }
 
     func markOpened(_ setlist: Setlist) {
-        // Local only - no API call needed, lastOpenedAt is derived from updated_at
-        guard let index = setlists.firstIndex(where: { $0.id == setlist.id }) else { return }
-        setlists[index].lastOpenedAt = Date()
+        setLastOpened(setlist.id, date: Date())
     }
 
     // MARK: - Item Operations (Optimistic UI)
@@ -167,11 +171,7 @@ class SetlistStore {
         setlists[index].items.append(item)
 
         do {
-            let updated = try await api.updateSetlist(setlists[index], deviceID: deviceID)
-            // Replace with server response
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = updated
-            }
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[index].items)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
@@ -195,10 +195,7 @@ class SetlistStore {
         setlists[index].items.append(item)
 
         do {
-            let updated = try await api.updateSetlist(setlists[index], deviceID: deviceID)
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = updated
-            }
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[index].items)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
@@ -228,10 +225,7 @@ class SetlistStore {
         reindexItems(setlistIndex: setlistIndex)
 
         do {
-            let updated = try await api.updateSetlist(setlists[setlistIndex], deviceID: deviceID)
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = updated
-            }
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[setlistIndex].items)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
@@ -258,10 +252,7 @@ class SetlistStore {
         reindexItems(setlistIndex: index)
 
         do {
-            let updated = try await api.updateSetlist(setlists[index], deviceID: deviceID)
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = updated
-            }
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[index].items)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
@@ -272,7 +263,7 @@ class SetlistStore {
         }
     }
 
-    func updateItemOctaveOffset(in setlist: Setlist, itemID: UUID, octaveOffset: Int) async {
+    func updateItemOctaveOffset(in setlist: Setlist, itemID: String, octaveOffset: Int) async {
         lastError = nil
 
         guard let setlistIndex = setlists.firstIndex(where: { $0.id == setlist.id }) else { return }
@@ -288,10 +279,7 @@ class SetlistStore {
         setlists[setlistIndex].items[itemIndex].octaveOffset = octaveOffset
 
         do {
-            let updated = try await api.updateSetlist(setlists[setlistIndex], deviceID: deviceID)
-            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }) {
-                setlists[idx] = updated
-            }
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[setlistIndex].items)
         } catch {
             // Rollback
             if let idx = setlists.firstIndex(where: { $0.id == setlist.id }),
@@ -300,6 +288,37 @@ class SetlistStore {
             }
             lastError = "Couldn't save octave offset: \(error.localizedDescription)"
             print("❌ Failed to update octave offset: \(error)")
+        }
+    }
+
+    func replaceItem(in setlist: Setlist, existingItemID: String, songTitle: String, concertKey: String, octaveOffset: Int) async throws {
+        lastError = nil
+
+        guard let setlistIndex = setlists.firstIndex(where: { $0.id == setlist.id }) else {
+            throw SetlistError.setlistNotFound
+        }
+
+        guard let itemIndex = setlists[setlistIndex].items.firstIndex(where: { $0.id == existingItemID }) else {
+            throw SetlistError.itemNotFound
+        }
+
+        // Backup for rollback
+        let backup = setlists[setlistIndex].items[itemIndex]
+
+        // Optimistic update
+        setlists[setlistIndex].items[itemIndex].concertKey = concertKey
+        setlists[setlistIndex].items[itemIndex].octaveOffset = octaveOffset
+
+        do {
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[setlistIndex].items)
+        } catch {
+            // Rollback
+            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }),
+               let iIdx = setlists[idx].items.firstIndex(where: { $0.id == existingItemID }) {
+                setlists[idx].items[iIdx] = backup
+            }
+            lastError = "Couldn't update item: \(error.localizedDescription)"
+            throw SetlistError.networkError(error.localizedDescription)
         }
     }
 
@@ -322,5 +341,24 @@ class SetlistStore {
     /// Clear any displayed error
     func clearError() {
         lastError = nil
+    }
+
+    // MARK: - Last Opened (Local Storage)
+
+    private func lastOpened(_ setlistId: String) -> Date {
+        let dict = UserDefaults.standard.dictionary(forKey: lastOpenedKey) as? [String: Date] ?? [:]
+        return dict[setlistId] ?? .distantPast
+    }
+
+    private func setLastOpened(_ setlistId: String, date: Date) {
+        var dict = UserDefaults.standard.dictionary(forKey: lastOpenedKey) as? [String: Date] ?? [:]
+        dict[setlistId] = date
+        UserDefaults.standard.set(dict, forKey: lastOpenedKey)
+    }
+
+    private func clearLastOpened(_ setlistId: String) {
+        var dict = UserDefaults.standard.dictionary(forKey: lastOpenedKey) as? [String: Date] ?? [:]
+        dict.removeValue(forKey: setlistId)
+        UserDefaults.standard.set(dict, forKey: lastOpenedKey)
     }
 }

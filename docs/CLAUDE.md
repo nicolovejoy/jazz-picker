@@ -5,9 +5,11 @@
 Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets repo.
 
 **Components:**
+
 - iOS App: `JazzPicker/` (SwiftUI) — primary client
 - Backend: `app.py` (Flask on Fly.io) — PDF generation, catalog API
 - Web: `frontend/` (React + Vite) — secondary client
+- Firebase: Auth + Firestore (setlists, user profiles)
 
 **Note:** Developing in production for now.
 
@@ -32,13 +34,16 @@ JazzPicker/JazzPicker/
 ├── App/        # JazzPickerApp, RootView, ContentView
 ├── Models/     # Song, Instrument, Setlist, UserProfile
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
-└── Services/   # APIClient, SetlistStore, AuthService, UserProfileService
+└── Services/   # APIClient, SetlistStore, SetlistFirestoreService, AuthStore, UserProfileStore
 ```
 
 **Patterns:**
+
 - `@Observable` stores via SwiftUI environment
 - Optimistic UI with rollback
 - Offline PDF caching in Documents/PDFCache/
+- Real-time Firestore listeners for setlists
+- DO NOT expose any secrets in the codebase, as it's a public repo on github
 
 ---
 

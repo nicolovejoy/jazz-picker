@@ -9,6 +9,7 @@ import SwiftUI
 struct AuthGateView<Content: View>: View {
     @Environment(AuthStore.self) private var authStore
     @Environment(UserProfileStore.self) private var userProfileStore
+    @Environment(SetlistStore.self) private var setlistStore
 
     let content: () -> Content
 
@@ -49,12 +50,14 @@ struct AuthGateView<Content: View>: View {
 
     private func handleUserChange(from oldUID: String?, to newUID: String?) {
         if let uid = newUID {
-            // User signed in — start listening to their profile
+            // User signed in — start listening to their profile and setlists
             userProfileStore.startListening(uid: uid)
+            setlistStore.startListening(ownerId: uid)
         } else if oldUID != nil {
-            // User signed out — stop listening and clear profile
+            // User signed out — stop listening and clear data
             userProfileStore.stopListening()
             userProfileStore.clearCache()
+            setlistStore.stopListening()
         }
     }
 }
@@ -65,4 +68,5 @@ struct AuthGateView<Content: View>: View {
     }
     .environment(AuthStore())
     .environment(UserProfileStore())
+    .environment(SetlistStore())
 }

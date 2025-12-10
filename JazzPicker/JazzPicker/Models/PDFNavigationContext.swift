@@ -13,7 +13,7 @@ enum PDFNavigationContext {
 
     /// Playing through a setlist - swipe navigates in setlist order
     /// Uses SetlistItem's concertKey which may differ from song's defaultKey
-    case setlist(setlistID: UUID, items: [SetlistItem], currentIndex: Int)
+    case setlist(setlistID: String, items: [SetlistItem], currentIndex: Int)
 
     /// Random spin mode - swipe triggers another random song
     case spin(randomSongProvider: () -> Song?)
@@ -60,7 +60,7 @@ enum PDFNavigationContext {
     }
 
     /// Returns the setlist ID if in setlist context
-    var setlistID: UUID? {
+    var setlistID: String? {
         switch self {
         case .setlist(let id, _, _):
             return id

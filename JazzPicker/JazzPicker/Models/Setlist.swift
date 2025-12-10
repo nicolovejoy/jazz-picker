@@ -3,60 +3,112 @@
 //  JazzPicker
 //
 
+import FirebaseFirestore
 import Foundation
 
-struct Setlist: Codable, Identifiable, Hashable, Sendable {
-    let id: UUID
+struct Setlist: Identifiable, Hashable, Sendable {
+    let id: String
     var name: String
+    var ownerId: String
     var items: [SetlistItem]
     var createdAt: Date
-    var lastOpenedAt: Date
-    var deletedAt: Date?
+    var updatedAt: Date
 
-    init(id: UUID = UUID(), name: String, items: [SetlistItem] = [], createdAt: Date = Date(), lastOpenedAt: Date = Date(), deletedAt: Date? = nil) {
+    init(id: String = UUID().uuidString, name: String, ownerId: String, items: [SetlistItem] = [], createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.name = name
+        self.ownerId = ownerId
         self.items = items
         self.createdAt = createdAt
-        self.lastOpenedAt = lastOpenedAt
-        self.deletedAt = deletedAt
-    }
-
-    var isDeleted: Bool {
-        deletedAt != nil
+        self.updatedAt = updatedAt
     }
 
     var songCount: Int {
         items.filter { !$0.isSetBreak }.count
     }
+
+    // MARK: - Firestore Conversion
+
+    init?(id: String, from data: [String: Any]) {
+        guard let name = data["name"] as? String,
+              let ownerId = data["ownerId"] as? String else {
+            return nil
+        }
+
+        self.id = id
+        self.name = name
+        self.ownerId = ownerId
+        self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        self.updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+
+        if let itemsData = data["items"] as? [[String: Any]] {
+            self.items = itemsData.compactMap { SetlistItem(from: $0) }
+        } else {
+            self.items = []
+        }
+    }
+
+    func toFirestoreData() -> [String: Any] {
+        [
+            "name": name,
+            "ownerId": ownerId,
+            "createdAt": Timestamp(date: createdAt),
+            "updatedAt": Timestamp(date: Date()),
+            "items": items.map { $0.toFirestoreData() }
+        ]
+    }
 }
 
-struct SetlistItem: Codable, Identifiable, Hashable, Sendable {
-    let id: UUID
+struct SetlistItem: Identifiable, Hashable, Sendable {
+    let id: String
     var songTitle: String
     var concertKey: String
     var position: Int
     var isSetBreak: Bool
     var octaveOffset: Int
+    var notes: String?
 
-    init(id: UUID = UUID(), songTitle: String, concertKey: String, position: Int, isSetBreak: Bool = false, octaveOffset: Int = 0) {
+    init(id: String = UUID().uuidString, songTitle: String, concertKey: String, position: Int, isSetBreak: Bool = false, octaveOffset: Int = 0, notes: String? = nil) {
         self.id = id
         self.songTitle = songTitle
         self.concertKey = concertKey
         self.position = position
         self.isSetBreak = isSetBreak
         self.octaveOffset = octaveOffset
+        self.notes = notes
     }
 
-    // Custom decoder to handle missing octaveOffset from legacy responses
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        songTitle = try container.decode(String.self, forKey: .songTitle)
-        concertKey = try container.decode(String.self, forKey: .concertKey)
-        position = try container.decode(Int.self, forKey: .position)
-        isSetBreak = try container.decode(Bool.self, forKey: .isSetBreak)
-        octaveOffset = try container.decodeIfPresent(Int.self, forKey: .octaveOffset) ?? 0
+    // MARK: - Firestore Conversion
+
+    init?(from data: [String: Any]) {
+        guard let id = data["id"] as? String,
+              let songTitle = data["songTitle"] as? String,
+              let position = data["position"] as? Int else {
+            return nil
+        }
+
+        self.id = id
+        self.songTitle = songTitle
+        self.concertKey = data["concertKey"] as? String ?? ""
+        self.position = position
+        self.isSetBreak = data["isSetBreak"] as? Bool ?? false
+        self.octaveOffset = data["octaveOffset"] as? Int ?? 0
+        self.notes = data["notes"] as? String
+    }
+
+    func toFirestoreData() -> [String: Any] {
+        var data: [String: Any] = [
+            "id": id,
+            "songTitle": songTitle,
+            "concertKey": concertKey,
+            "position": position,
+            "isSetBreak": isSetBreak,
+            "octaveOffset": octaveOffset
+        ]
+        if let notes = notes {
+            data["notes"] = notes
+        }
+        return data
     }
 
     static func song(_ title: String, key: String, position: Int) -> SetlistItem {
