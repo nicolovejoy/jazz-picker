@@ -215,7 +215,14 @@ User                    Web App                 Flask Backend           S3 / Lil
 
 ---
 
-## iOS Authentication Flow (Phase 5 - Planned)
+## iOS Authentication Flow (Phase 5 - In Progress)
+
+**Implementation files:**
+- `AuthService.swift` — Firebase Auth state, Apple Sign-In
+- `UserProfileService.swift` — Firestore profile CRUD
+- `RootView.swift` — Auth gate (routes to SignInView, OnboardingView, or ContentView)
+- `SignInView.swift` — Apple Sign-In button
+- `OnboardingView.swift` — Instrument picker for new users
 
 ```
 User                    iOS App                 Firebase Auth           Firestore

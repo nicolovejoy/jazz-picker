@@ -19,8 +19,10 @@
 
 ## Auth
 
-- **Web**: Firebase Auth → Firestore
-- **iOS**: DeviceID (Keychain) — migrating to Firebase in Phase 5
+- **Web**: Firebase Auth (Apple, Google, email) → Firestore profiles
+- **iOS**: Firebase Auth (Apple Sign-In) → Firestore profiles — Phase 5 in progress
+  - Previously: DeviceID (Keychain) — being replaced
+  - Setlists: Still Flask API with Firebase UID (Phase 6 will migrate to Firestore)
 - **Backend**: Token verification disabled (no GCP credentials)
 
 ## Deployment

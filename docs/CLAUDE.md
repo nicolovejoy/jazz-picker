@@ -5,13 +5,17 @@
 Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets repo.
 
 **Components:**
+
 - iOS App: `JazzPicker/` (SwiftUI) - main focus
 - Backend: `app.py` (Flask on Fly.io) - PDF gen, catalog
+- Claude, update our firebaseFirestore dependency here
 - Web: `frontend/` (React + Vite) - requires Firebase Auth
 
 ---
 
 ## Quick Start
+
+note that we generally are still developing in production for the time being.
 
 ```bash
 python3 app.py              # Backend: localhost:5001
@@ -27,16 +31,24 @@ open JazzPicker/JazzPicker.xcodeproj  # iOS
 
 ```
 JazzPicker/JazzPicker/
-├── App/        # Entry point, tabs
-├── Models/     # Song, Instrument, Setlist
-├── Views/      # Browse/, PDF/, Settings/, Setlists/
-└── Services/   # APIClient, SetlistStore, PDFCacheService
+├── App/        # Entry point (JazzPickerApp), RootView, ContentView
+├── Models/     # Song, Instrument, Setlist, UserProfile
+├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
+└── Services/   # APIClient, SetlistStore, PDFCacheService, AuthService, UserProfileService
 ```
 
 **Patterns:**
+
 - `@Observable` stores via environment
 - Optimistic UI with rollback
 - Offline PDF caching in Documents/PDFCache/
+
+**Auth (Phase 5 - in progress):**
+
+- Firebase Auth with Apple Sign-In
+- Sign-in required to use app
+- User profile (instrument) synced to Firestore `users/{uid}`
+- Setlists still use Flask API with Firebase UID (Phase 6 will migrate to Firestore)
 
 ---
 

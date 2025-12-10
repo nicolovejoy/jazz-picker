@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>1038351022908-uuogacjf4ak0fnqofgvpfdnkla5ihudv.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1038351022908-uuogacjf4ak0fnqofgvpfdnkla5ihudv</string>
+	<key>API_KEY</key>
+	<string>AIzaSyC1Y96DluY0AT6UNmBUQG8XYfs4y2BVtFM</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1038351022908</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.pianohouseproject.JazzPicker</string>
+	<key>PROJECT_ID</key>
+	<string>jazz-picker</string>
+	<key>STORAGE_BUCKET</key>
+	<string>jazz-picker.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1038351022908:ios:bafde31f891c9d0d06bc39</string>
+</dict>
+</plist>
