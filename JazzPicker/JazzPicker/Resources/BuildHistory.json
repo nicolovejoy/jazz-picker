@@ -1,8 +1,8 @@
 [
   {
     "build": 7,
-    "date": "2025-12-07",
-    "notes": "iOS: Add-to-Setlist now captures current key and octave offset. If song already exists with different settings, shows Replace/Keep dialog instead of blocking. Web: Setlist songs now render with saved octave offset. New 'Add to Setlist' button in PDF viewer toolbar for parity with iOS."
+    "date": "2025-12-10 10am PST",
+    "notes": "Added Apple Sign-In for iOS authentication. Setlists now sync in real-time via Firestore - create or edit a setlist on iPad and it appears instantly on web, and vice versa. No more manual refresh needed. User profiles store your instrument preference across devices."
   },
   {
     "build": 6,
