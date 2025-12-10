@@ -5,17 +5,15 @@
 Jazz Picker is an iPad music stand. ~735 songs from Eric's lilypond-lead-sheets repo.
 
 **Components:**
+- iOS App: `JazzPicker/` (SwiftUI) — primary client
+- Backend: `app.py` (Flask on Fly.io) — PDF generation, catalog API
+- Web: `frontend/` (React + Vite) — secondary client
 
-- iOS App: `JazzPicker/` (SwiftUI) - main focus
-- Backend: `app.py` (Flask on Fly.io) - PDF gen, catalog
-- Claude, update our firebaseFirestore dependency here
-- Web: `frontend/` (React + Vite) - requires Firebase Auth
+**Note:** Developing in production for now.
 
 ---
 
 ## Quick Start
-
-note that we generally are still developing in production for the time being.
 
 ```bash
 python3 app.py              # Backend: localhost:5001
@@ -23,7 +21,7 @@ cd frontend && npm run dev  # Web: localhost:5173
 open JazzPicker/JazzPicker.xcodeproj  # iOS
 ```
 
-**Environment:** Web requires `frontend/.env.local` with Firebase config (see `.env.example`).
+Web requires `frontend/.env.local` with Firebase config (see `.env.example`).
 
 ---
 
@@ -31,49 +29,25 @@ open JazzPicker/JazzPicker.xcodeproj  # iOS
 
 ```
 JazzPicker/JazzPicker/
-├── App/        # Entry point (JazzPickerApp), RootView, ContentView
+├── App/        # JazzPickerApp, RootView, ContentView
 ├── Models/     # Song, Instrument, Setlist, UserProfile
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
-└── Services/   # APIClient, SetlistStore, PDFCacheService, AuthService, UserProfileService
+└── Services/   # APIClient, SetlistStore, AuthService, UserProfileService
 ```
 
 **Patterns:**
-
-- `@Observable` stores via environment
+- `@Observable` stores via SwiftUI environment
 - Optimistic UI with rollback
 - Offline PDF caching in Documents/PDFCache/
-
-**Auth (Phase 5 - in progress):**
-
-- Firebase Auth with Apple Sign-In
-- Sign-in required to use app
-- User profile (instrument) synced to Firestore `users/{uid}`
-- Setlists still use Flask API with Firebase UID (Phase 6 will migrate to Firestore)
-
----
-
-## Web App Structure
-
-```
-frontend/src/
-├── contexts/   # AuthContext, UserProfileContext, SetlistContext
-├── components/ # UI components
-├── services/   # api.ts, setlistFirestoreService.ts, userProfileService.ts
-└── types/      # TypeScript types
-```
-
-**Auth flow:** Sign in → Onboarding (if no profile) → Main app. Instrument synced via Firestore.
 
 ---
 
 ## Backend API
 
 ```
-GET  /api/v2/catalog              # All songs
-POST /api/v2/generate             # Generate PDF (auto-octave when instrument_label provided)
+GET  /api/v2/catalog    # All songs
+POST /api/v2/generate   # Generate PDF {title, key, transposition, clef, instrument_label}
 ```
-
-Setlist endpoints deprecated (Web uses Firestore, iOS still uses Flask).
 
 ---
 
@@ -90,20 +64,17 @@ Setlist endpoints deprecated (Web uses Firestore, iOS still uses Flask).
 
 ```
 users/{uid}
-  - instrument: string
-  - displayName: string
-  - createdAt, updatedAt: timestamp
+  - instrument, displayName, createdAt, updatedAt
 
 setlists/{setlistId}
-  - name: string
-  - ownerId: string
+  - name, ownerId, createdAt, updatedAt
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
-  - createdAt, updatedAt: timestamp
 ```
 
 ---
 
 ## Related Docs
 
-- [ROADMAP.md](ROADMAP.md) - Priorities
-- [INFRASTRUCTURE.md](INFRASTRUCTURE.md) - Services
+- [ROADMAP.md](ROADMAP.md) — Current priorities
+- [INFRASTRUCTURE.md](INFRASTRUCTURE.md) — Services & deployment
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Data flows
