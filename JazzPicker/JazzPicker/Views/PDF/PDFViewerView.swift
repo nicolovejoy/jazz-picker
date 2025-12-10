@@ -182,10 +182,27 @@ struct PDFViewerView: View {
                     } label: {
                         Label("Change Key", systemImage: "music.quarternote.3")
                     }
-                    Button {
-                        showAddToSetlist = true
-                    } label: {
-                        Label("Add to Setlist", systemImage: "text.badge.plus")
+
+                    // Add to setlist options
+                    if let current = setlistStore.currentSetlist {
+                        Button {
+                            addToCurrentSetlist(current)
+                        } label: {
+                            Label("Add to \(current.name)", systemImage: "text.badge.plus")
+                        }
+                        .disabled(setlistStore.containsSong(song.title, in: current))
+
+                        Button {
+                            showAddToSetlist = true
+                        } label: {
+                            Label("Add to Other Setlist...", systemImage: "text.badge.plus")
+                        }
+                    } else {
+                        Button {
+                            showAddToSetlist = true
+                        } label: {
+                            Label("Add to Setlist...", systemImage: "text.badge.plus")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -267,6 +284,18 @@ struct PDFViewerView: View {
 
             print("🎵 saveOctaveOffset: calling updateItemOctaveOffset")
             await setlistStore.updateItemOctaveOffset(in: setlist, itemID: item.id, octaveOffset: offset)
+        }
+    }
+
+    // MARK: - Add to Setlist
+
+    private func addToCurrentSetlist(_ setlist: Setlist) {
+        Task {
+            do {
+                try await setlistStore.addSong(to: setlist, songTitle: song.title, concertKey: concertKey, octaveOffset: octaveOffset)
+            } catch {
+                print("❌ Failed to add to setlist: \(error)")
+            }
         }
     }
 
@@ -680,7 +709,7 @@ struct PDFKitView: UIViewRepresentable {
 #Preview {
     NavigationStack {
         PDFViewerView(
-            song: Song(title: "Blue Bossa", defaultKey: "c", lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
             concertKey: "c",
             instrument: .trumpet,
             navigationContext: .single

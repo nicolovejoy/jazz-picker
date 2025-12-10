@@ -50,6 +50,11 @@ class SetlistStore {
         setlists.sorted { lastOpened($0.id) > lastOpened($1.id) }
     }
 
+    /// The most recently opened setlist, if any
+    var currentSetlist: Setlist? {
+        activeSetlists.first
+    }
+
     // MARK: - Listening
 
     func startListening(ownerId: String) {

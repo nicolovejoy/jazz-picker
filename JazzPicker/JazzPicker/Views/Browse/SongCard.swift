@@ -184,13 +184,13 @@ struct KeyPillButton: View {
 #Preview {
     LazyVGrid(columns: [GridItem(.adaptive(minimum: 320))], spacing: 16) {
         SongCard(
-            song: Song(title: "Blue Bossa", defaultKey: "c", lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
             instrument: .trumpet
         ) { key in
             print("Selected \(key)")
         }
         SongCard(
-            song: Song(title: "Autumn Leaves", defaultKey: "g", lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Autumn Leaves", defaultKey: "g", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
             instrument: .piano
         ) { key in
             print("Selected \(key)")
