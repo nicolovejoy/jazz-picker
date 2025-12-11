@@ -2,7 +2,7 @@
 
 ## Backlog
 
-- Sync preferred keys to Firestore (currently local-only UserDefaults)
+- Web: Sync preferred keys from Firestore (iOS done, web still uses localStorage)
 - Setlist "now playing" indicator (see partner's current song)
 - Note range warnings (MIDI data exists, need instrument range definitions)
 - Groups/bands for multi-user isolation (see GROUPS.md)
