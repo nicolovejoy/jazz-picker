@@ -181,7 +181,7 @@ struct SongItemRow: View {
             }
         }
 
-        return isMinor ? result + "m" : result
+        return isMinor ? result + " Minor" : result
     }
 }
 

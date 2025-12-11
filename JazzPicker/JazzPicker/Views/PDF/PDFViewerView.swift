@@ -329,7 +329,7 @@ struct PDFViewerView: View {
             }
         }
 
-        return isMinor ? result + "m" : result
+        return isMinor ? result + " Minor" : result
     }
 
     // MARK: - Gestures
@@ -353,7 +353,9 @@ struct PDFViewerView: View {
         if let next = navigationContext.nextSong() {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
-            navigateToSong(next.song, concertKey: next.concertKey, context: next.newContext)
+            // Use sticky key if set, otherwise use the context's key
+            let key = cachedKeysStore.getStickyKey(for: next.song) ?? next.concertKey
+            navigateToSong(next.song, concertKey: key, context: next.newContext)
         } else {
             // Boundary - provide warning haptic
             let generator = UINotificationFeedbackGenerator()
@@ -365,7 +367,9 @@ struct PDFViewerView: View {
         if let prev = navigationContext.previousSong() {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
-            navigateToSong(prev.song, concertKey: prev.concertKey, context: prev.newContext)
+            // Use sticky key if set, otherwise use the context's key
+            let key = cachedKeysStore.getStickyKey(for: prev.song) ?? prev.concertKey
+            navigateToSong(prev.song, concertKey: key, context: prev.newContext)
         } else {
             // Boundary - provide warning haptic
             let generator = UINotificationFeedbackGenerator()

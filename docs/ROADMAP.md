@@ -2,13 +2,14 @@
 
 ## Backlog
 
-- Setlist "now playing" indicator
-- Setlist UX: key closer to song name in landscape
-- Composer filter: add search within the picker (400+ composers)
-- Note range warnings based on MIDI data + instrument range
+- Sync preferred keys to Firestore (currently local-only UserDefaults)
+- Setlist "now playing" indicator (see partner's current song)
+- Note range warnings (MIDI data exists, need instrument range definitions)
+- Groups/bands for multi-user isolation (see GROUPS.md)
 
 ## Design Decisions
 
-- **Shared setlists:** All authenticated users read/write all setlists (2-user band)
+- **Shared setlists:** All authenticated users share all setlists (2-user band for now)
 - **iOS primary:** Web is secondary client
-- **lastOpenedAt:** Local-only per device (not synced)
+- **Preferred keys:** Per-user, per-song. Stored locally now; will move to Firestore user profile.
+- **Minor keys:** Display as "F Minor" not "Fm"

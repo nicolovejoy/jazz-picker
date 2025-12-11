@@ -45,11 +45,21 @@ struct SongCard: View {
         VStack(alignment: .leading, spacing: 8) {
             // Title area - tappable for default key
             HStack(alignment: .top) {
-                Text(song.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(song.title)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    if let composer = song.composer {
+                        Text(composer)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
 
                 Spacer()
 
@@ -63,7 +73,9 @@ struct SongCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
-                onTap(song.defaultKey)
+                // Use sticky key if set, otherwise default
+                let key = cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
+                onTap(key)
             }
 
             Spacer()
@@ -129,11 +141,11 @@ struct KeyPillButton: View {
     var body: some View {
         Button(action: onTap) {
             Text(displayText)
-                .font(.caption)
-                .fontWeight(isSticky ? .semibold : .regular)
+                .font(.body)
+                .fontWeight(isSticky ? .semibold : .medium)
                 .foregroundStyle(foregroundColor)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
                 .background(backgroundColor)
                 .clipShape(Capsule())
         }
@@ -155,7 +167,7 @@ struct KeyPillButton: View {
             }
         }
 
-        return isMinor ? result + "m" : result
+        return isMinor ? result + " Minor" : result
     }
 
     private func transposeKey(_ concertKey: String, for transposition: Transposition) -> String {

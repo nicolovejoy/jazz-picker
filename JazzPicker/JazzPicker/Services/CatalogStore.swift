@@ -56,23 +56,14 @@ class CatalogStore {
         isLoading = false
     }
 
-    func search(_ query: String, composer: String? = nil) -> [Song] {
-        var result = songs
+    func search(_ query: String) -> [Song] {
+        guard !query.isEmpty else { return songs }
 
-        // Filter by composer if specified
-        if let composer = composer {
-            result = result.filter { $0.composer == composer }
+        let lowercased = query.lowercased()
+        return songs.filter { song in
+            song.title.lowercased().contains(lowercased) ||
+            (song.composer?.lowercased().contains(lowercased) ?? false)
         }
-
-        // Filter by search query
-        if !query.isEmpty {
-            let lowercased = query.lowercased()
-            result = result.filter { song in
-                song.title.lowercased().contains(lowercased)
-            }
-        }
-
-        return result
     }
 
     /// Get all unique composers, sorted alphabetically

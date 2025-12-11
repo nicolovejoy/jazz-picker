@@ -12,8 +12,10 @@ class CachedKeysStore {
     /// Map of song slug -> array of cached concert keys
     private(set) var cachedKeys: [String: [String]] = [:]
 
-    /// Map of song title -> sticky key for this session (non-standard key user selected)
+    /// Map of song title -> sticky key (non-standard key user selected), persisted across sessions
     private(set) var stickyKeys: [String: String] = [:]
+
+    private let stickyKeysKey = "stickyKeys"
 
     private(set) var isLoading = false
     private(set) var error: Error?
@@ -22,6 +24,20 @@ class CachedKeysStore {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documents.appendingPathComponent("cached_keys.json")
     }()
+
+    init() {
+        loadStickyKeys()
+    }
+
+    private func loadStickyKeys() {
+        if let data = UserDefaults.standard.dictionary(forKey: stickyKeysKey) as? [String: String] {
+            stickyKeys = data
+        }
+    }
+
+    private func saveStickyKeys() {
+        UserDefaults.standard.set(stickyKeys, forKey: stickyKeysKey)
+    }
 
     /// Load cached keys for the given instrument
     func load(for instrument: Instrument) async {
@@ -94,7 +110,7 @@ class CachedKeysStore {
         stickyKeys[song.title]
     }
 
-    /// Set a sticky key for a song (persists for session only)
+    /// Set a sticky key for a song (persisted across sessions)
     func setStickyKey(_ key: String, for song: Song) {
         // Don't set sticky if it's the default key
         if key == song.defaultKey {
@@ -102,11 +118,13 @@ class CachedKeysStore {
         } else {
             stickyKeys[song.title] = key
         }
+        saveStickyKeys()
     }
 
     /// Clear sticky key for a song
     func clearStickyKey(for song: Song) {
         stickyKeys.removeValue(forKey: song.title)
+        saveStickyKeys()
     }
 
     /// Convert song title to slug (matches backend slugify function)

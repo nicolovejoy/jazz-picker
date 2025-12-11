@@ -30,7 +30,7 @@ struct KeyPill: View {
     }
 
     private func formatKey(_ key: String) -> String {
-        // Handle minor keys: "cm" -> "Cm", "afm" -> "Abm"
+        // Handle minor keys: "cm" -> "C Minor", "afm" -> "Ab Minor"
         let isMinor = key.hasSuffix("m")
         let pitchPart = isMinor ? String(key.dropLast()) : key
 
@@ -46,7 +46,7 @@ struct KeyPill: View {
             }
         }
 
-        return isMinor ? result + "m" : result
+        return isMinor ? result + " Minor" : result
     }
 
     private func transposeKey(_ concertKey: String, for transposition: Transposition) -> String {

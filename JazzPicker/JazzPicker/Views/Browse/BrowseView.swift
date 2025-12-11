@@ -13,14 +13,13 @@ struct BrowseView: View {
 
     @State private var searchText = ""
     @State private var selectedSong: SelectedSong?
-    @State private var selectedComposer: String?
 
     private var useGrid: Bool {
         horizontalSizeClass == .regular
     }
 
     var filteredSongs: [Song] {
-        catalogStore.search(searchText, composer: selectedComposer)
+        catalogStore.search(searchText)
     }
 
     var body: some View {
@@ -41,27 +40,7 @@ struct BrowseView: View {
                 }
             }
             .navigationTitle("Browse")
-            .searchable(text: $searchText, prompt: "Search songs")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button("All Composers") {
-                            selectedComposer = nil
-                        }
-                        Divider()
-                        ForEach(catalogStore.composers, id: \.self) { composer in
-                            Button(composer) {
-                                selectedComposer = composer
-                            }
-                        }
-                    } label: {
-                        Label(
-                            selectedComposer ?? "Composer",
-                            systemImage: selectedComposer != nil ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle"
-                        )
-                    }
-                }
-            }
+            .searchable(text: $searchText, prompt: "Search songs or composers")
             .refreshable {
                 await catalogStore.refresh()
                 await cachedKeysStore.refresh(for: instrument)
@@ -110,7 +89,7 @@ struct BrowseView: View {
 
     private var songGrid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 16)], spacing: 16) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: 16)], spacing: 16) {
                 ForEach(Array(filteredSongs.enumerated()), id: \.element.id) { index, song in
                     SongCard(song: song, instrument: instrument) { key in
                         // Set sticky key if non-standard
@@ -119,7 +98,7 @@ struct BrowseView: View {
                         }
                         selectedSong = SelectedSong(index: index, key: key)
                     }
-                    .frame(height: 100)
+                    .frame(height: 140)
                 }
             }
             .padding()

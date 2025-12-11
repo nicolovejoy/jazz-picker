@@ -10,8 +10,6 @@ Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead
 - Backend: `app.py` (Flask on Fly.io) — PDF generation only
 - Firebase: Auth + Firestore (users, setlists)
 
----
-
 ## Quick Start
 
 ```bash
@@ -20,25 +18,22 @@ cd frontend && npm run dev  # Web: localhost:5173
 open JazzPicker/JazzPicker.xcodeproj  # iOS
 ```
 
----
-
 ## iOS App Structure
 
 ```
 JazzPicker/JazzPicker/
 ├── App/        # JazzPickerApp, ContentView
-├── Models/     # Song, Instrument, Setlist, UserProfile
+├── Models/     # Song, Instrument, Setlist, UserProfile, PDFNavigationContext
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
-└── Services/   # APIClient, SetlistStore, AuthStore, UserProfileStore
+└── Services/   # APIClient, SetlistStore, AuthStore, UserProfileStore, CachedKeysStore
 ```
 
-**Patterns:**
+**Key Patterns:**
 - `@Observable` stores via SwiftUI environment
 - Optimistic UI with rollback on error
 - Real-time Firestore listeners for setlists
 - Offline PDF caching in Documents/PDFCache/
-
----
+- Sticky keys (preferred key per song) in UserDefaults via CachedKeysStore
 
 ## Backend API
 
@@ -56,10 +51,7 @@ python build_catalog.py              # Full build with MIDI note ranges
 python build_catalog.py --skip-midi  # Fast rebuild (no note ranges)
 ```
 
-Parses LilyPond Core files for: title, default key, composer, MIDI note range.
 Upload to S3: `aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db`
-
----
 
 ## Firestore Schema
 
@@ -72,17 +64,14 @@ setlists/{id}
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
 ```
 
-Security: Users own their profile. All authenticated users share setlists (2-person band).
+Security: All authenticated users share setlists (2-person band). See GROUPS.md for multi-band design.
 
----
+## Key Concepts
 
-## Transposition
-
-- **Concert Key**: What audience hears (stored in setlist)
-- **Written Key**: What player sees (calculated from instrument)
+- **Concert Key**: What audience hears (stored in setlist items)
+- **Written Key**: What player sees (calculated from instrument transposition)
+- **Sticky Key**: User's preferred key for a song (local, used when browsing)
 - **Octave Offset**: ±2 adjustment when transposition lands too high/low
-
----
 
 ## Secrets
 
