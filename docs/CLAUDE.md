@@ -33,7 +33,7 @@ JazzPicker/JazzPicker/
 - Optimistic UI with rollback on error
 - Real-time Firestore listeners for setlists
 - Offline PDF caching in Documents/PDFCache/
-- Sticky keys (preferred key per song) in UserDefaults via CachedKeysStore
+- Preferred keys synced to Firestore `users/{uid}.preferredKeys`
 
 ## Backend API
 
@@ -57,7 +57,7 @@ Upload to S3: `aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db`
 
 ```
 users/{uid}
-  - instrument, displayName, createdAt, updatedAt
+  - instrument, displayName, preferredKeys, createdAt, updatedAt
 
 setlists/{id}
   - name, ownerId, createdAt, updatedAt
@@ -70,7 +70,7 @@ Security: All authenticated users share setlists (2-person band). See GROUPS.md 
 
 - **Concert Key**: What audience hears (stored in setlist items)
 - **Written Key**: What player sees (calculated from instrument transposition)
-- **Sticky Key**: User's preferred key for a song (local, used when browsing)
+- **Preferred Key**: User's preferred key for a song (Firestore, sparse - only non-defaults stored)
 - **Octave Offset**: ±2 adjustment when transposition lands too high/low
 
 ## Secrets
