@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { formatKey, concertToWritten, type Instrument } from '@/types/catalog';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 // All 12 concert keys in circle of fifths order
 const CONCERT_KEYS = [
@@ -35,7 +36,9 @@ export function GenerateModal({
   onGenerated,
 }: GenerateModalProps) {
   const queryClient = useQueryClient();
-  const [selectedConcertKey, setSelectedConcertKey] = useState(defaultConcertKey);
+  const { getPreferredKey } = useUserProfile();
+  const initialKey = getPreferredKey(songTitle, defaultConcertKey);
+  const [selectedConcertKey, setSelectedConcertKey] = useState(initialKey);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);

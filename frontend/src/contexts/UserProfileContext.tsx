@@ -12,6 +12,7 @@ interface UserProfileContextType {
   loading: boolean;
   createProfile: (data: { instrument: string; displayName: string }) => Promise<void>;
   updateProfile: (data: Partial<Pick<UserProfile, 'instrument' | 'displayName'>>) => Promise<void>;
+  getPreferredKey: (songTitle: string, defaultKey: string) => string;
 }
 
 const UserProfileContext = createContext<UserProfileContextType | null>(null);
@@ -47,6 +48,10 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     await updateProfileService(user.uid, data);
   };
 
+  const getPreferredKey = (songTitle: string, defaultKey: string): string => {
+    return profile?.preferredKeys?.[songTitle] ?? defaultKey;
+  };
+
   return (
     <UserProfileContext.Provider
       value={{
@@ -54,6 +59,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         loading,
         createProfile,
         updateProfile,
+        getPreferredKey,
       }}
     >
       {children}
