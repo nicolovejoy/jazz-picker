@@ -3,40 +3,32 @@
 //  JazzPicker
 //
 
+import FirebaseAuth
 import Foundation
 import Observation
 
-/// Manages cached keys from S3 and sticky key selections for the session
+/// Manages cached keys from S3 and delegates sticky key operations to UserProfileStore
 @Observable
 class CachedKeysStore {
     /// Map of song slug -> array of cached concert keys
     private(set) var cachedKeys: [String: [String]] = [:]
 
-    /// Map of song title -> sticky key (non-standard key user selected), persisted across sessions
-    private(set) var stickyKeys: [String: String] = [:]
-
-    private let stickyKeysKey = "stickyKeys"
-
     private(set) var isLoading = false
     private(set) var error: Error?
+
+    // Delegate sticky keys to UserProfileStore
+    private weak var userProfileStore: UserProfileStore?
+    private weak var authStore: AuthStore?
 
     private let cacheURL: URL = {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documents.appendingPathComponent("cached_keys.json")
     }()
 
-    init() {
-        loadStickyKeys()
-    }
-
-    private func loadStickyKeys() {
-        if let data = UserDefaults.standard.dictionary(forKey: stickyKeysKey) as? [String: String] {
-            stickyKeys = data
-        }
-    }
-
-    private func saveStickyKeys() {
-        UserDefaults.standard.set(stickyKeys, forKey: stickyKeysKey)
+    /// Configure with stores for sticky key delegation
+    func configure(userProfileStore: UserProfileStore, authStore: AuthStore) {
+        self.userProfileStore = userProfileStore
+        self.authStore = authStore
     }
 
     /// Load cached keys for the given instrument
@@ -97,7 +89,7 @@ class CachedKeysStore {
         var otherKeys = keys.filter { $0 != song.defaultKey }
 
         // If there's a sticky key for this song, move it to front
-        if let sticky = stickyKeys[song.title], let idx = otherKeys.firstIndex(of: sticky) {
+        if let sticky = getStickyKey(for: song), let idx = otherKeys.firstIndex(of: sticky) {
             otherKeys.remove(at: idx)
             otherKeys.insert(sticky, at: 0)
         }
@@ -107,24 +99,23 @@ class CachedKeysStore {
 
     /// Check if a song has a sticky (non-standard) key set
     func getStickyKey(for song: Song) -> String? {
-        stickyKeys[song.title]
+        userProfileStore?.getPreferredKey(for: song.title)
     }
 
-    /// Set a sticky key for a song (persisted across sessions)
+    /// Set a sticky key for a song (synced to Firestore)
     func setStickyKey(_ key: String, for song: Song) {
-        // Don't set sticky if it's the default key
-        if key == song.defaultKey {
-            stickyKeys.removeValue(forKey: song.title)
-        } else {
-            stickyKeys[song.title] = key
+        guard let uid = authStore?.user?.uid else { return }
+        Task {
+            await userProfileStore?.setPreferredKey(key, for: song.title, defaultKey: song.defaultKey, uid: uid)
         }
-        saveStickyKeys()
     }
 
     /// Clear sticky key for a song
     func clearStickyKey(for song: Song) {
-        stickyKeys.removeValue(forKey: song.title)
-        saveStickyKeys()
+        guard let uid = authStore?.user?.uid else { return }
+        Task {
+            await userProfileStore?.clearPreferredKey(for: song.title, uid: uid)
+        }
     }
 
     /// Convert song title to slug (matches backend slugify function)

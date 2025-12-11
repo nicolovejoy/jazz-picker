@@ -22,6 +22,15 @@ class UserProfileStore {
     }
 
     @ObservationIgnored
+    private var hasMigratedStickyKeys = false
+
+    @ObservationIgnored
+    private let stickyKeysMigratedKey = "stickyKeysMigrated"
+
+    @ObservationIgnored
+    private let legacyStickyKeysKey = "stickyKeys"
+
+    @ObservationIgnored
     private let cacheURL: URL = {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documents.appendingPathComponent("userProfile.json")
@@ -32,6 +41,7 @@ class UserProfileStore {
     func startListening(uid: String) {
         isLoading = true
         error = nil
+        hasMigratedStickyKeys = false
 
         // Load from cache first for offline support
         if let cached = loadFromCache() {
@@ -62,6 +72,14 @@ class UserProfileStore {
                 if let profile = UserProfile(from: data) {
                     self.profile = profile
                     self.saveToCache(profile)
+
+                    // Migrate sticky keys from UserDefaults on first successful snapshot
+                    if !self.hasMigratedStickyKeys {
+                        self.hasMigratedStickyKeys = true
+                        Task {
+                            await self.migrateStickyKeysIfNeeded(uid: uid, currentProfile: profile)
+                        }
+                    }
                 }
             }
     }
@@ -114,6 +132,95 @@ class UserProfileStore {
 
     func clearError() {
         error = nil
+    }
+
+    // MARK: - Preferred Keys Migration
+
+    private func migrateStickyKeysIfNeeded(uid: String, currentProfile: UserProfile) async {
+        // Check if already migrated
+        if UserDefaults.standard.bool(forKey: stickyKeysMigratedKey) {
+            return
+        }
+
+        // Check if there's legacy data to migrate
+        guard let legacyKeys = UserDefaults.standard.dictionary(forKey: legacyStickyKeysKey) as? [String: String],
+              !legacyKeys.isEmpty else {
+            // No data to migrate, mark as done
+            UserDefaults.standard.set(true, forKey: stickyKeysMigratedKey)
+            return
+        }
+
+        // Only migrate if Firestore doesn't already have preferredKeys
+        if currentProfile.preferredKeys != nil && !currentProfile.preferredKeys!.isEmpty {
+            // Firestore already has data (maybe from another device), skip migration
+            UserDefaults.standard.set(true, forKey: stickyKeysMigratedKey)
+            UserDefaults.standard.removeObject(forKey: legacyStickyKeysKey)
+            return
+        }
+
+        // Migrate to Firestore
+        let data: [String: Any] = [
+            "preferredKeys": legacyKeys,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+            // Success - mark as migrated and delete legacy data
+            UserDefaults.standard.set(true, forKey: stickyKeysMigratedKey)
+            UserDefaults.standard.removeObject(forKey: legacyStickyKeysKey)
+            print("Migrated \(legacyKeys.count) sticky keys to Firestore")
+        } catch {
+            // Migration failed, will retry on next app launch
+            print("Failed to migrate sticky keys: \(error)")
+        }
+    }
+
+    // MARK: - Preferred Keys
+
+    func getPreferredKey(for songTitle: String) -> String? {
+        profile?.preferredKeys?[songTitle]
+    }
+
+    /// Set or clear a preferred key for a song. Sparse storage: removes key if it matches default.
+    func setPreferredKey(_ key: String, for songTitle: String, defaultKey: String, uid: String) async {
+        var updatedKeys = profile?.preferredKeys ?? [:]
+
+        // Sparse storage: only store if different from default
+        if key == defaultKey {
+            updatedKeys.removeValue(forKey: songTitle)
+        } else {
+            updatedKeys[songTitle] = key
+        }
+
+        // Update Firestore
+        let data: [String: Any] = [
+            "preferredKeys": updatedKeys,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+            // Profile will be updated via listener
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func clearPreferredKey(for songTitle: String, uid: String) async {
+        var updatedKeys = profile?.preferredKeys ?? [:]
+        updatedKeys.removeValue(forKey: songTitle)
+
+        let data: [String: Any] = [
+            "preferredKeys": updatedKeys,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     // MARK: - Cache

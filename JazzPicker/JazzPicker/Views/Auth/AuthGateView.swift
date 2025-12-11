@@ -10,6 +10,7 @@ struct AuthGateView<Content: View>: View {
     @Environment(AuthStore.self) private var authStore
     @Environment(UserProfileStore.self) private var userProfileStore
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(CachedKeysStore.self) private var cachedKeysStore
 
     let content: () -> Content
 
@@ -53,6 +54,8 @@ struct AuthGateView<Content: View>: View {
             // User signed in — start listening to their profile and setlists
             userProfileStore.startListening(uid: uid)
             setlistStore.startListening(ownerId: uid)
+            // Configure CachedKeysStore to delegate sticky keys to UserProfileStore
+            cachedKeysStore.configure(userProfileStore: userProfileStore, authStore: authStore)
         } else if oldUID != nil {
             // User signed out — stop listening and clear data
             userProfileStore.stopListening()
@@ -69,4 +72,5 @@ struct AuthGateView<Content: View>: View {
     .environment(AuthStore())
     .environment(UserProfileStore())
     .environment(SetlistStore())
+    .environment(CachedKeysStore())
 }

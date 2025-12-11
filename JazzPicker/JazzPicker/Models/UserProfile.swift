@@ -8,12 +8,14 @@ import Foundation
 struct UserProfile: Codable, Sendable {
     let instrument: Instrument
     let displayName: String
+    let preferredKeys: [String: String]?  // songTitle -> concertKey (sparse: only non-default keys)
     let createdAt: Date
     let updatedAt: Date
 
-    init(instrument: Instrument, displayName: String, createdAt: Date = Date(), updatedAt: Date = Date()) {
+    init(instrument: Instrument, displayName: String, preferredKeys: [String: String]? = nil, createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.instrument = instrument
         self.displayName = displayName
+        self.preferredKeys = preferredKeys
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -27,6 +29,7 @@ struct UserProfile: Codable, Sendable {
 
         self.instrument = instrument
         self.displayName = displayName
+        self.preferredKeys = data["preferredKeys"] as? [String: String]
 
         // Handle Firestore Timestamps
         if let timestamp = data["createdAt"] as? Date {
@@ -43,11 +46,15 @@ struct UserProfile: Codable, Sendable {
     }
 
     var firestoreData: [String: Any] {
-        [
+        var data: [String: Any] = [
             "instrument": instrument.rawValue,
             "displayName": displayName,
             "createdAt": createdAt,
             "updatedAt": updatedAt
         ]
+        if let preferredKeys = preferredKeys {
+            data["preferredKeys"] = preferredKeys
+        }
+        return data
     }
 }
