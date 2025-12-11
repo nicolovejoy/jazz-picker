@@ -1,5 +1,20 @@
 [
   {
+    "build": 11,
+    "date": "2025-12-10",
+    "notes": "Your preferred keys now sync across devices. Change a song's key on your iPad and it appears on your other devices automatically. Previously this was stored locally on each device - now it's saved to your account and syncs in real-time via Firestore."
+  },
+  {
+    "build": 10,
+    "date": "2025-12-10 4:20pm PST",
+    "notes": "Larger browse cards on iPad showing composer and your preferred key. Unified search finds songs by title or composer. Last-used key for each song now persists across app restarts."
+  },
+  {
+    "build": 9,
+    "date": "2025-12-10",
+    "notes": "Quick 'Add to [setlist]' action in PDF viewer. Composer now shown in browse UI."
+  },
+  {
     "build": 7,
     "date": "2025-12-10 10am PST",
     "notes": "Added Apple Sign-In for iOS authentication. Setlists now sync in real-time via Firestore - create or edit a setlist on iPad and it appears instantly on web, and vice versa. No more manual refresh needed. User profiles store your instrument preference across devices."
