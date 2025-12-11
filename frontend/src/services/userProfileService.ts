@@ -11,6 +11,8 @@ import { db } from '../firebase';
 import type { UserProfile, UserProfileData } from '@/types/userProfile';
 
 function toUserProfile(data: UserProfileData): UserProfile {
+  console.log('[UserProfile] Raw Firestore data:', data);
+  console.log('[UserProfile] preferredKeys:', data.preferredKeys);
   return {
     instrument: data.instrument,
     displayName: data.displayName,

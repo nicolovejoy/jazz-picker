@@ -81,7 +81,8 @@ struct BrowseView: View {
     private var songList: some View {
         List(Array(filteredSongs.enumerated()), id: \.element.id) { index, song in
             SongRow(song: song, instrument: instrument) {
-                selectedSong = SelectedSong(index: index, key: song.defaultKey)
+                let key = cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
+                selectedSong = SelectedSong(index: index, key: key)
             }
         }
         .listStyle(.plain)

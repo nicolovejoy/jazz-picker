@@ -36,8 +36,10 @@ export function GenerateModal({
   onGenerated,
 }: GenerateModalProps) {
   const queryClient = useQueryClient();
-  const { getPreferredKey } = useUserProfile();
+  const { getPreferredKey, profile } = useUserProfile();
   const initialKey = getPreferredKey(songTitle, defaultConcertKey);
+  console.log('[GenerateModal] songTitle:', songTitle, 'defaultKey:', defaultConcertKey, 'preferredKey:', initialKey);
+  console.log('[GenerateModal] profile.preferredKeys:', profile?.preferredKeys);
   const [selectedConcertKey, setSelectedConcertKey] = useState(initialKey);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
