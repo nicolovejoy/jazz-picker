@@ -66,7 +66,7 @@ users/{uid}
 
 ## Migration Path
 
-**Phase 1:** ~~Move sticky keys from UserDefaults to Firestore user profile (`preferredKeys`).~~ Done (iOS). Web in progress.
+**Phase 1:** Preferred keys in Firestore. Done (iOS). Web has bug (see ROADMAP.md).
 
 **Phase 2:** Add groups. Migrate existing users:
 - Create a default group for existing users who share setlists
