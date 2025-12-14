@@ -50,7 +50,7 @@ PDFs cached in S3. LilyPond generates on cache miss.
 python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
 ```
 
-GitHub workflow auto-rebuilds when Eric pushes to his repo. See NOTE-RANGE-EXTRACTION.md.
+GitHub workflow auto-rebuilds when Eric pushes to his repo.
 
 ## Firestore Schema
 
