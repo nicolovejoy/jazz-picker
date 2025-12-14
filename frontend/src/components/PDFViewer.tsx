@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList, FiMusic } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList, FiMusic, FiMoreVertical } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Instrument } from '@/types/catalog';
-import { GenerateModal } from './GenerateModal';
+import { TransposeModal } from './TransposeModal';
 
 // Set up worker - use local import for Vite
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -25,7 +25,8 @@ interface PDFViewerProps {
 export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, onAddToSetlist, instrument, onKeyChange }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showTransposeModal, setShowTransposeModal] = useState(false);
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLandscape, setIsLandscape] = useState(
@@ -418,47 +419,24 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
       {/* Safe area spacer */}
       <div className="flex-shrink-0 bg-black" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
-      {/* Minimal Floating Controls */}
+      {/* Floating Controls */}
       <div
         className={`absolute top-4 right-4 flex items-center gap-2 transition-opacity duration-300 z-50 ${
           showNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
       >
-        {/* Zoom Controls */}
-        <div className="hidden sm:flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
-          <button
-            onClick={handleZoomOut}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            aria-label="Zoom out"
-          >
-            <FiZoomOut className="text-white text-lg" />
-          </button>
-          <span className="text-white text-xs min-w-[3rem] text-center font-medium">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={handleZoomIn}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            aria-label="Zoom in"
-          >
-            <FiZoomIn className="text-white text-lg" />
-          </button>
-        </div>
-
-        {/* Action Group */}
-        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
-          <button
-            onClick={toggleFullscreen}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          >
-            {isFullscreen ? (
-              <FiMinimize className="text-white text-lg" />
-            ) : (
-              <FiMaximize className="text-white text-lg" />
-            )}
-          </button>
+        {/* Primary Actions */}
+        <div className="flex items-center bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10">
+          {instrument && onKeyChange && metadata && (
+            <button
+              onClick={() => setShowTransposeModal(true)}
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Transpose"
+            >
+              <FiMusic className="text-white text-lg" />
+            </button>
+          )}
 
           {onAddToSetlist && (
             <button
@@ -470,23 +448,63 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
             </button>
           )}
 
-          {instrument && onKeyChange && metadata && (
+          {/* Overflow Menu */}
+          <div className="relative">
             <button
-              onClick={() => setShowGenerateModal(true)}
+              onClick={() => setShowOverflowMenu(!showOverflowMenu)}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Change Key"
+              aria-label="More options"
             >
-              <FiMusic className="text-white text-lg" />
+              <FiMoreVertical className="text-white text-lg" />
             </button>
-          )}
 
-          <button
-            onClick={handleDownload}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            aria-label="Download PDF"
-          >
-            <FiDownload className="text-white text-lg" />
-          </button>
+            {showOverflowMenu && (
+              <div className="absolute top-full right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                {/* Zoom Controls */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                    aria-label="Zoom out"
+                  >
+                    <FiZoomOut className="text-white" />
+                  </button>
+                  <span className="text-white text-sm font-medium">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                    aria-label="Zoom in"
+                  >
+                    <FiZoomIn className="text-white" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    toggleFullscreen();
+                    setShowOverflowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 transition-colors"
+                >
+                  {isFullscreen ? <FiMinimize /> : <FiMaximize />}
+                  <span className="text-sm">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleDownload();
+                    setShowOverflowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 transition-colors"
+                >
+                  <FiDownload />
+                  <span className="text-sm">Download</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Close Button */}
@@ -641,15 +659,15 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
         </div>
       )}
 
-      {/* Change Key Modal */}
-      {showGenerateModal && instrument && metadata && onKeyChange && (
-        <GenerateModal
+      {/* Transpose Modal */}
+      {showTransposeModal && instrument && metadata && onKeyChange && (
+        <TransposeModal
           songTitle={metadata.songTitle}
           defaultConcertKey={metadata.key}
           instrument={instrument}
-          onClose={() => setShowGenerateModal(false)}
-          onGenerated={(url, newKey) => {
-            setShowGenerateModal(false);
+          onClose={() => setShowTransposeModal(false)}
+          onTransposed={(url, newKey) => {
+            setShowTransposeModal(false);
             onKeyChange(url, newKey);
           }}
         />

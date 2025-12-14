@@ -418,7 +418,6 @@ function App() {
                   searchQuery={searchQuery}
                   instrument={instrument}
                   onOpenPdfUrl={handleOpenPdfUrl}
-                  onAddToSetlist={setSongToAdd}
                 />
 
                 {/* Infinite Scroll Trigger */}

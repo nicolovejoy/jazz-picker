@@ -20,28 +20,26 @@ const CONCERT_KEYS = [
   { value: 'f', label: 'F' },
 ];
 
-interface GenerateModalProps {
+interface TransposeModalProps {
   songTitle: string;
   defaultConcertKey?: string;
   instrument: Instrument;
   onClose: () => void;
-  onGenerated: (url: string, concertKey: string) => void;
+  onTransposed: (url: string, concertKey: string) => void;
 }
 
-export function GenerateModal({
+export function TransposeModal({
   songTitle,
   defaultConcertKey = 'c',
   instrument,
   onClose,
-  onGenerated,
-}: GenerateModalProps) {
+  onTransposed,
+}: TransposeModalProps) {
   const queryClient = useQueryClient();
-  const { getPreferredKey, profile } = useUserProfile();
+  const { getPreferredKey } = useUserProfile();
   const initialKey = getPreferredKey(songTitle, defaultConcertKey);
-  console.log('[GenerateModal] songTitle:', songTitle, 'defaultKey:', defaultConcertKey, 'preferredKey:', initialKey);
-  console.log('[GenerateModal] profile.preferredKeys:', profile?.preferredKeys);
   const [selectedConcertKey, setSelectedConcertKey] = useState(initialKey);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTransposing, setIsTransposing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,14 +52,13 @@ export function GenerateModal({
     return `${formatKey(writtenKey)} (Concert ${formatKey(concertKey)})`;
   };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true);
+  const handleTranspose = async () => {
+    setIsTransposing(true);
     setError(null);
     setProgress(0);
 
-    // Simulate progress (actual generation takes ~7s)
     const progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + 8, 90));
+      setProgress((prev) => Math.min(prev + 8, 90));
     }, 500);
 
     try {
@@ -75,17 +72,16 @@ export function GenerateModal({
       clearInterval(progressInterval);
       setProgress(100);
 
-      // Invalidate cached keys so the card updates
+      // Invalidate cached keys
       queryClient.invalidateQueries({ queryKey: ['cachedKeys', songTitle] });
 
-      // Brief pause to show 100%
       setTimeout(() => {
-        onGenerated(result.url, selectedConcertKey);
+        onTransposed(result.url, selectedConcertKey);
       }, 300);
     } catch (err) {
       clearInterval(progressInterval);
-      setError(err instanceof Error ? err.message : 'Generation failed');
-      setIsGenerating(false);
+      setError(err instanceof Error ? err.message : 'Transposition failed');
+      setIsTransposing(false);
     }
   };
 
@@ -94,12 +90,12 @@ export function GenerateModal({
       <div className="bg-gray-900 rounded-xl border border-white/20 p-6 max-w-md w-full">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-lg font-semibold text-white">Generate Custom PDF</h2>
+            <h2 className="text-lg font-semibold text-white">Transpose</h2>
             <p className="text-sm text-gray-400 mt-1">{songTitle}</p>
           </div>
           <button
             onClick={onClose}
-            disabled={isGenerating}
+            disabled={isTransposing}
             className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,23 +104,15 @@ export function GenerateModal({
           </button>
         </div>
 
-        {!isGenerating ? (
+        {!isTransposing ? (
           <>
-            {/* Instrument info */}
-            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <p className="text-sm text-blue-300">
-                Generating for <span className="font-medium">{instrument.label}</span>
-                {instrument.clef === 'bass' && ' (bass clef)'}
-              </p>
-            </div>
-
-            {/* Concert Key Selection */}
+            {/* Key Selection */}
             <div className="mb-6">
               <label className="block text-sm text-gray-400 mb-2">
                 {instrument.transposition === 'C' ? 'Key' : 'Concert Key'}
               </label>
               <div className="grid grid-cols-6 gap-2">
-                {CONCERT_KEYS.map(key => (
+                {CONCERT_KEYS.map((key) => (
                   <button
                     key={key.value}
                     onClick={() => setSelectedConcertKey(key.value)}
@@ -152,16 +140,16 @@ export function GenerateModal({
             )}
 
             <button
-              onClick={handleGenerate}
+              onClick={handleTranspose}
               className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
             >
-              Generate PDF
+              Transpose
             </button>
           </>
         ) : (
           <div className="py-4">
             <div className="mb-2 flex justify-between text-sm">
-              <span className="text-gray-400">Generating PDF...</span>
+              <span className="text-gray-400">Transposing...</span>
               <span className="text-blue-400">{progress}%</span>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
