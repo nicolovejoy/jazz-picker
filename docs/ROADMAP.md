@@ -1,13 +1,12 @@
 # Roadmap
 
-## In Progress
+## Recently Completed
 
-- **Note range extraction**: Switch to Eric's ambitus log output. See NOTE-RANGE-EXTRACTION.md. Waiting on Eric's confirmation.
+- **Note range extraction**: Now using Eric's pre-parsed `range-data.txt`. See NOTE-RANGE-EXTRACTION.md.
 
 ## Backlog
 
-- Web: Fix preferred keys bug (`SongListItem.tsx:92` - use `getPreferredKey()` in `handleCardClick()`)
-- Web: Add "Add to Setlist" / "Change Key" to PDF viewer menu
+- Web: Preferred keys enhancement (see WEB-PREFERRED-KEYS.md)
 - Setlist "now playing" indicator (see partner's current song)
 - Note range warnings (need instrument range definitions)
 - Groups/bands for multi-user isolation (see GROUPS.md)
