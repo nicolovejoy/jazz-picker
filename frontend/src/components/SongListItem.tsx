@@ -5,6 +5,7 @@ import { GenerateModal } from './GenerateModal';
 import { formatKey, concertToWritten, type SongSummary, type Instrument } from '@/types/catalog';
 import type { PdfMetadata } from '../App';
 import { FiPlus, FiMusic } from 'react-icons/fi';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface SongListItemProps {
   song: SongSummary;
@@ -24,6 +25,8 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
   const didLongPress = useRef(false);
   const isTouch = useRef(false);
 
+  const { getPreferredKey, setPreferredKey } = useUserProfile();
+
   const { data: cachedInfo } = useQuery({
     queryKey: ['cachedKeys', song.title, instrument.transposition, instrument.clef],
     queryFn: () => api.getCachedKeys(song.title, instrument.transposition, instrument.clef),
@@ -33,8 +36,19 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
   const defaultConcertKey = cachedInfo?.default_key || song.default_key || 'c';
   const cachedConcertKeys = cachedInfo?.cached_concert_keys || [];
   const isDefaultCached = cachedConcertKeys.includes(defaultConcertKey);
-  const otherCachedKeys = cachedConcertKeys.filter((k) => k !== defaultConcertKey);
   const hasCachedVersion = cachedConcertKeys.length > 0;
+
+  // Preferred key for this song (from user profile or default)
+  const preferredKey = getPreferredKey(song.title, defaultConcertKey);
+
+  // Reorder other cached keys: preferred key first (if cached and not default), then rest
+  const otherCachedKeys = cachedConcertKeys
+    .filter((k) => k !== defaultConcertKey)
+    .sort((a, b) => {
+      if (a === preferredKey) return -1;
+      if (b === preferredKey) return 1;
+      return 0;
+    });
 
   const displayKey = (concertKey: string) => {
     if (instrument.transposition === 'C') {
@@ -64,6 +78,8 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
         generationTimeMs: result.generation_time_ms,
         crop: result.crop,
       });
+      // Update preferred key after successful load
+      setPreferredKey(song.title, concertKey, defaultConcertKey).catch(console.error);
     } catch (err) {
       console.error('Failed to fetch PDF:', err);
       console.error('Error details:', {
@@ -76,7 +92,7 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
       setGeneratingKey(null);
       setLoadingMessage('');
     }
-  }, [song.title, instrument, onOpenPdfUrl, cachedConcertKeys]);
+  }, [song.title, instrument, onOpenPdfUrl, cachedConcertKeys, setPreferredKey, defaultConcertKey]);
 
   const handleCardClick = () => {
     // If this was a long-press, don't open PDF
@@ -89,7 +105,7 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
       setShowActions(false);
       return;
     }
-    openPdf(defaultConcertKey);
+    openPdf(preferredKey);
   };
 
   const handleKeyClick = (e: React.MouseEvent, concertKey: string) => {
@@ -151,9 +167,11 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
               onClick={(e) => handleKeyClick(e, defaultConcertKey)}
               disabled={isGenerating}
               className={`px-2 py-0.5 text-sm rounded transition-all ${
-                isDefaultCached
-                  ? 'bg-green-500/20 text-green-300'
-                  : 'bg-white/5 text-gray-500'
+                preferredKey === defaultConcertKey
+                  ? 'bg-orange-500/20 text-orange-300'
+                  : isDefaultCached
+                    ? 'bg-green-500/20 text-green-300'
+                    : 'bg-white/5 text-gray-500'
               }`}
             >
               {generatingKey === defaultConcertKey ? '...' : displayKey(defaultConcertKey)}
@@ -164,7 +182,11 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
                 key={concertKey}
                 onClick={(e) => handleKeyClick(e, concertKey)}
                 disabled={isGenerating}
-                className="px-2 py-0.5 text-sm rounded bg-blue-500/15 text-blue-300 transition-all"
+                className={`px-2 py-0.5 text-sm rounded transition-all ${
+                  concertKey === preferredKey
+                    ? 'bg-orange-500/20 text-orange-300'
+                    : 'bg-blue-500/15 text-blue-300'
+                }`}
               >
                 {generatingKey === concertKey ? '...' : displayKey(concertKey)}
               </button>
@@ -215,9 +237,17 @@ export function SongListItem({ song, instrument, onOpenPdfUrl, onAddToSetlist }:
           defaultConcertKey={defaultConcertKey}
           instrument={instrument}
           onClose={() => setShowGenerateModal(false)}
-          onGenerated={(url) => {
+          onGenerated={(url, concertKey) => {
             setShowGenerateModal(false);
-            onOpenPdfUrl(url);
+            onOpenPdfUrl(url, {
+              songTitle: song.title,
+              key: concertKey,
+              clef: instrument.clef,
+              cached: false,
+              generationTimeMs: 0,
+              crop: undefined,
+            });
+            setPreferredKey(song.title, concertKey, defaultConcertKey).catch(console.error);
           }}
         />
       )}

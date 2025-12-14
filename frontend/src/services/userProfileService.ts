@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteField,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
@@ -70,4 +71,27 @@ export function subscribeToProfile(
     }
     callback(toUserProfile(docSnap.data() as UserProfileData));
   });
+}
+
+export async function setPreferredKey(
+  uid: string,
+  songTitle: string,
+  key: string,
+  defaultKey: string
+): Promise<void> {
+  const docRef = doc(db, 'users', uid);
+  const fieldPath = `preferredKeys.${songTitle}`;
+
+  if (key === defaultKey) {
+    // Sparse storage: remove entry if it matches default
+    await updateDoc(docRef, {
+      [fieldPath]: deleteField(),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await updateDoc(docRef, {
+      [fieldPath]: key,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }

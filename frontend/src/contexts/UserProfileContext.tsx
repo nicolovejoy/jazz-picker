@@ -5,6 +5,7 @@ import {
   subscribeToProfile,
   createProfile as createProfileService,
   updateProfile as updateProfileService,
+  setPreferredKey as setPreferredKeyService,
 } from '@/services/userProfileService';
 
 interface UserProfileContextType {
@@ -13,6 +14,7 @@ interface UserProfileContextType {
   createProfile: (data: { instrument: string; displayName: string }) => Promise<void>;
   updateProfile: (data: Partial<Pick<UserProfile, 'instrument' | 'displayName'>>) => Promise<void>;
   getPreferredKey: (songTitle: string, defaultKey: string) => string;
+  setPreferredKey: (songTitle: string, key: string, defaultKey: string) => Promise<void>;
 }
 
 const UserProfileContext = createContext<UserProfileContextType | null>(null);
@@ -52,6 +54,11 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     return profile?.preferredKeys?.[songTitle] ?? defaultKey;
   };
 
+  const setPreferredKey = async (songTitle: string, key: string, defaultKey: string) => {
+    if (!user) throw new Error('Must be signed in to set preferred key');
+    await setPreferredKeyService(user.uid, songTitle, key, defaultKey);
+  };
+
   return (
     <UserProfileContext.Provider
       value={{
@@ -60,6 +67,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         createProfile,
         updateProfile,
         getPreferredKey,
+        setPreferredKey,
       }}
     >
       {children}

@@ -25,7 +25,7 @@ interface GenerateModalProps {
   defaultConcertKey?: string;
   instrument: Instrument;
   onClose: () => void;
-  onGenerated: (url: string) => void;
+  onGenerated: (url: string, concertKey: string) => void;
 }
 
 export function GenerateModal({
@@ -80,7 +80,7 @@ export function GenerateModal({
 
       // Brief pause to show 100%
       setTimeout(() => {
-        onGenerated(result.url);
+        onGenerated(result.url, selectedConcertKey);
       }, 300);
     } catch (err) {
       clearInterval(progressInterval);

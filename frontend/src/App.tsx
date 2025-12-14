@@ -44,7 +44,7 @@ export interface CatalogNavigation {
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { profile, loading: profileLoading, updateProfile } = useUserProfile();
+  const { profile, loading: profileLoading, updateProfile, setPreferredKey } = useUserProfile();
 
   // Derive instrument from profile
   const instrument = profile?.instrument ? getInstrumentById(profile.instrument) : null;
@@ -535,6 +535,17 @@ function App() {
               setAddToSetlistKey(pdfMetadata.key);
             }
           } : undefined}
+          instrument={instrument}
+          onKeyChange={(url, newKey) => {
+            setPdfUrl(url);
+            if (pdfMetadata) {
+              setPdfMetadata({ ...pdfMetadata, key: newKey });
+              // Get default key from catalog for sparse storage
+              const song = catalog.find(s => s.title === pdfMetadata.songTitle);
+              const defaultKey = song?.default_key || 'c';
+              setPreferredKey(pdfMetadata.songTitle, newKey, defaultKey).catch(console.error);
+            }
+          }}
         />
       )}
 

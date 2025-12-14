@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList, FiMusic } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
+import type { Instrument } from '@/types/catalog';
+import { GenerateModal } from './GenerateModal';
 
 // Set up worker - use local import for Vite
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -16,11 +18,14 @@ interface PDFViewerProps {
   isTransitioning?: boolean;
   onClose: () => void;
   onAddToSetlist?: () => void;
+  instrument?: Instrument;
+  onKeyChange?: (url: string, newKey: string) => void;
 }
 
-export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, onAddToSetlist }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, onAddToSetlist, instrument, onKeyChange }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLandscape, setIsLandscape] = useState(
@@ -465,6 +470,16 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
             </button>
           )}
 
+          {instrument && onKeyChange && metadata && (
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Change Key"
+            >
+              <FiMusic className="text-white text-lg" />
+            </button>
+          )}
+
           <button
             onClick={handleDownload}
             className="p-2 hover:bg-white/20 rounded-full transition-colors"
@@ -624,6 +639,20 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
             <p className="text-gray-400">Loading next song...</p>
           </div>
         </div>
+      )}
+
+      {/* Change Key Modal */}
+      {showGenerateModal && instrument && metadata && onKeyChange && (
+        <GenerateModal
+          songTitle={metadata.songTitle}
+          defaultConcertKey={metadata.key}
+          instrument={instrument}
+          onClose={() => setShowGenerateModal(false)}
+          onGenerated={(url, newKey) => {
+            setShowGenerateModal(false);
+            onKeyChange(url, newKey);
+          }}
+        />
       )}
     </div>
   );
