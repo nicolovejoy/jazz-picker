@@ -1,37 +1,23 @@
 # Note Range Extraction
 
-**Status:** Implemented. Using Eric's pre-parsed range output.
+Eric's `ambitus-engraver.ily` outputs note ranges to LilyPond logs. His `parse-log-ambitus.py` script parses these into `range-data.txt`.
 
-## How It Works
+## Usage
 
-1. Eric runs LilyPond locally (generates PDFs + logs with ambitus data)
-2. Eric runs `Wrappers/parse-log-ambitus.py` to parse the log
-3. Eric commits `Wrappers/range-data.txt` to his repo
-4. GitHub workflow runs `build_catalog.py --ranges-file` → reads the file → builds catalog
-
-No LilyPond or MIDI parsing needed in CI. Fast builds.
-
-## Files
-
-- **Eric's repo:** `Wrappers/range-data.txt` - pre-parsed note ranges
-- **Eric's repo:** `Wrappers/parse-log-ambitus.py` - script to generate range-data.txt
-- **Jazz-picker:** `build_catalog.py --ranges-file PATH` - reads the ranges
+```bash
+python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
+```
 
 ## Range Data Format
 
 ```
-502 Blues - Ly - Am Standard.ly
+Song Title - Ly - Key Standard.ly
 refrain
 dis'
 gis''
-
-A Beautiful Friendship - Ly - C Standard.ly
-refrain
-b
-d''
 ```
 
-Four lines per section: filename, section name, low note (Dutch notation), high note. Blank line between entries.
+Four lines per section: filename, section name, low note (Dutch notation), high note.
 
 ## Dutch Notation → MIDI
 
@@ -40,17 +26,4 @@ Four lines per section: filename, section name, low note (Dutch notation), high 
 - Octave: `'`=+12, `,`=-12
 - Base: C (no marks) = MIDI 48
 
-Examples: `c'`=60, `b`=59, `d''`=74, `fis'`=66, `bes`=58
-
-## Usage
-
-```bash
-# With note ranges (recommended)
-python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
-
-# Without note ranges (fast, for testing)
-python build_catalog.py --skip-ranges
-
-# Limit songs (for testing)
-python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt --limit 10
-```
+Examples: `c'`=60, `fis'`=66, `bes`=58

@@ -1,14 +1,10 @@
 # Roadmap
 
-## Recently Completed
-
-- **Note range extraction**: Now using Eric's pre-parsed `range-data.txt`. See NOTE-RANGE-EXTRACTION.md.
-
 ## Backlog
 
 - Web: Preferred keys enhancement (see WEB-PREFERRED-KEYS.md)
 - Setlist "now playing" indicator (see partner's current song)
-- Note range warnings (need instrument range definitions)
+- Note range warnings (needs instrument range definitions)
 - Groups/bands for multi-user isolation (see GROUPS.md)
 
 ## Design Decisions

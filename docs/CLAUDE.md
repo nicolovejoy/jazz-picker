@@ -47,13 +47,10 @@ PDFs cached in S3. LilyPond generates on cache miss.
 ## Catalog Build
 
 ```bash
-python build_catalog.py              # Full build (parses note ranges from LilyPond log)
-python build_catalog.py --skip-ranges  # Fast rebuild (no note ranges)
+python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
 ```
 
-Upload to S3: `aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db`
-
-Note ranges come from Eric's `ambitus-engraver.ily` output. See NOTE-RANGE-EXTRACTION.md.
+GitHub workflow auto-rebuilds when Eric pushes to his repo. See NOTE-RANGE-EXTRACTION.md.
 
 ## Firestore Schema
 
