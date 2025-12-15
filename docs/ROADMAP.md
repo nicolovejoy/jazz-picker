@@ -6,6 +6,9 @@
 
 ## Backlog
 
+- Web: Second tap on Setlist nav should go to setlist list (not stay on current setlist)
+- Web: Setlist subscription doesn't refresh after creating/joining a group (needs page refresh)
+- Web: Create group modal UX glitch (shows create form again instead of success)
 - Setlist "now playing" indicator (see partner's current song)
 - iOS: Setlist rename functionality
 - iOS: Groups UI (after web is working)
