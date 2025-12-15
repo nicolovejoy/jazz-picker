@@ -7,7 +7,6 @@ import { PDFViewer } from './components/PDFViewer';
 import { SetlistManager } from './components/SetlistManager';
 import { SetlistViewer } from './components/SetlistViewer';
 import { AboutPage } from './components/AboutPage';
-import { AddToSetlistModal } from './components/AddToSetlistModal';
 import { SignIn } from './components/SignIn';
 import { OnboardingModal } from './components/OnboardingModal';
 import { InstrumentPickerModal } from './components/InstrumentPickerModal';
@@ -60,8 +59,6 @@ function App() {
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [songToAdd, setSongToAdd] = useState<SongSummary | null>(null);
-  const [addToSetlistKey, setAddToSetlistKey] = useState<string | undefined>(undefined);
   const [catalog, setCatalog] = useState<SongSummary[]>([]);
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -541,14 +538,6 @@ function App() {
             setPdfMetadata(null);
             setCatalogNav(null);
           }}
-          onAddToSetlist={pdfMetadata ? () => {
-            // Find the song in catalog by title
-            const song = catalog.find(s => s.title === pdfMetadata.songTitle);
-            if (song) {
-              setSongToAdd(song);
-              setAddToSetlistKey(pdfMetadata.key);
-            }
-          } : undefined}
           instrument={instrument}
           onKeyChange={(url, newKey) => {
             setPdfUrl(url);
@@ -559,21 +548,6 @@ function App() {
               const defaultKey = song?.default_key || 'c';
               setPreferredKey(pdfMetadata.songTitle, newKey, defaultKey).catch(console.error);
             }
-          }}
-        />
-      )}
-
-      {songToAdd && (
-        <AddToSetlistModal
-          song={songToAdd}
-          concertKey={addToSetlistKey}
-          onClose={() => {
-            setSongToAdd(null);
-            setAddToSetlistKey(undefined);
-          }}
-          onAdded={(setlist) => {
-            setActiveSetlist(setlist);
-            setActiveContext('setlist');
           }}
         />
       )}

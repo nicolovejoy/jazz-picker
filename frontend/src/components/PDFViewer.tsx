@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiFilePlus, FiChevronsUp, FiMoreVertical } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiFilePlus, FiChevronsUp, FiMoreVertical, FiPlus, FiCheck } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Instrument } from '@/types/catalog';
 import { TransposeModal } from './TransposeModal';
+import { useSetlists } from '@/contexts/SetlistContext';
 
 // Set up worker - use local import for Vite
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -17,16 +18,20 @@ interface PDFViewerProps {
   setlistNav?: SetlistNavigation | null;
   isTransitioning?: boolean;
   onClose: () => void;
-  onAddToSetlist?: () => void;
   instrument?: Instrument;
   onKeyChange?: (url: string, newKey: string) => void;
 }
 
-export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, onAddToSetlist, instrument, onKeyChange }: PDFViewerProps) {
+export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClose, instrument, onKeyChange }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState(1.5);
   const [showTransposeModal, setShowTransposeModal] = useState(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
+  const [showAddToSetlistMenu, setShowAddToSetlistMenu] = useState(false);
+  const [addingToSetlistId, setAddingToSetlistId] = useState<string | null>(null);
+  const [addedToSetlistId, setAddedToSetlistId] = useState<string | null>(null);
+
+  const { setlists, addItem } = useSetlists();
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLandscape, setIsLandscape] = useState(
@@ -439,15 +444,71 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
             </button>
           )}
 
-          {onAddToSetlist && (
-            <button
-              onClick={onAddToSetlist}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Add to Setlist"
-              title="Add to Setlist"
+          {metadata && (
+            <div
+              className="relative"
+              onMouseEnter={() => setShowAddToSetlistMenu(true)}
+              onMouseLeave={() => {
+                setShowAddToSetlistMenu(false);
+                setAddedToSetlistId(null);
+              }}
             >
-              <FiFilePlus className="text-white text-lg" />
-            </button>
+              <button
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Add to Setlist"
+              >
+                <FiFilePlus className="text-white text-lg" />
+              </button>
+
+              {showAddToSetlistMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto">
+                  <div className="px-3 py-2 border-b border-white/10 text-xs text-gray-400 uppercase tracking-wide">
+                    Add to Setlist
+                  </div>
+                  {setlists.length === 0 ? (
+                    <div className="px-3 py-4 text-gray-500 text-sm text-center">
+                      No setlists yet
+                    </div>
+                  ) : (
+                    setlists.map(setlist => (
+                      <button
+                        key={setlist.id}
+                        onClick={async () => {
+                          if (addedToSetlistId === setlist.id) return;
+                          setAddingToSetlistId(setlist.id);
+                          try {
+                            await addItem(setlist.id, {
+                              songTitle: metadata.songTitle,
+                              concertKey: metadata.key,
+                            });
+                            setAddedToSetlistId(setlist.id);
+                            setTimeout(() => {
+                              setShowAddToSetlistMenu(false);
+                              setAddedToSetlistId(null);
+                            }, 600);
+                          } catch (err) {
+                            console.error('Failed to add to setlist:', err);
+                          } finally {
+                            setAddingToSetlistId(null);
+                          }
+                        }}
+                        disabled={addingToSetlistId === setlist.id}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-white hover:bg-white/10 transition-colors text-left"
+                      >
+                        <span className="text-sm truncate">{setlist.name}</span>
+                        {addingToSetlistId === setlist.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 flex-shrink-0"></div>
+                        ) : addedToSetlistId === setlist.id ? (
+                          <FiCheck className="text-green-400 flex-shrink-0" />
+                        ) : (
+                          <FiPlus className="text-gray-400 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Overflow Menu */}
