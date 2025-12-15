@@ -6,9 +6,13 @@ Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead
 
 **Stack:**
 - iOS App: `JazzPicker/` (SwiftUI) — primary client
-- Web: `frontend/` (React + Vite) — secondary client
+- Web: `frontend/` (React + Vite) — gig-ready secondary client
 - Backend: `app.py` (Flask on Fly.io) — PDF generation only
 - Firebase: Auth + Firestore (users, setlists)
+
+**Live URLs:**
+- Web: https://jazzpicker.pianohouseproject.org
+- API: https://jazz-picker.fly.dev
 
 ## Quick Start
 

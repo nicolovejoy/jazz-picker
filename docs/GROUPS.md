@@ -66,7 +66,7 @@ users/{uid}
 
 ## Migration Path
 
-**Phase 1:** Preferred keys in Firestore. Done (iOS). Web has bug (see ROADMAP.md).
+**Phase 1:** Preferred keys in Firestore. Done (iOS and web).
 
 **Phase 2:** Add groups. Migrate existing users:
 - Create a default group for existing users who share setlists
