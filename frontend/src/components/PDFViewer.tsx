@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiList, FiMusic, FiMoreVertical } from 'react-icons/fi';
+import { FiX, FiZoomIn, FiZoomOut, FiMaximize, FiMinimize, FiChevronLeft, FiChevronRight, FiDownload, FiFilePlus, FiChevronsUp, FiMoreVertical } from 'react-icons/fi';
 import type { PdfMetadata, SetlistNavigation } from '../App';
 import type { Instrument } from '@/types/catalog';
 import { TransposeModal } from './TransposeModal';
@@ -433,8 +433,9 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
               onClick={() => setShowTransposeModal(true)}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"
               aria-label="Transpose"
+              title="Transpose"
             >
-              <FiMusic className="text-white text-lg" />
+              <FiChevronsUp className="text-white text-lg" />
             </button>
           )}
 
@@ -443,15 +444,19 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
               onClick={onAddToSetlist}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"
               aria-label="Add to Setlist"
+              title="Add to Setlist"
             >
-              <FiList className="text-white text-lg" />
+              <FiFilePlus className="text-white text-lg" />
             </button>
           )}
 
           {/* Overflow Menu */}
-          <div className="relative">
+          <div
+            className="relative"
+            onMouseEnter={() => setShowOverflowMenu(true)}
+            onMouseLeave={() => setShowOverflowMenu(false)}
+          >
             <button
-              onClick={() => setShowOverflowMenu(!showOverflowMenu)}
               className="p-2 hover:bg-white/20 rounded-full transition-colors"
               aria-label="More options"
             >
@@ -459,13 +464,14 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
             </button>
 
             {showOverflowMenu && (
-              <div className="absolute top-full right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+              <div className="absolute top-full right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl overflow-hidden min-w-[160px]">
                 {/* Zoom Controls */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
                   <button
                     onClick={handleZoomOut}
                     className="p-1.5 hover:bg-white/10 rounded transition-colors"
                     aria-label="Zoom out"
+                    title="Zoom out"
                   >
                     <FiZoomOut className="text-white" />
                   </button>
@@ -476,6 +482,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
                     onClick={handleZoomIn}
                     className="p-1.5 hover:bg-white/10 rounded transition-colors"
                     aria-label="Zoom in"
+                    title="Zoom in"
                   >
                     <FiZoomIn className="text-white" />
                   </button>
@@ -512,6 +519,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
           onClick={onClose}
           className="p-3 bg-blue-600 hover:bg-blue-500 rounded-full text-white shadow-lg transition-colors"
           aria-label="Close"
+          title="Close"
         >
           <FiX className="text-xl" />
         </button>
