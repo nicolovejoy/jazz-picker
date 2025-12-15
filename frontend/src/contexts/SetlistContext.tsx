@@ -36,6 +36,8 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
 
   // Get user's group IDs from profile
   const userGroupIds = profile?.groups;
+  // Stable string for dependency comparison (arrays don't compare by value)
+  const userGroupIdsKey = userGroupIds?.slice().sort().join(',') ?? '';
 
   useEffect(() => {
     if (!user) {
@@ -52,7 +54,7 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
     }, userGroupIds);
 
     return unsubscribe;
-  }, [user, userGroupIds]);
+  }, [user, userGroupIdsKey, userGroupIds]);
 
   const createSetlist = async (name: string, groupId?: string): Promise<string> => {
     if (!user) throw new Error('Must be signed in to create setlist');

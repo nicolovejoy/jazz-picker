@@ -517,7 +517,14 @@ function App() {
       {!pdfUrl && (
         <BottomNav
           activeContext={activeContext}
-          onContextChange={setActiveContext}
+          onContextChange={(context) => {
+            if (context === 'setlist' && activeContext === 'setlist' && activeSetlist) {
+              // Second tap on setlist tab goes back to setlist list
+              setActiveSetlist(null);
+            } else {
+              setActiveContext(context);
+            }
+          }}
           onSpin={handleSpin}
           isSpinning={isSpinning}
         />

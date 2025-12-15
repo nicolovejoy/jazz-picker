@@ -31,20 +31,13 @@ export function GroupsSection() {
     navigator.clipboard.writeText(code);
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Groups</h3>
-        <div className="animate-pulse bg-white/5 rounded h-12"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Groups</h3>
 
-      {groups.length === 0 ? (
+      {loading ? (
+        <div className="animate-pulse bg-white/5 rounded h-12"></div>
+      ) : groups.length === 0 ? (
         <div className="p-4 bg-white/5 rounded border border-white/10 text-center">
           <p className="text-gray-400 mb-3">You're not in any groups yet</p>
           <div className="flex gap-2 justify-center">
