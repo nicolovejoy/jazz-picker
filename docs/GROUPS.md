@@ -1,6 +1,6 @@
 # Groups Design
 
-**Status:** Phase 1 + 2 implemented. Run migration script before testing.
+**Status:** Phase 1 + 2 complete. Web working. Phase 3 (iOS) next.
 
 ## Overview
 

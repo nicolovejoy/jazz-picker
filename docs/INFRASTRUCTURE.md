@@ -12,6 +12,7 @@
 - Backend: `fly deploy`
 - Frontend: Auto on push to main (Vercel)
 - Firestore rules: `firebase deploy --only firestore:rules`
+- Firestore indexes: `firebase deploy --only firestore:indexes`
 - iOS: Xcode → Archive → App Store Connect
 
 ## Secrets

@@ -79,7 +79,7 @@ auditLog/{id}
   - groupId, action, actorId, targetId, timestamp, metadata
 ```
 
-Security: Currently all authenticated users share setlists. Groups feature in progress (see GROUPS.md).
+Security: Setlists filtered by group membership. See GROUPS.md.
 
 ## Key Concepts
 
