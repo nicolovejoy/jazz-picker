@@ -50,8 +50,8 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
     const standardPageWidth = 612;
     const standardPageHeight = 792;
 
-    // Account for header and padding
-    const availableHeight = window.innerHeight - 140;
+    // Account for minimal header space
+    const availableHeight = window.innerHeight - 60;
     const availableWidth = window.innerWidth; // Use full width, no padding
 
     // Calculate scale based on height
@@ -59,7 +59,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
 
     // In landscape mode, consider width for 2 pages side-by-side
     if (isLandscapeNow) {
-      const widthScale = availableWidth / (standardPageWidth * 2 + 4); // 2 pages + small gap
+      const widthScale = availableWidth / (standardPageWidth * 2); // 2 pages, no gap
       // Add 4% boost to default size
       return Math.min(Math.max(Math.min(heightScale, widthScale) * 1.04, 0.8), 3.0);
     } else {
@@ -415,9 +415,9 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
   const canNavigate = isLandscape ? numPages > 2 : numPages > 1;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div ref={containerRef} className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* Safe area spacer */}
-      <div className="flex-shrink-0 bg-black" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="flex-shrink-0 bg-white" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
 
       {/* Floating Controls */}
       <div
@@ -589,7 +589,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
                 }
               >
                 <div
-                  className={`flex ${isLandscape ? 'flex-row gap-1' : 'flex-col'} items-center justify-center transition-all duration-200 ${
+                  className={`flex ${isLandscape ? 'flex-row' : 'flex-col'} items-center justify-center transition-all duration-200 ${
                     swipeDirection === 'left' ? 'animate-slide-left' : swipeDirection === 'right' ? 'animate-slide-right' : ''
                   }`}
                 >
@@ -597,7 +597,6 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
                     key={`page_${currentPage}`}
                     pageNumber={currentPage}
                     scale={scale}
-                    className="shadow-2xl"
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                   />
@@ -607,7 +606,6 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
                       key={`page_${currentPage + 1}`}
                       pageNumber={currentPage + 1}
                       scale={scale}
-                      className="shadow-2xl"
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
                     />

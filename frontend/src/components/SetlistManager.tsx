@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiPlus, FiTrash2, FiMusic } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiMusic, FiEdit2 } from 'react-icons/fi';
 import { useSetlists } from '@/contexts/SetlistContext';
 import type { Setlist } from '@/types/setlist';
 
@@ -12,9 +12,10 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
   const [newSetlistName, setNewSetlistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  const { setlists, loading, createSetlist, deleteSetlist } = useSetlists();
+  const { setlists, loading, createSetlist, updateSetlist, deleteSetlist } = useSetlists();
 
   const handleCreate = async () => {
     if (!newSetlistName.trim()) return;
@@ -47,6 +48,20 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
       setDeleteConfirm(null);
     } catch (err) {
       console.error('Failed to delete setlist:', err);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleRename = async () => {
+    if (!renaming || !renaming.name.trim()) return;
+
+    setIsPending(true);
+    try {
+      await updateSetlist(renaming.id, { name: renaming.name.trim() });
+      setRenaming(null);
+    } catch (err) {
+      console.error('Failed to rename setlist:', err);
     } finally {
       setIsPending(false);
     }
@@ -130,40 +145,82 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                 key={setlist.id}
                 className="p-4 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg flex items-center gap-4 transition-all"
               >
-                <button
-                  onClick={() => onSelectSetlist(setlist)}
-                  className="flex-1 text-left"
-                >
-                  <div className="text-white font-medium">{setlist.name}</div>
-                  <div className="text-gray-500 text-sm">
-                    Updated {setlist.updatedAt.toLocaleDateString()}
-                  </div>
-                </button>
-
-                {deleteConfirm === setlist.id ? (
-                  <div className="flex items-center gap-2">
+                {renaming?.id === setlist.id ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={renaming.name}
+                      onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+                      className="flex-1 px-3 py-1 bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:border-blue-500"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRename();
+                        if (e.key === 'Escape') setRenaming(null);
+                      }}
+                    />
                     <button
-                      onClick={() => handleDelete(setlist.id)}
-                      disabled={isPending}
-                      className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-white text-sm"
+                      onClick={handleRename}
+                      disabled={!renaming.name.trim() || isPending}
+                      className="px-3 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 rounded text-white text-sm"
                     >
-                      {isPending ? '...' : 'Delete'}
+                      {isPending ? '...' : 'Save'}
                     </button>
                     <button
-                      onClick={() => setDeleteConfirm(null)}
+                      onClick={() => setRenaming(null)}
                       className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-white text-sm"
                     >
                       Cancel
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setDeleteConfirm(setlist.id)}
-                    className="p-2 text-gray-500 hover:text-red-400 transition-colors"
-                    aria-label="Delete setlist"
-                  >
-                    <FiTrash2 />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onSelectSetlist(setlist)}
+                      className="flex-1 text-left"
+                    >
+                      <div className="text-white font-medium">{setlist.name}</div>
+                      <div className="text-gray-500 text-sm">
+                        Updated {setlist.updatedAt.toLocaleDateString()}
+                      </div>
+                    </button>
+
+                    {deleteConfirm === setlist.id ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDelete(setlist.id)}
+                          disabled={isPending}
+                          className="px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-white text-sm"
+                        >
+                          {isPending ? '...' : 'Delete'}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-white text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setRenaming({ id: setlist.id, name: setlist.name })}
+                          className="p-2 text-gray-500 hover:text-blue-400 transition-colors"
+                          aria-label="Rename setlist"
+                          title="Rename"
+                        >
+                          <FiEdit2 />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(setlist.id)}
+                          className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                          aria-label="Delete setlist"
+                          title="Delete"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}

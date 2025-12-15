@@ -5,6 +5,7 @@
 - Setlist "now playing" indicator (see partner's current song)
 - Note range warnings (needs instrument range definitions)
 - Groups/bands for multi-user isolation (see GROUPS.md)
+- iOS: Setlist rename functionality
 
 ## Design Decisions
 
