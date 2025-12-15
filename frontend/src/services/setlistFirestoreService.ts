@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -21,16 +22,42 @@ function toSetlist(id: string, data: SetlistData): Setlist {
     id,
     name: data.name,
     ownerId: data.ownerId,
+    groupId: data.groupId,
     createdAt: data.createdAt?.toDate?.() || new Date(),
     updatedAt: data.updatedAt?.toDate?.() || new Date(),
     items: data.items || [],
   };
 }
 
+/**
+ * Subscribe to setlists.
+ * @param callback - Called with updated setlists
+ * @param groupIds - If provided, filter to these groups. If undefined, show all (legacy mode).
+ */
 export function subscribeToSetlists(
-  callback: (setlists: Setlist[]) => void
+  callback: (setlists: Setlist[]) => void,
+  groupIds?: string[]
 ): Unsubscribe {
-  const q = query(collection(db, COLLECTION), orderBy('updatedAt', 'desc'));
+  // If groupIds provided but empty, return no setlists
+  if (groupIds !== undefined && groupIds.length === 0) {
+    callback([]);
+    return () => {}; // No-op unsubscribe
+  }
+
+  // Build query
+  let q;
+  if (groupIds && groupIds.length > 0) {
+    // Firestore 'in' supports up to 30 values
+    const limitedGroupIds = groupIds.slice(0, 30);
+    q = query(
+      collection(db, COLLECTION),
+      where('groupId', 'in', limitedGroupIds),
+      orderBy('updatedAt', 'desc')
+    );
+  } else {
+    // Legacy mode: all setlists
+    q = query(collection(db, COLLECTION), orderBy('updatedAt', 'desc'));
+  }
 
   return onSnapshot(q, (snapshot) => {
     const setlists = snapshot.docs.map((doc) =>
@@ -66,15 +93,25 @@ export async function getSetlist(id: string): Promise<Setlist | null> {
   return toSetlist(docSnap.id, docSnap.data() as SetlistData);
 }
 
-export async function createSetlist(name: string, ownerId: string): Promise<string> {
+export async function createSetlist(
+  name: string,
+  ownerId: string,
+  groupId?: string
+): Promise<string> {
   const docRef = doc(collection(db, COLLECTION));
-  await setDoc(docRef, {
+  const data: Record<string, unknown> = {
     name,
     ownerId,
     items: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (groupId) {
+    data.groupId = groupId;
+  }
+
+  await setDoc(docRef, data);
   return docRef.id;
 }
 

@@ -15,6 +15,7 @@ export interface Setlist {
   id: string;
   name: string;
   ownerId: string;
+  groupId?: string;  // nullable during migration, required later
   createdAt: Date;
   updatedAt: Date;
   items: SetlistItem[];
@@ -24,6 +25,7 @@ export interface Setlist {
 export interface SetlistData {
   name: string;
   ownerId: string;
+  groupId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   items: SetlistItem[];

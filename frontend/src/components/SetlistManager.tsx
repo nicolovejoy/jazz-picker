@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FiPlus, FiTrash2, FiMusic, FiEdit2 } from 'react-icons/fi';
 import { useSetlists } from '@/contexts/SetlistContext';
+import { useGroups } from '@/contexts/GroupsContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import type { Setlist } from '@/types/setlist';
 
 interface SetlistManagerProps {
@@ -10,28 +12,46 @@ interface SetlistManagerProps {
 
 export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps) {
   const [newSetlistName, setNewSetlistName] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [isPending, setIsPending] = useState(false);
 
   const { setlists, loading, createSetlist, updateSetlist, deleteSetlist } = useSetlists();
+  const { groups } = useGroups();
+  const { profile } = useUserProfile();
+
+  // Map group IDs to names for displaying badges
+  const groupNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach(g => map.set(g.id, g.name));
+    return map;
+  }, [groups]);
+
+  // Default to last used group or first group
+  const defaultGroupId = profile?.lastUsedGroupId || groups[0]?.id || null;
 
   const handleCreate = async () => {
     if (!newSetlistName.trim()) return;
 
+    // Determine which group to use
+    const groupId = selectedGroupId || defaultGroupId;
+
     setIsPending(true);
     try {
-      const id = await createSetlist(newSetlistName.trim());
+      const id = await createSetlist(newSetlistName.trim(), groupId || undefined);
       const created: Setlist = {
         id,
         name: newSetlistName.trim(),
         ownerId: '',
+        groupId: groupId || undefined,
         createdAt: new Date(),
         updatedAt: new Date(),
         items: [],
       };
       setNewSetlistName('');
+      setSelectedGroupId(null);
       setIsCreating(false);
       onSelectSetlist(created);
     } catch (err) {
@@ -81,7 +101,14 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
         </div>
 
         {/* Create New Setlist */}
-        {isCreating ? (
+        {groups.length === 0 ? (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+            <p className="text-yellow-200 mb-2">Join or create a group first</p>
+            <p className="text-sm text-gray-400">
+              Go to Settings → Groups to get started
+            </p>
+          </div>
+        ) : isCreating ? (
           <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
             <input
               type="text"
@@ -95,6 +122,25 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                 if (e.key === 'Escape') setIsCreating(false);
               }}
             />
+
+            {/* Group picker (only show if user has multiple groups) */}
+            {groups.length > 1 && (
+              <div className="mb-3">
+                <label className="block text-xs text-gray-400 mb-1">Group</label>
+                <select
+                  value={selectedGroupId || defaultGroupId || ''}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                >
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id} className="bg-gray-800">
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={handleCreate}
@@ -179,8 +225,13 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                       className="flex-1 text-left"
                     >
                       <div className="text-white font-medium">{setlist.name}</div>
-                      <div className="text-gray-500 text-sm">
-                        Updated {setlist.updatedAt.toLocaleDateString()}
+                      <div className="text-gray-500 text-sm flex items-center gap-2">
+                        <span>Updated {setlist.updatedAt.toLocaleDateString()}</span>
+                        {setlist.groupId && groupNameMap.has(setlist.groupId) && (
+                          <span className="text-xs text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded">
+                            {groupNameMap.get(setlist.groupId)}
+                          </span>
+                        )}
                       </div>
                     </button>
 

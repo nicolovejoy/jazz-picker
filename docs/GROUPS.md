@@ -1,78 +1,100 @@
 # Groups Design
 
-**Status:** Design document only - not implementing now.
+**Status:** Phase 1 + 2 implemented. Run migration script before testing.
 
 ## Overview
 
-Replacing the current "all users share everything" model with groups (bands). Each group has members and setlists.
+Replacing the current "all users share everything" model with groups (bands). Every setlist belongs to a group. No personal setlists (create a solo group if you want privacy).
 
 ## Firestore Schema
 
 ```
 groups/{groupId}
   - name: "Friday Jazz Trio"
+  - code: "bebop-monk-cool"  // jazz-themed slug, visible to all members
   - createdAt, updatedAt
 
-groupMembers/{groupId}/members/{userId}
-  - joinedAt
-  - role: "member" | "admin"  // admin = creator, can delete group
+groups/{groupId}/members/{userId}
+  - role: "admin" | "member"  // creator is admin, can delegate
+  - joinedAt: timestamp
 
 setlists/{id}
   - name, createdAt, updatedAt
-  - ownerId: "user123"  // creator, always set
-  - groupId: "group123" | null  // null = personal setlist, not shared
+  - ownerId: "user123"  // creator (audit trail)
+  - groupId: "group123"  // required, every setlist belongs to a group
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
 
 users/{uid}
   - instrument, displayName
-  - preferredKeys: { "Autumn Leaves": "am", ... }  // sparse: only stores overrides from default key
-  - groups: ["group123", "group456"]  // for quick lookup
+  - preferredKeys: { "Autumn Leaves": "am", ... }  // sparse
+  - groups: ["group123", "group456"]  // denormalized for quick lookup
+  - lastUsedGroupId: "group123"  // for default group selection
+
+auditLog/{logId}
+  - groupId, action, actorId, targetId, timestamp, metadata
+  - actions: member_joined, member_left, member_removed, admin_granted, admin_revoked
 ```
 
-## Preferred Keys
+## Group Codes
 
-**Two sources of keys:**
-1. **Setlist item key**: The key for a specific song in a specific setlist (stored in setlist item)
-2. **User preferred key**: The last key a user viewed a song in (stored per-user, per-song)
+Jazz-themed slugs from ~1000 word list, 3 words combined:
+- `bebop-monk-cool`, `swing-tritone-blue`, `modal-keys-midnight`
+- Categories: styles, musicians, terms, instruments, feel words
+- ~1 billion combinations (collision-resistant)
+- All members can see and share the code
 
-**Behavior:**
-- Viewing from setlist → shows setlist item's key → also updates user's preferred key
-- Viewing from browse → shows user's preferred key (or default if none set)
-- Changing key while browsing → updates user's preferred key
-- Changing key while in setlist → updates both setlist item AND user's preferred key
+## Group Selection UX
 
-**No group preferred keys.** Groups own setlists; setlist items carry the keys.
+When creating a setlist (user in multiple groups):
+1. Default to last-used group
+2. Show up to 3 most recent groups
+3. "More options" for additional groups
 
-**Sparse storage:** User's `preferredKeys` map only stores keys that differ from the song's default. If not present, use the song's default key from catalog.
+## Admin Model
 
-## Setlist Ownership
-
-- Personal setlist: `groupId = null`, only visible to owner
-- Group setlist: `groupId` set, visible to all group members
-- When creating setlist, user picks personal or which group (if in multiple)
-- `ownerId` always tracks creator (for personal setlists and audit trail)
-
-## Sharing & Copying
-
-- Share setlist outside group → creates independent copy for recipient's group
-- Copy within group → creates independent copy
-- Copies are fully independent - no sync between them
+- Creator is admin
+- Admin can delegate admin to others
+- Admin can remove members (placeholder for MVP)
+- Can't leave group if you're the sole admin
+- When leaving: most senior admin inherits ownership
 
 ## Joining Groups
 
-- User requests to join a group (by code or search)
-- Admin approves request → user added to group
-- Future: invite by email
+MVP: Code-based (know the code = you're in)
+- Enter jazz slug → added as member
+- No approval flow needed
 
-## Migration Path
+## Preferred Keys
 
-**Phase 1:** Preferred keys in Firestore. Done (iOS and web).
+Unchanged from current behavior:
+- Per-user, per-song in Firestore (sparse storage)
+- Setlist items carry their own concert key
+- No group-level preferred keys
 
-**Phase 2:** Add groups. Migrate existing users:
-- Create a default group for existing users who share setlists
-- Move their setlists to that group
+## Leaving a Group
 
-## Open Questions
+- Can't leave if sole admin
+- Setlists you created stay with the group
+- Most senior admin becomes owner of orphaned resources
 
-- Group deletion - what happens to group setlists? Delete? Convert to personal for owner?
-- Leave group - do group setlists you created stay with the group or come with you?
+## Implementation Phases
+
+### Phase 1: Backend / Firestore
+- Groups collection + members subcollection
+- Add groupId to setlists (nullable initially)
+- Add groups[] and lastUsedGroupId to users
+- Security rules
+- Jazz slug generator
+
+### Phase 2: Web MVP
+- Create/join group flows
+- Group switcher UI
+- Filtered setlist views
+- Member list
+
+### Phase 3: iOS Port
+- Port all group functionality
+
+### Phase 4: Cleanup
+- Make groupId required
+- Remove legacy shared-everything code

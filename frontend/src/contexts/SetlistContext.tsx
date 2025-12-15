@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { useUserProfile } from './UserProfileContext';
 import type { Setlist, SetlistItem, AddSetlistItemInput } from '@/types/setlist';
 import {
   subscribeToSetlists,
@@ -16,7 +17,7 @@ import {
 interface SetlistContextType {
   setlists: Setlist[];
   loading: boolean;
-  createSetlist: (name: string) => Promise<string>;
+  createSetlist: (name: string, groupId?: string) => Promise<string>;
   updateSetlist: (id: string, data: Partial<Pick<Setlist, 'name' | 'items'>>) => Promise<void>;
   deleteSetlist: (id: string) => Promise<void>;
   addItem: (setlistId: string, input: AddSetlistItemInput) => Promise<void>;
@@ -29,8 +30,12 @@ const SetlistContext = createContext<SetlistContextType | null>(null);
 
 export function SetlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Get user's group IDs from profile
+  const userGroupIds = profile?.groups;
 
   useEffect(() => {
     if (!user) {
@@ -40,17 +45,18 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
+    // Pass groupIds to filter setlists (undefined = legacy mode, shows all)
     const unsubscribe = subscribeToSetlists((newSetlists) => {
       setSetlists(newSetlists);
       setLoading(false);
-    });
+    }, userGroupIds);
 
     return unsubscribe;
-  }, [user]);
+  }, [user, userGroupIds]);
 
-  const createSetlist = async (name: string): Promise<string> => {
+  const createSetlist = async (name: string, groupId?: string): Promise<string> => {
     if (!user) throw new Error('Must be signed in to create setlist');
-    return createSetlistService(name, user.uid);
+    return createSetlistService(name, user.uid, groupId);
   };
 
   const updateSetlist = async (id: string, data: Partial<Pick<Setlist, 'name' | 'items'>>) => {

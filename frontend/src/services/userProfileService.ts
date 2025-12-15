@@ -18,6 +18,8 @@ function toUserProfile(data: UserProfileData): UserProfile {
     instrument: data.instrument,
     displayName: data.displayName,
     preferredKeys: data.preferredKeys,
+    groups: data.groups,
+    lastUsedGroupId: data.lastUsedGroupId,
     createdAt: data.createdAt instanceof Date ? data.createdAt : (data.createdAt as { toDate: () => Date })?.toDate?.() || new Date(),
     updatedAt: data.updatedAt instanceof Date ? data.updatedAt : (data.updatedAt as { toDate: () => Date })?.toDate?.() || new Date(),
   };

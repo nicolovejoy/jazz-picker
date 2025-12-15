@@ -60,14 +60,26 @@ GitHub workflow auto-rebuilds when Eric pushes to his repo.
 
 ```
 users/{uid}
-  - instrument, displayName, preferredKeys, createdAt, updatedAt
+  - instrument, displayName, preferredKeys, groups[], lastUsedGroupId
+  - createdAt, updatedAt
+
+groups/{groupId}
+  - name, code (jazz slug like "bebop-monk-cool")
+  - createdAt, updatedAt
+
+groups/{groupId}/members/{userId}
+  - role: "admin" | "member", joinedAt
 
 setlists/{id}
-  - name, ownerId, createdAt, updatedAt
+  - name, ownerId, groupId (nullable during migration)
+  - createdAt, updatedAt
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
+
+auditLog/{id}
+  - groupId, action, actorId, targetId, timestamp, metadata
 ```
 
-Security: All authenticated users share setlists (2-person band). See GROUPS.md for multi-band design.
+Security: Currently all authenticated users share setlists. Groups feature in progress (see GROUPS.md).
 
 ## Key Concepts
 

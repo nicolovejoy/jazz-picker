@@ -6,6 +6,7 @@ import App from './App.tsx';
 import { api } from './services/api';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
+import { GroupsProvider } from './contexts/GroupsContext';
 import { SetlistProvider } from './contexts/SetlistContext';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
@@ -43,11 +44,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <UserProfileProvider>
-        <SetlistProvider>
-          <QueryClientProvider client={queryClient}>
-            <App />
-          </QueryClientProvider>
-        </SetlistProvider>
+        <GroupsProvider>
+          <SetlistProvider>
+            <QueryClientProvider client={queryClient}>
+              <App />
+            </QueryClientProvider>
+          </SetlistProvider>
+        </GroupsProvider>
       </UserProfileProvider>
     </AuthProvider>
   </StrictMode>

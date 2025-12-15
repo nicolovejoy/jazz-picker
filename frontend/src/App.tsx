@@ -11,6 +11,7 @@ import { AddToSetlistModal } from './components/AddToSetlistModal';
 import { SignIn } from './components/SignIn';
 import { OnboardingModal } from './components/OnboardingModal';
 import { InstrumentPickerModal } from './components/InstrumentPickerModal';
+import { GroupsSection } from './components/GroupsSection';
 import { useAuth } from './contexts/AuthContext';
 import { useUserProfile } from './contexts/UserProfileContext';
 import type { Setlist } from '@/types/setlist';
@@ -463,11 +464,12 @@ function App() {
 
         {/* Menu Context */}
         {activeContext === 'menu' && (
-          <div className="max-w-md mx-auto py-8 space-y-4">
+          <div className="max-w-md mx-auto py-8 space-y-6">
             <h2 className="text-xl font-bold mb-6 text-gray-300">Settings</h2>
 
             {/* Account Section */}
             <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Account</h3>
               <div className="p-4 bg-white/5 rounded border border-white/10">
                 <span className="text-gray-400 text-sm">Signed in as</span>
                 <p className="text-white truncate">{user.email || user.displayName || 'Unknown'}</p>
@@ -480,7 +482,13 @@ function App() {
                 <span>Instrument</span>
                 <span className="text-blue-400">{instrument.label}</span>
               </button>
+            </div>
 
+            {/* Groups Section */}
+            <GroupsSection />
+
+            {/* Other */}
+            <div className="space-y-2">
               <button
                 onClick={() => setShowAbout(true)}
                 className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
