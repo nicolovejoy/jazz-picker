@@ -14,6 +14,12 @@ Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead
 - Web: https://jazzpicker.pianohouseproject.org
 - API: https://jazz-picker.fly.dev
 
+## iOS Design
+
+Stick to standard iOS patterns. Avoid mixing swipe actions with multiple buttons/NavigationLinks in the same row.
+
+**Known issue:** GroupsSection swipe actions broken - all rows move together when swiping one. Standard ForEach + NavigationLink + swipeActions pattern not working as expected. May need to check how SettingsView embeds GroupsSection (it's a Section inside a Form).
+
 ## Quick Start
 
 ```bash

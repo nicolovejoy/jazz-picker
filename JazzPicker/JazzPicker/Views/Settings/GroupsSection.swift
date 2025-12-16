@@ -9,11 +9,16 @@ import SwiftUI
 struct GroupsSection: View {
     @Environment(AuthStore.self) private var authStore
     @Environment(BandStore.self) private var bandStore
+    @Environment(SetlistStore.self) private var setlistStore
     @Environment(NetworkMonitor.self) private var networkMonitor
 
     @State private var bandToLeave: Band?
     @State private var bandToDelete: Band?
-    @State private var copiedBandId: String?
+    @State private var deleteBlockedBand: Band?
+
+    private func setlistCount(for bandId: String) -> Int {
+        setlistStore.setlists.filter { $0.groupId == bandId }.count
+    }
 
     var body: some View {
         Section("Bands") {
@@ -30,17 +35,30 @@ struct GroupsSection: View {
                     Text("Create or join a band to share setlists")
                 }
                 .listRowBackground(Color.clear)
-            } else if !bandStore.bands.isEmpty {
+            } else {
                 ForEach(bandStore.bands) { band in
-                    BandRow(
-                        band: band,
-                        isCopied: copiedBandId == band.id,
-                        onCopyCode: { copyCode(band) },
-                        onLeave: { checkMemberCountAndPrompt(band) }
-                    )
+                    NavigationLink(value: band) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(band.name)
+                                .font(.headline)
+                            Text(band.code)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospaced()
+                        }
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("Delete", role: .destructive) {
+                            handleDeleteTap(band)
+                        }
+
+                        Button("Leave") {
+                            bandToLeave = band
+                        }
+                        .tint(.orange)
+                    }
                 }
             }
-
         }
         .navigationDestination(for: Band.self) { band in
             MembersView(band: band)
@@ -60,7 +78,7 @@ struct GroupsSection: View {
             }
         }
         .disabled(!networkMonitor.isConnected)
-        // Leave alert (multiple members)
+        // Leave alert
         .alert("Leave Band?", isPresented: .init(
             get: { bandToLeave != nil },
             set: { if !$0 { bandToLeave = nil } }
@@ -77,7 +95,7 @@ struct GroupsSection: View {
                 Text("You'll no longer see setlists from \(band.name).")
             }
         }
-        // Delete alert (sole member)
+        // Delete alert
         .alert("Delete Band?", isPresented: .init(
             get: { bandToDelete != nil },
             set: { if !$0 { bandToDelete = nil } }
@@ -94,64 +112,26 @@ struct GroupsSection: View {
                 Text("This will permanently delete \(band.name). This cannot be undone.")
             }
         }
-    }
-
-    private func checkMemberCountAndPrompt(_ band: Band) {
-        Task {
-            let count = await bandStore.getMemberCount(band.id)
-            await MainActor.run {
-                if count <= 1 {
-                    bandToDelete = band
-                } else {
-                    bandToLeave = band
-                }
+        // Delete blocked alert (has setlists)
+        .alert("Can't Delete Band", isPresented: .init(
+            get: { deleteBlockedBand != nil },
+            set: { if !$0 { deleteBlockedBand = nil } }
+        )) {
+            Button("OK") { deleteBlockedBand = nil }
+        } message: {
+            if let band = deleteBlockedBand {
+                let count = setlistCount(for: band.id)
+                Text("\(band.name) has \(count) setlist\(count == 1 ? "" : "s"). Delete them first.")
             }
         }
     }
 
-    private func copyCode(_ band: Band) {
-        UIPasteboard.general.string = band.code
-        copiedBandId = band.id
-        Task {
-            try? await Task.sleep(for: .seconds(2))
-            if copiedBandId == band.id {
-                copiedBandId = nil
-            }
-        }
-    }
-}
-
-struct BandRow: View {
-    let band: Band
-    let isCopied: Bool
-    let onCopyCode: () -> Void
-    let onLeave: () -> Void
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(band.name)
-                    .font(.headline)
-                Text(band.code)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospaced()
-            }
-            Spacer()
-            Button(action: onCopyCode) {
-                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                    .foregroundStyle(isCopied ? .green : .accentColor)
-            }
-            .buttonStyle(.borderless)
-            NavigationLink(value: band) {
-                Image(systemName: "person.3")
-            }
-            .buttonStyle(.borderless)
-            Button(action: onLeave) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-            }
-            .buttonStyle(.borderless)
-            .tint(.red)
+    private func handleDeleteTap(_ band: Band) {
+        let count = setlistCount(for: band.id)
+        if count > 0 {
+            deleteBlockedBand = band
+        } else {
+            bandToDelete = band
         }
     }
 }
@@ -164,5 +144,6 @@ struct BandRow: View {
     }
     .environment(AuthStore())
     .environment(BandStore())
+    .environment(SetlistStore())
     .environment(NetworkMonitor())
 }

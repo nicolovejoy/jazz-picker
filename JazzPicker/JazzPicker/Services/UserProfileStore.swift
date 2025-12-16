@@ -223,6 +223,48 @@ class UserProfileStore {
         }
     }
 
+    // MARK: - Fetch Other Users
+
+    /// Fetch display names for a list of user IDs.
+    /// Returns a dictionary mapping userId to displayName (or email prefix if no displayName).
+    func getDisplayNames(for userIds: [String]) async -> [String: String] {
+        guard !userIds.isEmpty else { return [:] }
+
+        var result: [String: String] = [:]
+
+        // Firestore 'in' supports up to 30 values
+        let limitedIds = Array(userIds.prefix(30))
+
+        do {
+            let snapshot = try await db.collection("users")
+                .whereField(FieldPath.documentID(), in: limitedIds)
+                .getDocuments()
+
+            for doc in snapshot.documents {
+                let data = doc.data()
+                if let displayName = data["displayName"] as? String, !displayName.isEmpty {
+                    result[doc.documentID] = displayName
+                } else if let email = data["email"] as? String {
+                    result[doc.documentID] = String(email.split(separator: "@").first ?? "")
+                } else {
+                    result[doc.documentID] = String(doc.documentID.prefix(8)) + "..."
+                }
+            }
+
+            // Fill in missing users with truncated ID
+            for userId in userIds where result[userId] == nil {
+                result[userId] = String(userId.prefix(8)) + "..."
+            }
+        } catch {
+            // On error, fall back to truncated IDs
+            for userId in userIds {
+                result[userId] = String(userId.prefix(8)) + "..."
+            }
+        }
+
+        return result
+    }
+
     // MARK: - Cache
 
     private func loadFromCache() -> UserProfile? {

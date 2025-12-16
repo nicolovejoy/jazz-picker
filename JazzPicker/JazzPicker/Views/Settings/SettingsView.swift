@@ -157,6 +157,8 @@ struct SettingsView: View {
                     }
                 }
             }
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
             .navigationTitle("Settings")
             .alert("Clear Cache?", isPresented: $showClearCacheConfirm) {
                 Button("Cancel", role: .cancel) { }

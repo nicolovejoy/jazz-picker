@@ -7,10 +7,12 @@ import SwiftUI
 
 struct MembersView: View {
     @Environment(BandStore.self) private var bandStore
+    @Environment(UserProfileStore.self) private var userProfileStore
 
     let band: Band
 
     @State private var members: [BandMember] = []
+    @State private var displayNames: [String: String] = [:]
     @State private var isLoading = true
     @State private var codeCopied = false
 
@@ -19,8 +21,7 @@ struct MembersView: View {
             Section {
                 ForEach(members) { member in
                     HStack {
-                        Text(String(member.userId.prefix(8)) + "...")
-                            .monospaced()
+                        Text(displayNames[member.userId] ?? String(member.userId.prefix(8)) + "...")
                             .font(.subheadline)
                         Spacer()
                         if member.role == .admin {
@@ -58,6 +59,8 @@ struct MembersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             members = await bandStore.getMembers(band.id)
+            let userIds = members.map { $0.userId }
+            displayNames = await userProfileStore.getDisplayNames(for: userIds)
             isLoading = false
         }
         .overlay {
@@ -82,4 +85,5 @@ struct MembersView: View {
         MembersView(band: Band(name: "Test Band", code: "bebop-monk-cool"))
     }
     .environment(BandStore())
+    .environment(UserProfileStore())
 }
