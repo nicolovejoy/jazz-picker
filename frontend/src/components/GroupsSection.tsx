@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import { useGroups } from '@/contexts/GroupsContext';
+import { getUserDisplayNames } from '@/services/userProfileService';
 import type { Group, GroupMember } from '@/types/group';
 
 export function GroupsSection() {
-  const { groups, loading, createGroup, joinGroup, leaveGroup, getMembers } = useGroups();
+  const { groups, loading, createGroup, joinGroup, leaveGroup, deleteGroup, getMembers } = useGroups();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [viewingMembers, setViewingMembers] = useState<{ group: Group; members: GroupMember[] } | null>(null);
+  const [viewingMembers, setViewingMembers] = useState<{ group: Group; members: GroupMember[]; displayNames: Map<string, string> } | null>(null);
   const [leaveConfirm, setLeaveConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleViewMembers = async (group: Group) => {
     try {
       const members = await getMembers(group.id);
-      setViewingMembers({ group, members });
+      const userIds = members.map(m => m.userId);
+      const displayNames = await getUserDisplayNames(userIds);
+      setViewingMembers({ group, members, displayNames });
     } catch (err) {
       console.error('Failed to load members:', err);
     }
@@ -23,7 +27,16 @@ export function GroupsSection() {
       await leaveGroup(groupId);
       setLeaveConfirm(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to leave group');
+      alert(err instanceof Error ? err.message : 'Failed to leave band');
+    }
+  };
+
+  const handleDelete = async (groupId: string) => {
+    try {
+      await deleteGroup(groupId);
+      setDeleteConfirm(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete band');
     }
   };
 
@@ -33,25 +46,25 @@ export function GroupsSection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Groups</h3>
+      <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">Bands</h3>
 
       {loading ? (
         <div className="animate-pulse bg-white/5 rounded h-12"></div>
       ) : groups.length === 0 ? (
         <div className="p-4 bg-white/5 rounded border border-white/10 text-center">
-          <p className="text-gray-400 mb-3">You're not in any groups yet</p>
+          <p className="text-gray-400 mb-3">You're not in any bands yet</p>
           <div className="flex gap-2 justify-center">
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              Create Group
+              Create Band
             </button>
             <button
               onClick={() => setShowJoinModal(true)}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              Join Group
+              Join Band
             </button>
           </div>
         </div>
@@ -98,16 +111,42 @@ export function GroupsSection() {
                         Cancel
                       </button>
                     </div>
+                  ) : deleteConfirm === group.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDelete(group.id)}
+                        className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => setLeaveConfirm(group.id)}
-                      className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                      title="Leave group"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setLeaveConfirm(group.id)}
+                        className="p-2 text-gray-400 hover:text-orange-400 transition-colors"
+                        title="Leave band"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(group.id)}
+                        className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                        title="Delete band"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -119,13 +158,13 @@ export function GroupsSection() {
               onClick={() => setShowCreateModal(true)}
               className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white rounded border border-white/10 text-sm transition-colors"
             >
-              Create Group
+              Create Band
             </button>
             <button
               onClick={() => setShowJoinModal(true)}
               className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white rounded border border-white/10 text-sm transition-colors"
             >
-              Join Group
+              Join Band
             </button>
           </div>
         </>
@@ -149,6 +188,7 @@ export function GroupsSection() {
         <MembersModal
           group={viewingMembers.group}
           members={viewingMembers.members}
+          displayNames={viewingMembers.displayNames}
           onClose={() => setViewingMembers(null)}
         />
       )}
@@ -178,7 +218,7 @@ function CreateGroupModal({ onClose, onCreate }: CreateGroupModalProps) {
       const group = await onCreate(name.trim());
       setCreatedGroup(group);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create group');
+      setError(err instanceof Error ? err.message : 'Failed to create band');
     } finally {
       setCreating(false);
     }
@@ -195,7 +235,7 @@ function CreateGroupModal({ onClose, onCreate }: CreateGroupModalProps) {
       <div className="bg-gray-800 rounded-xl max-w-md w-full">
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">
-            {createdGroup ? 'Group Created' : 'Create Group'}
+            {createdGroup ? 'Band Created' : 'Create Band'}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,7 +270,7 @@ function CreateGroupModal({ onClose, onCreate }: CreateGroupModalProps) {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Group Name</label>
+                <label className="block text-sm text-gray-400 mb-1">Band Name</label>
                 <input
                   type="text"
                   value={name}
@@ -289,7 +329,7 @@ function JoinGroupModal({ onClose, onJoin }: JoinGroupModalProps) {
       await onJoin(code.trim().toLowerCase());
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join group');
+      setError(err instanceof Error ? err.message : 'Failed to join band');
     } finally {
       setJoining(false);
     }
@@ -299,7 +339,7 @@ function JoinGroupModal({ onClose, onJoin }: JoinGroupModalProps) {
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
       <div className="bg-gray-800 rounded-xl max-w-md w-full">
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Join Group</h2>
+          <h2 className="text-lg font-semibold text-white">Join Band</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white p-1">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -309,7 +349,7 @@ function JoinGroupModal({ onClose, onJoin }: JoinGroupModalProps) {
 
         <div className="p-4 space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Group Code</label>
+            <label className="block text-sm text-gray-400 mb-1">Band Code</label>
             <input
               type="text"
               value={code}
@@ -351,10 +391,11 @@ function JoinGroupModal({ onClose, onJoin }: JoinGroupModalProps) {
 interface MembersModalProps {
   group: Group;
   members: GroupMember[];
+  displayNames: Map<string, string>;
   onClose: () => void;
 }
 
-function MembersModal({ group, members, onClose }: MembersModalProps) {
+function MembersModal({ group, members, displayNames, onClose }: MembersModalProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
       <div className="bg-gray-800 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
@@ -378,8 +419,8 @@ function MembersModal({ group, members, onClose }: MembersModalProps) {
                 key={member.userId}
                 className="p-3 bg-white/5 rounded border border-white/10 flex items-center justify-between"
               >
-                <span className="text-white font-mono text-sm truncate">
-                  {member.userId.slice(0, 8)}...
+                <span className="text-white text-sm truncate">
+                  {displayNames.get(member.userId) || member.userId.slice(0, 8) + '...'}
                 </span>
                 {member.role === 'admin' && (
                   <span className="text-xs text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">

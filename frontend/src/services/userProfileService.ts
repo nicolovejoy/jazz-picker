@@ -1,11 +1,16 @@
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteField,
   onSnapshot,
   serverTimestamp,
+  query,
+  collection,
+  documentId,
+  where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -96,4 +101,41 @@ export async function setPreferredKey(
       updatedAt: serverTimestamp(),
     });
   }
+}
+
+/**
+ * Get display names for multiple users.
+ * Returns a map of userId -> displayName (or email prefix if no displayName).
+ */
+export async function getUserDisplayNames(
+  userIds: string[]
+): Promise<Map<string, string>> {
+  const displayNames = new Map<string, string>();
+
+  if (userIds.length === 0) return displayNames;
+
+  // Firestore 'in' supports up to 30 values
+  const limitedIds = userIds.slice(0, 30);
+
+  const q = query(
+    collection(db, 'users'),
+    where(documentId(), 'in', limitedIds)
+  );
+
+  const snapshot = await getDocs(q);
+
+  snapshot.docs.forEach((docSnap) => {
+    const data = docSnap.data();
+    const displayName = data.displayName || data.email?.split('@')[0] || docSnap.id.slice(0, 8);
+    displayNames.set(docSnap.id, displayName);
+  });
+
+  // Fill in any missing users with truncated ID
+  for (const userId of userIds) {
+    if (!displayNames.has(userId)) {
+      displayNames.set(userId, userId.slice(0, 8) + '...');
+    }
+  }
+
+  return displayNames;
 }

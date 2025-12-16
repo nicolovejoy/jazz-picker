@@ -103,9 +103,9 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
         {/* Create New Setlist */}
         {groups.length === 0 ? (
           <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
-            <p className="text-yellow-200 mb-2">Join or create a group first</p>
+            <p className="text-yellow-200 mb-2">Join or create a band first</p>
             <p className="text-sm text-gray-400">
-              Go to Settings → Groups to get started
+              Go to Settings → Bands to get started
             </p>
           </div>
         ) : isCreating ? (
@@ -126,7 +126,7 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
             {/* Group picker (only show if user has multiple groups) */}
             {groups.length > 1 && (
               <div className="mb-3">
-                <label className="block text-xs text-gray-400 mb-1">Group</label>
+                <label className="block text-xs text-gray-400 mb-1">Band</label>
                 <select
                   value={selectedGroupId || defaultGroupId || ''}
                   onChange={(e) => setSelectedGroupId(e.target.value)}

@@ -1,103 +1,66 @@
-# Groups Design
+# Bands Design
 
-**Status:** Phase 1-3 complete. Web + iOS working. Phase 4 (cleanup) when ready.
+**Status:** Complete (iOS + Web). Phase 4 cleanup pending (make groupId required).
+
+**Terminology:** UI says "Band", Firestore uses `groups` collection.
 
 ## Overview
 
-Replacing the current "all users share everything" model with groups (bands). Every setlist belongs to a group. No personal setlists (create a solo group if you want privacy).
+Every setlist belongs to a band. No personal setlists (create a solo band if you want privacy).
 
 ## Firestore Schema
 
 ```
 groups/{groupId}
   - name: "Friday Jazz Trio"
-  - code: "bebop-monk-cool"  // jazz-themed slug, visible to all members
+  - code: "bebop-monk-cool"  // jazz-themed slug
   - createdAt, updatedAt
 
 groups/{groupId}/members/{userId}
-  - role: "admin" | "member"  // creator is admin, can delegate
+  - role: "admin" | "member"
   - joinedAt: timestamp
 
 setlists/{id}
-  - name, createdAt, updatedAt
-  - ownerId: "user123"  // creator (audit trail)
-  - groupId: "group123"  // required, every setlist belongs to a group
+  - name, ownerId, groupId
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
 
 users/{uid}
-  - instrument, displayName
-  - preferredKeys: { "Autumn Leaves": "am", ... }  // sparse
-  - groups: ["group123", "group456"]  // denormalized for quick lookup
-  - lastUsedGroupId: "group123"  // for default group selection
-
-auditLog/{logId}
-  - groupId, action, actorId, targetId, timestamp, metadata
-  - actions: member_joined, member_left, member_removed, admin_granted, admin_revoked
+  - instrument, displayName, email
+  - preferredKeys: { "Autumn Leaves": "am", ... }
+  - groups: ["group123", ...]
+  - lastUsedGroupId: "group123"
 ```
 
-## Group Codes
+## Band Codes
 
-Jazz-themed slugs from ~1000 word list, 3 words combined:
-- `bebop-monk-cool`, `swing-tritone-blue`, `modal-keys-midnight`
-- Categories: styles, musicians, terms, instruments, feel words
-- ~1 billion combinations (collision-resistant)
-- All members can see and share the code
+Jazz-themed slugs, 3 words: `bebop-monk-cool`, `swing-tritone-blue`
 
-## Group Selection UX
+## Joining a Band
 
-When creating a setlist (user in multiple groups):
-1. Default to last-used group
-2. Show up to 3 most recent groups
-3. "More options" for additional groups
+Code-based: enter the jazz slug → added as member.
 
-## Admin Model
+## Leaving a Band
 
-- Creator is admin
-- Admin can delegate admin to others
-- Admin can remove members (placeholder for MVP)
-- Can't leave group if you're the sole admin
-- When leaving: most senior admin inherits ownership
+- Removes you from member list
+- Your setlists stay with the band
+- Can't leave if you're the sole admin (unless also sole member with no setlists)
 
-## Joining Groups
+## Deleting a Band
 
-MVP: Code-based (know the code = you're in)
-- Enter jazz slug → added as member
-- No approval flow needed
+Requirements:
+- You must be the only member
+- Band must have zero setlists
 
-## Preferred Keys
+If setlists exist, user sees: "[Band] has N setlists. Delete them first."
 
-Unchanged from current behavior:
-- Per-user, per-song in Firestore (sparse storage)
-- Setlist items carry their own concert key
-- No group-level preferred keys
+## UX: Leave vs Delete
 
-## Leaving a Group
+Both iOS and web show separate Leave and Delete actions:
+- **iOS:** Swipe actions on band row
+- **Web:** Separate buttons
 
-- Can't leave if sole admin
-- Setlists you created stay with the group
-- Most senior admin becomes owner of orphaned resources
+Delete button is disabled (greyed) when band has setlists.
 
-## Implementation Phases
+## Members View
 
-### Phase 1: Backend / Firestore
-- Groups collection + members subcollection
-- Add groupId to setlists (nullable initially)
-- Add groups[] and lastUsedGroupId to users
-- Security rules
-- Jazz slug generator
-
-### Phase 2: Web MVP
-- Create/join group flows
-- Group switcher UI
-- Filtered setlist views
-- Member list
-
-### Phase 3: iOS Port ✓
-- BandStore, BandFirestoreService
-- Create/Join/Leave/Delete band flows (NavigationLink-based)
-- MembersView, band picker in setlist creation
-- Real-time sync when groups change
-
-### Phase 4: Cleanup
-- Make groupId required on setlists
-- Remove legacy shared-everything code
+Shows display name (or truncated email if no display name set).

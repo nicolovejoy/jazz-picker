@@ -89,7 +89,7 @@ export async function createGroup(
   }
 
   if (attempts >= maxAttempts) {
-    throw new Error('Failed to generate unique group code');
+    throw new Error('Failed to generate unique band code');
   }
 
   // Create group document
@@ -203,14 +203,14 @@ export async function joinGroup(
 ): Promise<Group> {
   const group = await getGroupByCode(code);
   if (!group) {
-    throw new Error('Group not found');
+    throw new Error('Band not found');
   }
 
   // Check if already a member
   const memberRef = doc(db, GROUPS_COLLECTION, group.id, MEMBERS_SUBCOLLECTION, userId);
   const memberSnap = await getDoc(memberRef);
   if (memberSnap.exists()) {
-    throw new Error('Already a member of this group');
+    throw new Error('Already a member of this band');
   }
 
   // Add as member
@@ -242,13 +242,13 @@ export async function leaveGroup(
   const member = members.find((m) => m.userId === userId);
 
   if (!member) {
-    throw new Error('Not a member of this group');
+    throw new Error('Not a member of this band');
   }
 
   // Check if sole admin
   const admins = members.filter((m) => m.role === 'admin');
   if (member.role === 'admin' && admins.length === 1) {
-    throw new Error('Cannot leave group as the only admin. Promote another member first.');
+    throw new Error('Cannot leave band as the only admin. Promote another member first.');
   }
 
   // Remove from members subcollection
@@ -264,6 +264,49 @@ export async function leaveGroup(
 
   // Log audit
   await logAudit(groupId, 'member_left', userId, userId);
+}
+
+export async function deleteGroup(
+  groupId: string,
+  userId: string
+): Promise<void> {
+  // Check membership and count
+  const members = await getGroupMembers(groupId);
+
+  if (members.length !== 1) {
+    throw new Error('Can only delete a band when you are the only member');
+  }
+
+  if (members[0].userId !== userId) {
+    throw new Error('Not a member of this band');
+  }
+
+  // Count setlists for this group
+  const setlistsQuery = query(
+    collection(db, 'setlists'),
+    where('groupId', '==', groupId)
+  );
+  const setlistsSnap = await getDocs(setlistsQuery);
+  const setlistCount = setlistsSnap.size;
+
+  if (setlistCount > 0) {
+    throw new Error(`Band has ${setlistCount} setlist${setlistCount === 1 ? '' : 's'}. Delete them first.`);
+  }
+
+  // Delete member doc
+  const memberRef = doc(db, GROUPS_COLLECTION, groupId, MEMBERS_SUBCOLLECTION, userId);
+  await deleteDoc(memberRef);
+
+  // Delete group doc
+  const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+  await deleteDoc(groupRef);
+
+  // Update user's groups array
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    groups: arrayRemove(groupId),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // --- Admin Actions ---

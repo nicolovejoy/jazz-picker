@@ -7,6 +7,7 @@ import {
   createGroup as createGroupService,
   joinGroup as joinGroupService,
   leaveGroup as leaveGroupService,
+  deleteGroup as deleteGroupService,
   getGroupMembers,
   setLastUsedGroup as setLastUsedGroupService,
 } from '@/services/groupService';
@@ -18,6 +19,7 @@ interface GroupsContextType {
   createGroup: (name: string) => Promise<Group>;
   joinGroup: (code: string) => Promise<Group>;
   leaveGroup: (groupId: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
   getMembers: (groupId: string) => Promise<GroupMember[]>;
   setLastUsedGroup: (groupId: string) => Promise<void>;
   refreshGroups: () => Promise<void>;
@@ -58,7 +60,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   }, [loadGroups, profile?.groups]);
 
   const createGroup = async (name: string): Promise<Group> => {
-    if (!user) throw new Error('Must be signed in to create group');
+    if (!user) throw new Error('Must be signed in to create band');
 
     const group = await createGroupService(name, user.uid);
     // Refresh groups list
@@ -67,7 +69,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   };
 
   const joinGroup = async (code: string): Promise<Group> => {
-    if (!user) throw new Error('Must be signed in to join group');
+    if (!user) throw new Error('Must be signed in to join band');
 
     const group = await joinGroupService(code, user.uid);
     // Refresh groups list
@@ -76,9 +78,17 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   };
 
   const leaveGroup = async (groupId: string): Promise<void> => {
-    if (!user) throw new Error('Must be signed in to leave group');
+    if (!user) throw new Error('Must be signed in to leave band');
 
     await leaveGroupService(groupId, user.uid);
+    // Refresh groups list
+    await loadGroups();
+  };
+
+  const deleteGroup = async (groupId: string): Promise<void> => {
+    if (!user) throw new Error('Must be signed in to delete band');
+
+    await deleteGroupService(groupId, user.uid);
     // Refresh groups list
     await loadGroups();
   };
@@ -101,6 +111,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         createGroup,
         joinGroup,
         leaveGroup,
+        deleteGroup,
         getMembers,
         setLastUsedGroup,
         refreshGroups: loadGroups,
