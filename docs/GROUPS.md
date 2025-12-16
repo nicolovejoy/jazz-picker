@@ -1,6 +1,6 @@
 # Bands Design
 
-**Status:** Complete (iOS + Web). Phase 4 cleanup pending (make groupId required).
+**Status:** Complete (iOS + Web). groupId required on all setlists.
 
 **Terminology:** UI says "Band", Firestore uses `groups` collection.
 
@@ -55,11 +55,8 @@ If setlists exist, user sees: "[Band] has N setlists. Delete them first."
 
 ## UX: Leave vs Delete
 
-Both iOS and web show separate Leave and Delete actions:
-- **iOS:** Swipe actions on band row
-- **Web:** Separate buttons
-
-Delete button is disabled (greyed) when band has setlists.
+- **Web:** Leave/Delete buttons with confirmation
+- **iOS:** Settings shows band summary, tap to open BandsManagementView with swipe actions
 
 ## Members View
 

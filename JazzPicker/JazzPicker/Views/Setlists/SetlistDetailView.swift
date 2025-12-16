@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SetlistDetailView: View {
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(BandStore.self) private var bandStore
     @Environment(CatalogStore.self) private var catalogStore
     @Environment(PDFCacheService.self) private var pdfCacheService
     @Environment(NetworkMonitor.self) private var networkMonitor
@@ -23,6 +24,14 @@ struct SetlistDetailView: View {
 
     private var currentSetlist: Setlist {
         setlistStore.setlists.first { $0.id == setlist.id } ?? setlist
+    }
+
+    private var bandName: String? {
+        bandStore.bands.first { $0.id == currentSetlist.groupId }?.name
+    }
+
+    private var showBandName: Bool {
+        bandStore.bands.count > 1
     }
 
     /// Download all uncached songs in background
@@ -94,9 +103,22 @@ struct SetlistDetailView: View {
         }
         .navigationTitle(currentSetlist.name)
         .toolbar {
+            if showBandName, let bandName = bandName {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text(currentSetlist.name)
+                            .font(.headline)
+                        Text(bandName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
             if !currentSetlist.items.isEmpty {
-                EditButton()
-                    .disabled(!networkMonitor.isConnected)
+                ToolbarItem(placement: .primaryAction) {
+                    EditButton()
+                        .disabled(!networkMonitor.isConnected)
+                }
             }
         }
         .onAppear {
@@ -204,9 +226,10 @@ struct SetBreakRow: View {
 
 #Preview {
     NavigationStack {
-        SetlistDetailView(setlist: Setlist(name: "Friday Gig", ownerId: "preview-user"))
+        SetlistDetailView(setlist: Setlist(name: "Friday Gig", ownerId: "preview-user", groupId: "preview-group"))
     }
     .environment(SetlistStore())
+    .environment(BandStore())
     .environment(NetworkMonitor())
     .environment(CatalogStore())
     .environment(CachedKeysStore())

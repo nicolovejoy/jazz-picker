@@ -18,7 +18,7 @@ Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead
 
 Stick to standard iOS patterns. Avoid mixing swipe actions with multiple buttons/NavigationLinks in the same row.
 
-**Known issue:** GroupsSection swipe actions broken - all rows move together when swiping one. Standard ForEach + NavigationLink + swipeActions pattern not working as expected. May need to check how SettingsView embeds GroupsSection (it's a Section inside a Form).
+**Xcode 16+ auto-sync:** Project uses `PBXFileSystemSynchronizedRootGroup`. New Swift files added to `JazzPicker/JazzPicker/` are automatically included - no need to modify project.pbxproj.
 
 ## Quick Start
 
@@ -78,7 +78,7 @@ groups/{groupId}/members/{userId}
   - role: "admin" | "member", joinedAt
 
 setlists/{id}
-  - name, ownerId, groupId (nullable during migration)
+  - name, ownerId, groupId (required)
   - createdAt, updatedAt
   - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
 

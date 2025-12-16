@@ -17,6 +17,14 @@ struct SetlistListView: View {
     @State private var showingOfflineToast = false
     @State private var showingErrorToast = false
 
+    private var showBandBadge: Bool {
+        bandStore.bands.count > 1
+    }
+
+    private func bandName(for groupId: String) -> String? {
+        bandStore.bands.first { $0.id == groupId }?.name
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -50,9 +58,9 @@ struct SetlistListView: View {
                     defaultGroupId: userProfileStore.profile?.lastUsedGroupId ?? bandStore.bands.first?.id
                 ) {
                     let name = newSetlistName.trimmingCharacters(in: .whitespaces)
-                    if !name.isEmpty {
+                    if !name.isEmpty, let groupId = selectedGroupId {
                         Task {
-                            _ = await setlistStore.createSetlist(name: name, groupId: selectedGroupId)
+                            _ = await setlistStore.createSetlist(name: name, groupId: groupId)
                         }
                     }
                 }
@@ -121,7 +129,11 @@ struct SetlistListView: View {
         List {
             ForEach(setlistStore.activeSetlists) { setlist in
                 NavigationLink(value: setlist) {
-                    SetlistCard(setlist: setlist)
+                    SetlistCard(
+                        setlist: setlist,
+                        bandName: bandName(for: setlist.groupId),
+                        showBand: showBandBadge
+                    )
                 }
             }
             .onDelete { indexSet in
@@ -168,6 +180,8 @@ struct SetlistListView: View {
 
 struct SetlistCard: View {
     let setlist: Setlist
+    let bandName: String?
+    let showBand: Bool
 
     private var songPreview: String {
         let songTitles = setlist.items
@@ -191,10 +205,22 @@ struct SetlistCard: View {
             Text(setlist.name)
                 .font(.headline)
 
-            Text(songPreview)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+            HStack(spacing: 6) {
+                Text(songPreview)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if showBand, let bandName = bandName {
+                    Text(bandName)
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.blue.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+            }
         }
         .padding(.vertical, 4)
     }

@@ -52,18 +52,16 @@ enum SetlistFirestoreService {
 
     // MARK: - Create
 
-    static func createSetlist(name: String, ownerId: String, groupId: String? = nil) async throws -> String {
+    static func createSetlist(name: String, ownerId: String, groupId: String) async throws -> String {
         let docRef = db.collection(collection).document()
-        var data: [String: Any] = [
+        let data: [String: Any] = [
             "name": name,
             "ownerId": ownerId,
+            "groupId": groupId,
             "items": [],
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
-        if let groupId = groupId {
-            data["groupId"] = groupId
-        }
         try await docRef.setData(data)
         return docRef.documentID
     }

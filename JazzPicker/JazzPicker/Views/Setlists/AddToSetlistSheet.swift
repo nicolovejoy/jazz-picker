@@ -7,6 +7,8 @@ import SwiftUI
 
 struct AddToSetlistSheet: View {
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(BandStore.self) private var bandStore
+    @Environment(UserProfileStore.self) private var userProfileStore
     @Environment(NetworkMonitor.self) private var networkMonitor
     @Environment(\.dismiss) private var dismiss
 
@@ -16,10 +18,15 @@ struct AddToSetlistSheet: View {
 
     @State private var showingCreateSheet = false
     @State private var newSetlistName = ""
+    @State private var selectedGroupId: String?
     @State private var errorMessage: String?
     @State private var isAdding = false
     @State private var conflictSetlist: Setlist?
     @State private var existingItem: SetlistItem?
+
+    private var defaultGroupId: String? {
+        userProfileStore.profile?.lastUsedGroupId ?? bandStore.bands.first?.id
+    }
 
     var body: some View {
         NavigationStack {
@@ -65,6 +72,7 @@ struct AddToSetlistSheet: View {
 
                 Button {
                     newSetlistName = ""
+                    selectedGroupId = nil
                     showingCreateSheet = true
                 } label: {
                     Label("New Setlist...", systemImage: "plus")
@@ -81,23 +89,24 @@ struct AddToSetlistSheet: View {
                     }
                 }
             }
-            .alert("Create Setlist", isPresented: $showingCreateSheet) {
-                TextField("Setlist name", text: $newSetlistName)
-                Button("Cancel", role: .cancel) { }
-                Button("Create") {
+            .sheet(isPresented: $showingCreateSheet) {
+                CreateSetlistSheet(
+                    name: $newSetlistName,
+                    selectedGroupId: $selectedGroupId,
+                    bands: bandStore.bands,
+                    defaultGroupId: defaultGroupId
+                ) {
                     let name = newSetlistName.trimmingCharacters(in: .whitespaces)
-                    if !name.isEmpty {
+                    if !name.isEmpty, let groupId = selectedGroupId {
                         Task {
                             isAdding = true
-                            if let setlist = await setlistStore.createSetlist(name: name) {
+                            if let setlist = await setlistStore.createSetlist(name: name, groupId: groupId) {
                                 await addToSetlistAsync(setlist)
                             }
                             isAdding = false
                         }
                     }
                 }
-            } message: {
-                Text("Enter a name for your new setlist")
             }
             .alert("Error", isPresented: .init(
                 get: { errorMessage != nil },
@@ -192,5 +201,7 @@ struct AddToSetlistSheet: View {
 #Preview {
     AddToSetlistSheet(songTitle: "Blue Bossa", concertKey: "c", octaveOffset: 0)
         .environment(SetlistStore())
+        .environment(BandStore())
+        .environment(UserProfileStore())
         .environment(NetworkMonitor())
 }

@@ -86,7 +86,7 @@ class SetlistStore {
 
     // MARK: - CRUD Operations (Optimistic UI)
 
-    func createSetlist(name: String, groupId: String? = nil) async -> Setlist? {
+    func createSetlist(name: String, groupId: String) async -> Setlist? {
         guard let ownerId = currentOwnerId else {
             lastError = SetlistError.notAuthenticated.localizedDescription
             return nil
