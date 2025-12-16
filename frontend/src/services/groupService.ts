@@ -293,13 +293,13 @@ export async function deleteGroup(
     throw new Error(`Band has ${setlistCount} setlist${setlistCount === 1 ? '' : 's'}. Delete them first.`);
   }
 
+  // Delete group doc FIRST (while member doc still exists for admin check)
+  const groupRef = doc(db, GROUPS_COLLECTION, groupId);
+  await deleteDoc(groupRef);
+
   // Delete member doc
   const memberRef = doc(db, GROUPS_COLLECTION, groupId, MEMBERS_SUBCOLLECTION, userId);
   await deleteDoc(memberRef);
-
-  // Delete group doc
-  const groupRef = doc(db, GROUPS_COLLECTION, groupId);
-  await deleteDoc(groupRef);
 
   // Update user's groups array
   const userRef = doc(db, 'users', userId);

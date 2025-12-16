@@ -155,15 +155,15 @@ enum BandFirestoreService {
             throw BandError.cannotDelete
         }
 
+        // Delete band document FIRST (while member doc still exists for admin check)
+        try await db.collection(collection).document(bandId).delete()
+
         // Delete the member document
         let memberRef = db.collection(collection)
             .document(bandId)
             .collection(membersSubcollection)
             .document(userId)
         try await memberRef.delete()
-
-        // Delete the band document
-        try await db.collection(collection).document(bandId).delete()
 
         // Update user's groups
         let userRef = db.collection("users").document(userId)
