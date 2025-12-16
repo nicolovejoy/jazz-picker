@@ -43,6 +43,9 @@ class SetlistStore {
     private var currentOwnerId: String?
 
     @ObservationIgnored
+    private var currentGroupIds: [String]?
+
+    @ObservationIgnored
     private let lastOpenedKey = "setlistLastOpened"
 
     /// Active setlists sorted by most recently opened
@@ -57,14 +60,15 @@ class SetlistStore {
 
     // MARK: - Listening
 
-    func startListening(ownerId: String) {
-        guard listener == nil else { return }
+    func startListening(ownerId: String, groupIds: [String]?) {
+        stopListening()
 
         isLoading = true
         lastError = nil
         currentOwnerId = ownerId
+        currentGroupIds = groupIds
 
-        listener = SetlistFirestoreService.subscribeToSetlists { [weak self] setlists in
+        listener = SetlistFirestoreService.subscribeToSetlists(groupIds: groupIds) { [weak self] setlists in
             self?.setlists = setlists
             self?.isLoading = false
             print("📋 Received \(setlists.count) setlists from Firestore")
@@ -76,12 +80,13 @@ class SetlistStore {
         listener = nil
         setlists = []
         currentOwnerId = nil
+        currentGroupIds = nil
         isLoading = false
     }
 
     // MARK: - CRUD Operations (Optimistic UI)
 
-    func createSetlist(name: String) async -> Setlist? {
+    func createSetlist(name: String, groupId: String? = nil) async -> Setlist? {
         guard let ownerId = currentOwnerId else {
             lastError = SetlistError.notAuthenticated.localizedDescription
             return nil
@@ -91,15 +96,15 @@ class SetlistStore {
 
         // Optimistic: create local setlist immediately
         let tempId = UUID().uuidString
-        let tempSetlist = Setlist(id: tempId, name: name, ownerId: ownerId)
+        let tempSetlist = Setlist(id: tempId, name: name, ownerId: ownerId, groupId: groupId)
         setlists.insert(tempSetlist, at: 0)
 
         do {
-            let serverId = try await SetlistFirestoreService.createSetlist(name: name, ownerId: ownerId)
+            let serverId = try await SetlistFirestoreService.createSetlist(name: name, ownerId: ownerId, groupId: groupId)
             // The listener will update with the real setlist, remove temp
             setlists.removeAll { $0.id == tempId }
             // Return a setlist with the server ID for immediate use
-            return Setlist(id: serverId, name: name, ownerId: ownerId)
+            return Setlist(id: serverId, name: name, ownerId: ownerId, groupId: groupId)
         } catch {
             // Rollback
             setlists.removeAll { $0.id == tempId }

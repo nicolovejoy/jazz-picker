@@ -27,9 +27,10 @@ open JazzPicker/JazzPicker.xcodeproj  # iOS
 ```
 JazzPicker/JazzPicker/
 ├── App/        # JazzPickerApp, ContentView
-├── Models/     # Song, Instrument, Setlist, UserProfile, PDFNavigationContext
+├── Models/     # Song, Instrument, Setlist, UserProfile, Band, PDFNavigationContext
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
-└── Services/   # APIClient, SetlistStore, AuthStore, UserProfileStore, CachedKeysStore
+├── Services/   # APIClient, SetlistStore, AuthStore, UserProfileStore, BandStore
+└── Utils/      # JazzSlug
 ```
 
 **Key Patterns:**

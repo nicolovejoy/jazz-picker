@@ -7,9 +7,12 @@ import SwiftUI
 
 struct SetlistListView: View {
     @Environment(SetlistStore.self) private var setlistStore
+    @Environment(BandStore.self) private var bandStore
+    @Environment(UserProfileStore.self) private var userProfileStore
     @Environment(NetworkMonitor.self) private var networkMonitor
     @State private var showingCreateSheet = false
     @State private var newSetlistName = ""
+    @State private var selectedGroupId: String?
     @State private var setlistToDelete: Setlist?
     @State private var showingOfflineToast = false
     @State private var showingErrorToast = false
@@ -39,19 +42,20 @@ struct SetlistListView: View {
                     .opacity(networkMonitor.isConnected ? 1 : 0.5)
                 }
             }
-            .alert("Create Setlist", isPresented: $showingCreateSheet) {
-                TextField("Setlist name", text: $newSetlistName)
-                Button("Cancel", role: .cancel) { }
-                Button("Create") {
+            .sheet(isPresented: $showingCreateSheet) {
+                CreateSetlistSheet(
+                    name: $newSetlistName,
+                    selectedGroupId: $selectedGroupId,
+                    bands: bandStore.bands,
+                    defaultGroupId: userProfileStore.profile?.lastUsedGroupId ?? bandStore.bands.first?.id
+                ) {
                     let name = newSetlistName.trimmingCharacters(in: .whitespaces)
                     if !name.isEmpty {
                         Task {
-                            _ = await setlistStore.createSetlist(name: name)
+                            _ = await setlistStore.createSetlist(name: name, groupId: selectedGroupId)
                         }
                     }
                 }
-            } message: {
-                Text("Enter a name for your new setlist")
             }
             .alert("Delete Setlist?", isPresented: .init(
                 get: { setlistToDelete != nil },
@@ -196,9 +200,64 @@ struct SetlistCard: View {
     }
 }
 
+struct CreateSetlistSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var name: String
+    @Binding var selectedGroupId: String?
+    let bands: [Band]
+    let defaultGroupId: String?
+    let onCreate: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Setlist name", text: $name)
+                } footer: {
+                    Text("e.g., Friday Night Set")
+                }
+
+                if bands.count >= 2 {
+                    Section {
+                        Picker("Band", selection: $selectedGroupId) {
+                            ForEach(bands) { band in
+                                Text(band.name).tag(band.id as String?)
+                            }
+                        }
+                    } footer: {
+                        Text("Which band will use this setlist?")
+                    }
+                }
+            }
+            .navigationTitle("Create Setlist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onCreate()
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .onAppear {
+                // Set default band if not already set
+                if selectedGroupId == nil {
+                    selectedGroupId = defaultGroupId ?? bands.first?.id
+                }
+            }
+        }
+    }
+}
+
 #Preview("With Setlists") {
     SetlistListView()
         .environment(SetlistStore())
+        .environment(BandStore())
+        .environment(UserProfileStore())
         .environment(NetworkMonitor())
         .environment(CatalogStore())
         .environment(CachedKeysStore())
@@ -208,6 +267,8 @@ struct SetlistCard: View {
 #Preview("Empty") {
     SetlistListView()
         .environment(SetlistStore())
+        .environment(BandStore())
+        .environment(UserProfileStore())
         .environment(NetworkMonitor())
         .environment(CatalogStore())
         .environment(CachedKeysStore())

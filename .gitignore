@@ -67,3 +67,5 @@ infrastructure/*.tfplan
 # Build artifacts
 outlier_report.txt
 note_ranges.json
+node_modules
+tmp

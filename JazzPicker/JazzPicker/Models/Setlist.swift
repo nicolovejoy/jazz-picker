@@ -10,14 +10,16 @@ struct Setlist: Identifiable, Hashable, Sendable {
     let id: String
     var name: String
     var ownerId: String
+    var groupId: String?
     var items: [SetlistItem]
     var createdAt: Date
     var updatedAt: Date
 
-    init(id: String = UUID().uuidString, name: String, ownerId: String, items: [SetlistItem] = [], createdAt: Date = Date(), updatedAt: Date = Date()) {
+    init(id: String = UUID().uuidString, name: String, ownerId: String, groupId: String? = nil, items: [SetlistItem] = [], createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.name = name
         self.ownerId = ownerId
+        self.groupId = groupId
         self.items = items
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -38,6 +40,7 @@ struct Setlist: Identifiable, Hashable, Sendable {
         self.id = id
         self.name = name
         self.ownerId = ownerId
+        self.groupId = data["groupId"] as? String
         self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         self.updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
 
@@ -49,13 +52,17 @@ struct Setlist: Identifiable, Hashable, Sendable {
     }
 
     func toFirestoreData() -> [String: Any] {
-        [
+        var data: [String: Any] = [
             "name": name,
             "ownerId": ownerId,
             "createdAt": Timestamp(date: createdAt),
             "updatedAt": Timestamp(date: Date()),
             "items": items.map { $0.toFirestoreData() }
         ]
+        if let groupId = groupId {
+            data["groupId"] = groupId
+        }
+        return data
     }
 }
 

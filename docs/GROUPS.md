@@ -1,6 +1,6 @@
 # Groups Design
 
-**Status:** Phase 1 + 2 complete. Web working. Phase 3 (iOS) next.
+**Status:** Phase 1-3 complete. Web + iOS working. Phase 4 (cleanup) when ready.
 
 ## Overview
 
@@ -92,9 +92,12 @@ Unchanged from current behavior:
 - Filtered setlist views
 - Member list
 
-### Phase 3: iOS Port
-- Port all group functionality
+### Phase 3: iOS Port ✓
+- BandStore, BandFirestoreService
+- Create/Join/Leave/Delete band flows (NavigationLink-based)
+- MembersView, band picker in setlist creation
+- Real-time sync when groups change
 
 ### Phase 4: Cleanup
-- Make groupId required
+- Make groupId required on setlists
 - Remove legacy shared-everything code

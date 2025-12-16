@@ -16,6 +16,7 @@ struct SettingsView: View {
     @Environment(AuthStore.self) private var authStore
     @Environment(UserProfileStore.self) private var userProfileStore
     @Environment(PDFCacheService.self) private var pdfCacheService
+    @Environment(BandStore.self) private var bandStore
     @State private var showClearCacheConfirm = false
     @State private var showSignOutConfirm = false
 
@@ -69,6 +70,8 @@ struct SettingsView: View {
                         Text("Sign Out")
                     }
                 }
+
+                GroupsSection()
 
                 Section("Instrument") {
                     NavigationLink {
@@ -272,4 +275,6 @@ struct InstrumentPickerView: View {
         .environment(AuthStore())
         .environment(UserProfileStore())
         .environment(PDFCacheService.shared)
+        .environment(BandStore())
+        .environment(NetworkMonitor())
 }

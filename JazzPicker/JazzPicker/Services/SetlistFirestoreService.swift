@@ -13,39 +13,57 @@ enum SetlistFirestoreService {
     // MARK: - Subscribe
 
     static func subscribeToSetlists(
+        groupIds: [String]?,
         callback: @escaping ([Setlist]) -> Void
     ) -> ListenerRegistration {
-        db.collection(collection)
+        // If groupIds is provided but empty, user has no groups -> no setlists
+        if let ids = groupIds, ids.isEmpty {
+            callback([])
+            // Return a dummy listener that does nothing
+            return db.collection(collection).limit(to: 0).addSnapshotListener { _, _ in }
+        }
+
+        var query: Query = db.collection(collection)
             .order(by: "updatedAt", descending: true)
-            .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("❌ Firestore listen error: \(error)")
-                    return
-                }
 
-                guard let documents = snapshot?.documents else {
-                    callback([])
-                    return
-                }
+        // Filter by groups if provided (nil = legacy mode, show all)
+        if let ids = groupIds, !ids.isEmpty {
+            let limitedIds = Array(ids.prefix(30))  // Firestore 'in' limit
+            query = query.whereField("groupId", in: limitedIds)
+        }
 
-                let setlists = documents.compactMap { doc -> Setlist? in
-                    Setlist(id: doc.documentID, from: doc.data())
-                }
-                callback(setlists)
+        return query.addSnapshotListener { snapshot, error in
+            if let error = error {
+                print("❌ Firestore listen error: \(error)")
+                return
             }
+
+            guard let documents = snapshot?.documents else {
+                callback([])
+                return
+            }
+
+            let setlists = documents.compactMap { doc -> Setlist? in
+                Setlist(id: doc.documentID, from: doc.data())
+            }
+            callback(setlists)
+        }
     }
 
     // MARK: - Create
 
-    static func createSetlist(name: String, ownerId: String) async throws -> String {
+    static func createSetlist(name: String, ownerId: String, groupId: String? = nil) async throws -> String {
         let docRef = db.collection(collection).document()
-        let data: [String: Any] = [
+        var data: [String: Any] = [
             "name": name,
             "ownerId": ownerId,
             "items": [],
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
         ]
+        if let groupId = groupId {
+            data["groupId"] = groupId
+        }
         try await docRef.setData(data)
         return docRef.documentID
     }
