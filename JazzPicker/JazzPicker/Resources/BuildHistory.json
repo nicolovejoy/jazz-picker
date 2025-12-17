@@ -1,8 +1,8 @@
 [
   {
-    "build": 11,
-    "date": "2025-12-10",
-    "notes": "Your preferred keys now sync across devices. Change a song's key on your iPad and it appears on your other devices automatically. Previously this was stored locally on each device - now it's saved to your account and syncs in real-time via Firestore."
+    "build": 13,
+    "date": "2025-12-17",
+    "notes": "Bands - share setlists with your group. Create a band in Settings, share the join code, and everyone sees the same setlists in real-time. Preferred keys now sync across devices too. Setlist renaming via Edit button or swipe."
   },
   {
     "build": 10,

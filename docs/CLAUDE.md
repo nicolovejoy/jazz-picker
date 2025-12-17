@@ -16,7 +16,9 @@ Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead
 
 ## iOS Design
 
-Stick to standard iOS patterns. Avoid mixing swipe actions with multiple buttons/NavigationLinks in the same row.
+Stick to standard iOS patterns. Prefer swipe actions over context menus (faster). Use sheets instead of alerts for text input.
+
+**Landscape:** Forms/lists use `.frame(maxWidth: 600).frame(maxWidth: .infinity)` for readability.
 
 **Xcode 16+ auto-sync:** Project uses `PBXFileSystemSynchronizedRootGroup`. New Swift files added to `JazzPicker/JazzPicker/` are automatically included - no need to modify project.pbxproj.
 
@@ -45,6 +47,10 @@ JazzPicker/JazzPicker/
 - Real-time Firestore listeners for setlists
 - Offline PDF caching in Documents/PDFCache/
 - Preferred keys synced to Firestore `users/{uid}.preferredKeys`
+
+**URL Schemes:**
+- iOS deep link: `jazzpicker://join/{code}` - WIP/untested (needs URL scheme in Xcode)
+- Web join link: `https://jazzpicker.pianohouseproject.org/?join={code}`
 
 ## Backend API
 
@@ -80,13 +86,13 @@ groups/{groupId}/members/{userId}
 setlists/{id}
   - name, ownerId, groupId (required)
   - createdAt, updatedAt
-  - items: [{ id, songTitle, concertKey, position, octaveOffset, notes }]
+  - items: [{ id, songTitle, concertKey, position, octaveOffset, notes, isSetBreak }]
 
 auditLog/{id}
   - groupId, action, actorId, targetId, timestamp, metadata
 ```
 
-Security: Setlists filtered by group membership. See GROUPS.md.
+Security: Setlists filtered by group membership. See GROUPS.md for band rules.
 
 ## Key Concepts
 
