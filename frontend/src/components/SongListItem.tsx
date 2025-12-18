@@ -77,21 +77,18 @@ export function SongListItem({ song, instrument, onOpenPdfUrl }: SongListItemPro
         </h3>
 
         {/* Key badges */}
-        <div className="flex items-center gap-2 shrink-0 text-sm">
-          {hasPreference && (
-            <>
-              <span className="text-orange-300">
-                {displayKeyWithMode(preferredKey, instrument)}
-              </span>
-              <span className="text-gray-500">→</span>
-            </>
-          )}
+        <div className="flex items-center gap-1.5 shrink-0 text-sm">
           <button
             onClick={handleStandardKeyClick}
             className="text-gray-400 hover:text-white transition-colors"
           >
             {displayKeyWithMode(standardKey, instrument)}
           </button>
+          {hasPreference && (
+            <span className="text-orange-300">
+              ({displayKeyWithMode(preferredKey, instrument)})
+            </span>
+          )}
         </div>
       </div>
     </div>

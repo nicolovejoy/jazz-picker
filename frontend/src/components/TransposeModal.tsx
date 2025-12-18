@@ -37,11 +37,21 @@ export function TransposeModal({
 }: TransposeModalProps) {
   const queryClient = useQueryClient();
   const { getPreferredKey } = useUserProfile();
-  const initialKey = getPreferredKey(songTitle, defaultConcertKey);
+
+  // Detect if song is minor from default key
+  const isMinor = defaultConcertKey.endsWith('m');
+
+  const storedPreference = getPreferredKey(songTitle, defaultConcertKey);
+  // Strip 'm' from stored preference for key picker (we'll add it back)
+  const initialKey = storedPreference.endsWith('m') ? storedPreference.slice(0, -1) : storedPreference;
+
   const [selectedConcertKey, setSelectedConcertKey] = useState(initialKey);
   const [isTransposing, setIsTransposing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Effective key includes 'm' suffix for minor songs
+  const effectiveKey = isMinor ? `${selectedConcertKey}m` : selectedConcertKey;
 
   // Get written key for display (for transposing instruments)
   const getWrittenKeyDisplay = (concertKey: string) => {
@@ -64,7 +74,7 @@ export function TransposeModal({
     try {
       const result = await api.generatePDF(
         songTitle,
-        selectedConcertKey,
+        effectiveKey,
         instrument.transposition,
         instrument.clef,
         instrument.label
@@ -76,7 +86,7 @@ export function TransposeModal({
       queryClient.invalidateQueries({ queryKey: ['cachedKeys', songTitle] });
 
       setTimeout(() => {
-        onTransposed(result.url, selectedConcertKey);
+        onTransposed(result.url, effectiveKey);
       }, 300);
     } catch (err) {
       clearInterval(progressInterval);
@@ -110,6 +120,7 @@ export function TransposeModal({
             <div className="mb-6">
               <label className="block text-sm text-gray-400 mb-2">
                 {instrument.transposition === 'C' ? 'Key' : 'Concert Key'}
+                {isMinor && <span className="text-orange-400 ml-1">(Minor)</span>}
               </label>
               <div className="grid grid-cols-6 gap-2">
                 {CONCERT_KEYS.map((key) => (
