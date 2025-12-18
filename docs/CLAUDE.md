@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Jazz Picker is an iPad music stand app. ~735 jazz lead sheets from lilypond-lead-sheets repo.
+Jazz Picker is an iPad music stand app. 799 jazz lead sheets from lilypond-lead-sheets repo.
 
 **Stack:**
 - iOS App: `JazzPicker/` (SwiftUI) — primary client
@@ -92,7 +92,7 @@ auditLog/{id}
   - groupId, action, actorId, targetId, timestamp, metadata
 ```
 
-Security: Setlists filtered by group membership. See GROUPS.md for band rules.
+Security: Setlists filtered by group membership.
 
 ## Key Concepts
 
@@ -101,6 +101,24 @@ Security: Setlists filtered by group membership. See GROUPS.md for band rules.
 - **Preferred Key**: User's preferred key for a song (Firestore, sparse - only non-defaults stored)
 - **Octave Offset**: ±2 adjustment when transposition lands too high/low
 
+## Infrastructure
+
+- **Fly.io** — Flask backend, PDF generation (~$10/mo)
+- **AWS S3** — PDF cache (~$1/mo)
+- **Vercel** — Web frontend (free, auto-deploys on push)
+- **Firebase** — Auth + Firestore (free tier)
+
+## Bands (Groups)
+
+UI says "Band", Firestore uses `groups`. Every setlist belongs to a band.
+
+- **Joining:** Enter jazz slug code → added as member
+- **Leaving:** Can't leave if sole admin
+- **Deleting:** Must be only member, zero setlists
+- **Invite flow:** Copy link with `?join={code}` (web) or `jazzpicker://join/{code}` (iOS, untested)
+
 ## Secrets
 
 Public repo - never commit secrets. GoogleService-Info.plist is gitignored.
+
+**Fly.io** (`fly secrets list`): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
