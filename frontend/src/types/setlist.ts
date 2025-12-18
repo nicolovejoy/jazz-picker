@@ -9,6 +9,7 @@ export interface SetlistItem {
   position: number;
   octaveOffset: number;
   notes: string | null;
+  isSetBreak?: boolean;
 }
 
 export interface Setlist {

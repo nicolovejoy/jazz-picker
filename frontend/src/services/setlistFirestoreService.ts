@@ -192,3 +192,28 @@ export async function updateItem(
 
   await updateSetlist(setlistId, { items: updatedItems });
 }
+
+export async function duplicateSetlist(
+  sourceId: string,
+  newName: string,
+  ownerId: string
+): Promise<string> {
+  const source = await getSetlist(sourceId);
+  if (!source) throw new Error('Source setlist not found');
+
+  // Create new setlist with same groupId
+  const newId = await createSetlist(newName, ownerId, source.groupId);
+
+  // Copy items with new IDs
+  const newItems = source.items.map((item, index) => ({
+    ...item,
+    id: crypto.randomUUID(),
+    position: index,
+  }));
+
+  if (newItems.length > 0) {
+    await updateSetlist(newId, { items: newItems });
+  }
+
+  return newId;
+}

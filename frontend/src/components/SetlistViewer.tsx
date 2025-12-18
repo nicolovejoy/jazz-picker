@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowLeft, FiTrash2, FiLink, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2, FiLink, FiCheck, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { api } from '@/services/api';
 import { useSetlist, useSetlists } from '@/contexts/SetlistContext';
 import { formatKey, type Instrument } from '@/types/catalog';
@@ -33,7 +33,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   const [isRemoving, setIsRemoving] = useState(false);
 
   const { setlist: setlistWithItems, loading: isLoadingItems } = useSetlist(setlist.id);
-  const { removeItem } = useSetlists();
+  const { removeItem, updateItem } = useSetlists();
 
   // In-memory cache of PDF blobs
   const pdfCache = useRef<Record<number, CachedPdf>>({});
@@ -45,18 +45,24 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
     if (items.length === 0) return;
 
     const prefetchAll = async () => {
-      // Initialize all as pending
+      // Initialize all as pending (skip set breaks)
       const initialStatus: Record<number, 'pending' | 'loading' | 'done' | 'error'> = {};
-      items.forEach((_, i) => { initialStatus[i] = 'pending'; });
+      items.forEach((item, i) => {
+        if (!item.isSetBreak) {
+          initialStatus[i] = 'pending';
+        }
+      });
       setPrefetchStatus(initialStatus);
+
+      // Filter to songs only for prefetching
+      const songItems = items.map((item, index) => ({ item, index })).filter(({ item }) => !item.isSetBreak);
 
       // Prefetch in parallel (batches of 4)
       const batchSize = 4;
-      for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
+      for (let i = 0; i < songItems.length; i += batchSize) {
+        const batch = songItems.slice(i, i + batchSize);
         await Promise.all(
-          batch.map(async (item, batchIndex) => {
-            const index = i + batchIndex;
+          batch.map(async ({ item, index }) => {
             setPrefetchStatus(prev => ({ ...prev, [index]: 'loading' }));
 
             try {
@@ -119,6 +125,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
     if (index < 0 || index >= items.length) return;
 
     const item = items[index];
+    if (item.isSetBreak) return; // Can't load a set break
     setCurrentIndex(index);
 
     // Check cache first
@@ -178,22 +185,26 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   // Update navigation callbacks when currentIndex changes
   useEffect(() => {
     if (currentIndex !== null && items.length > 0) {
+      // Get song-only indices for navigation
+      const songIndices = items.map((item, i) => ({ item, i })).filter(({ item }) => !item.isSetBreak).map(({ i }) => i);
+      const currentSongPosition = songIndices.indexOf(currentIndex);
+
       onSetlistNav({
-        currentIndex,
-        totalSongs: items.length,
+        currentIndex: currentSongPosition >= 0 ? currentSongPosition : 0,
+        totalSongs: songIndices.length,
         onPrevSong: () => {
-          if (currentIndex > 0) {
-            loadSong(currentIndex - 1);
+          if (currentSongPosition > 0) {
+            loadSong(songIndices[currentSongPosition - 1]);
           }
         },
         onNextSong: () => {
-          if (currentIndex < items.length - 1) {
-            loadSong(currentIndex + 1);
+          if (currentSongPosition < songIndices.length - 1) {
+            loadSong(songIndices[currentSongPosition + 1]);
           }
         },
       });
     }
-  }, [currentIndex, items.length, loadSong, onSetlistNav]);
+  }, [currentIndex, items, loadSong, onSetlistNav]);
 
   // Clear navigation when viewer closes
   useEffect(() => {
@@ -215,6 +226,23 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
       console.error('Failed to remove item:', err);
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  const handleOctaveChange = async (item: SetlistItem, index: number, delta: number) => {
+    const newOffset = (item.octaveOffset || 0) + delta;
+    if (newOffset < -2 || newOffset > 2) return;
+
+    try {
+      await updateItem(setlist.id, item.id, { octaveOffset: newOffset });
+      // Clear cached PDF so it regenerates with new octave
+      if (pdfCache.current[index]) {
+        URL.revokeObjectURL(pdfCache.current[index].blobUrl);
+        delete pdfCache.current[index];
+      }
+      setPrefetchStatus(prev => ({ ...prev, [index]: 'pending' }));
+    } catch (err) {
+      console.error('Failed to update octave:', err);
     }
   };
 
@@ -268,6 +296,25 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
         {items.length > 0 && (
           <div className="space-y-2">
             {items.map((item, index) => {
+              // Render set breaks as visual dividers
+              if (item.isSetBreak) {
+                return (
+                  <div key={item.id} className="flex items-center gap-4 py-2">
+                    <div className="flex-1 h-px bg-gray-600" />
+                    <span className="text-gray-500 text-sm">Set Break</span>
+                    <div className="flex-1 h-px bg-gray-600" />
+                    <button
+                      onClick={() => handleRemoveItem(item, index)}
+                      disabled={isRemoving}
+                      className="p-2 text-gray-600 hover:text-red-400 transition-colors"
+                      aria-label="Remove set break"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                );
+              }
+
               const info = resolvedInfo[index];
               return (
                 <div
@@ -292,6 +339,11 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                     {info && (
                       <span className="text-gray-400 text-sm">{formatKey(info.concertKey)}</span>
                     )}
+                    {item.octaveOffset ? (
+                      <span className="text-orange-400 text-xs">
+                        {item.octaveOffset > 0 ? `+${item.octaveOffset}` : item.octaveOffset} oct
+                      </span>
+                    ) : null}
                     {loading === index ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-400 border-t-transparent" />
                     ) : prefetchStatus[index] === 'loading' ? (
@@ -300,6 +352,24 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
                       <span className="text-green-400 text-xs">Ready</span>
                     ) : null}
                   </button>
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => handleOctaveChange(item, index, 1)}
+                      disabled={(item.octaveOffset || 0) >= 2}
+                      className="p-1 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Octave up"
+                    >
+                      <FiChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleOctaveChange(item, index, -1)}
+                      disabled={(item.octaveOffset || 0) <= -2}
+                      className="p-1 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Octave down"
+                    >
+                      <FiChevronDown size={14} />
+                    </button>
+                  </div>
                   <button
                     onClick={() => handleRemoveItem(item, index)}
                     disabled={isRemoving}

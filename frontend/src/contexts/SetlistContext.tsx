@@ -12,6 +12,7 @@ import {
   removeItem as removeItemService,
   reorderItems as reorderItemsService,
   updateItem as updateItemService,
+  duplicateSetlist as duplicateSetlistService,
 } from '@/services/setlistFirestoreService';
 
 interface SetlistContextType {
@@ -24,6 +25,7 @@ interface SetlistContextType {
   removeItem: (setlistId: string, itemId: string) => Promise<void>;
   reorderItems: (setlistId: string, items: SetlistItem[]) => Promise<void>;
   updateItem: (setlistId: string, itemId: string, updates: Partial<Pick<SetlistItem, 'concertKey' | 'octaveOffset' | 'notes'>>) => Promise<void>;
+  duplicateSetlist: (sourceId: string) => Promise<string>;
 }
 
 const SetlistContext = createContext<SetlistContextType | null>(null);
@@ -95,6 +97,13 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
     await updateItemService(setlistId, itemId, updates);
   };
 
+  const duplicateSetlist = async (sourceId: string): Promise<string> => {
+    if (!user) throw new Error('Must be signed in to duplicate setlist');
+    const source = setlists.find(s => s.id === sourceId);
+    const newName = source ? `${source.name} (Copy)` : 'Copied Setlist';
+    return duplicateSetlistService(sourceId, newName, user.uid);
+  };
+
   return (
     <SetlistContext.Provider
       value={{
@@ -107,6 +116,7 @@ export function SetlistProvider({ children }: { children: ReactNode }) {
         removeItem,
         reorderItems,
         updateItem,
+        duplicateSetlist,
       }}
     >
       {children}

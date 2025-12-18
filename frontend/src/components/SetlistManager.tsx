@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FiPlus, FiTrash2, FiMusic, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiMusic, FiEdit2, FiCopy } from 'react-icons/fi';
 import { useSetlists } from '@/contexts/SetlistContext';
 import { useGroups } from '@/contexts/GroupsContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
@@ -18,7 +18,7 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  const { setlists, loading, createSetlist, updateSetlist, deleteSetlist } = useSetlists();
+  const { setlists, loading, createSetlist, updateSetlist, deleteSetlist, duplicateSetlist } = useSetlists();
   const { groups } = useGroups();
   const { profile } = useUserProfile();
 
@@ -82,6 +82,17 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
       setRenaming(null);
     } catch (err) {
       console.error('Failed to rename setlist:', err);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    setIsPending(true);
+    try {
+      await duplicateSetlist(id);
+    } catch (err) {
+      console.error('Failed to duplicate setlist:', err);
     } finally {
       setIsPending(false);
     }
@@ -260,6 +271,15 @@ export function SetlistManager({ onSelectSetlist, onClose }: SetlistManagerProps
                           title="Rename"
                         >
                           <FiEdit2 />
+                        </button>
+                        <button
+                          onClick={() => handleDuplicate(setlist.id)}
+                          disabled={isPending}
+                          className="p-2 text-gray-500 hover:text-green-400 disabled:opacity-50 transition-colors"
+                          aria-label="Duplicate setlist"
+                          title="Duplicate"
+                        >
+                          <FiCopy />
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(setlist.id)}
