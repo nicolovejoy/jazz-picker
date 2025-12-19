@@ -2,25 +2,27 @@
 
 ## Automatic (Eric's updates)
 
-GitHub workflow in `.github/workflows/update-catalog.yml`:
+GitHub workflow `.github/workflows/update-catalog.yml`:
 1. Rebuilds `catalog.db` from lilypond-lead-sheets
 2. Uploads to S3
-3. Deploys to Fly.io (rebuilds Docker image with fresh LilyPond source)
-4. Clears S3 PDF cache
+3. Deploys to Fly.io
+4. Clears standard PDF cache (not custom)
 
 ## Manual
 
 ```bash
-# Rebuild catalog locally
-python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
+# Rebuild catalog with custom charts
+python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt --custom-dir custom-charts
 
-# Upload and restart
+# Upload catalog and restart
 aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
-flyctl apps restart jazz-picker
-
-# Full redeploy (if LilyPond source changed)
 fly deploy
+
+# Clear standard PDF cache (optional)
 aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
+
+# Clear custom PDF cache (optional)
+aws s3 rm s3://jazz-picker-custom-pdfs/generated/ --recursive
 ```
 
 ## Verification

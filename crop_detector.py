@@ -34,7 +34,7 @@ class CropBounds:
         )
 
 
-def detect_content_bounds(pdf_path: str, padding: float = 8.0) -> Optional[CropBounds]:
+def detect_content_bounds(pdf_path: str, padding: float = 20.0) -> Optional[CropBounds]:
     """
     Detect content bounds for a PDF by analyzing pixel content.
 
@@ -104,7 +104,7 @@ def detect_content_bounds(pdf_path: str, padding: float = 8.0) -> Optional[CropB
         return None
 
 
-def detect_content_bounds_fast(pdf_path: str, padding: float = 8.0) -> Optional[CropBounds]:
+def detect_content_bounds_fast(pdf_path: str, padding: float = 20.0) -> Optional[CropBounds]:
     """
     Faster version that samples rows/columns instead of every pixel.
     Good enough for sheet music with clear margins.

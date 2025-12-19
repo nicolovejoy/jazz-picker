@@ -195,3 +195,19 @@ def get_song_note_range(title):
         if row:
             return row['low_note_midi'], row['high_note_midi']
         return None, None
+
+
+def get_song_source(title):
+    """
+    Get the source of a song ('standard' or 'custom').
+    Returns 'standard' if not found.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT source FROM songs WHERE title = ?",
+            (title,)
+        )
+        row = cursor.fetchone()
+        if row and row['source']:
+            return row['source']
+        return 'standard'

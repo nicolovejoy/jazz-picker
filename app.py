@@ -59,8 +59,12 @@ CACHE_DIR = Path('cache/pdfs')
 
 # S3 Configuration
 S3_BUCKET = os.getenv('S3_BUCKET_NAME', 'jazz-picker-pdfs')
+S3_CUSTOM_BUCKET = os.getenv('S3_CUSTOM_BUCKET_NAME', 'jazz-picker-custom-pdfs')
 S3_REGION = os.getenv('S3_REGION', 'us-east-1')
 USE_S3 = os.getenv('USE_S3', 'true').lower() == 'true'
+
+# Custom charts directory
+CUSTOM_CHARTS_DIR = Path('custom-charts')
 
 # Initialize S3 client if enabled
 s3_client = None
@@ -522,12 +526,13 @@ def slugify(text):
     return text.strip('-')
 
 
-def generate_wrapper_content(core_file, target_key, clef, instrument="", octave_offset=0):
+def generate_wrapper_content(core_file, target_key, clef, instrument="", octave_offset=0, source='standard'):
     """Generate LilyPond wrapper file content.
 
     Args:
         octave_offset: Integer from -2 to +2. Positive = up, negative = down.
                        LilyPond syntax: ' = up one octave, , = down one octave
+        source: 'standard' or 'custom' - determines Core file path
     """
     # bassKey is always the key without octave modifier
     bass_key = target_key.rstrip(',')
@@ -541,6 +546,12 @@ def generate_wrapper_content(core_file, target_key, clef, instrument="", octave_
     elif octave_offset < 0:
         what_key += "," * abs(octave_offset)
 
+    # Core file path depends on source
+    if source == 'custom':
+        core_include = f'../../custom-charts/Core/{core_file}'
+    else:
+        core_include = f'../Core/{core_file}'
+
     return f'''%% -*- Mode: LilyPond -*-
 
 \\version "2.24.0"
@@ -552,7 +563,7 @@ whatKey = {what_key}
 bassKey = {bass_key}
 whatClef = "{clef}"
 
-\\include "../Core/{core_file}"
+\\include "{core_include}"
 '''
 
 
@@ -772,6 +783,10 @@ def generate_pdf():
     # Use the first core file (most songs have exactly one)
     core_file = core_files[0]
 
+    # Get song source (standard or custom)
+    source = db.get_song_source(song_title)
+    s3_bucket = S3_CUSTOM_BUCKET if source == 'custom' else S3_BUCKET
+
     # Auto-calculate octave offset if not explicitly provided
     if not octave_offset_provided and instrument_label:
         octave_offset = calculate_optimal_octave(song_title, concert_key, instrument_label)
@@ -786,11 +801,11 @@ def generate_pdf():
     # Check if already cached in S3
     if s3_client:
         try:
-            head_response = s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
+            head_response = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
             # Already exists - return presigned URL with crop metadata
             url = s3_client.generate_presigned_url(
                 'get_object',
-                Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+                Params={'Bucket': s3_bucket, 'Key': s3_key},
                 ExpiresIn=900
             )
             generation_time = int((time.time() - start_time) * 1000)
@@ -823,7 +838,7 @@ def generate_pdf():
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate wrapper file (use written_key for LilyPond, instrument_label for subtitle)
-    wrapper_content = generate_wrapper_content(core_file, written_key, clef, instrument_label, octave_offset)
+    wrapper_content = generate_wrapper_content(core_file, written_key, clef, instrument_label, octave_offset, source)
 
     # Local filename matches S3 key format
     file_base = f"{slug}-{concert_key}-{transposition}-{clef}-{octave_offset}"
@@ -878,7 +893,7 @@ def generate_pdf():
 
                 s3_client.upload_file(
                     str(pdf_path),
-                    S3_BUCKET,
+                    s3_bucket,
                     s3_key,
                     ExtraArgs=extra_args
                 )
@@ -886,7 +901,7 @@ def generate_pdf():
                 # Generate presigned URL
                 url = s3_client.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+                    Params={'Bucket': s3_bucket, 'Key': s3_key},
                     ExpiresIn=900
                 )
 

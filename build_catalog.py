@@ -12,6 +12,7 @@ Usage:
     python build_catalog.py --ranges-file PATH  # Read ranges from Eric's parsed output (recommended)
     python build_catalog.py --skip-ranges       # Skip note ranges entirely (fast, no ranges)
     python build_catalog.py --limit 10          # Process only 10 songs (for testing)
+    python build_catalog.py --custom-dir PATH   # Include custom charts from PATH/Wrappers/
 """
 
 import sqlite3
@@ -216,14 +217,14 @@ def extract_song_info(wrapper_path: Path) -> dict:
     }
 
 
-def get_standard_wrappers() -> list[Path]:
+def get_standard_wrappers(wrappers_dir: Path = WRAPPERS_DIR) -> list[Path]:
     """
     Get list of Standard wrapper files (one per song, no transpositions).
 
     Filters for files ending in exactly " Standard.ly" (not "Bass for Standard.ly").
     """
     wrappers = []
-    for f in WRAPPERS_DIR.glob("*Standard.ly"):
+    for f in wrappers_dir.glob("*Standard.ly"):
         # Must end with exactly " Standard.ly" (excludes "Bass for Standard.ly", etc.)
         if f.name.endswith(" Standard.ly") and " for Standard.ly" not in f.name:
             wrappers.append(f)
@@ -251,11 +252,13 @@ def create_database(db_path: Path) -> sqlite3.Connection:
             core_files TEXT,
             low_note_midi INTEGER,
             high_note_midi INTEGER,
+            source TEXT DEFAULT 'standard',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE INDEX idx_songs_title ON songs(title);
         CREATE INDEX idx_songs_composer ON songs(composer);
+        CREATE INDEX idx_songs_source ON songs(source);
 
         CREATE TABLE metadata (
             key TEXT PRIMARY KEY,
@@ -266,13 +269,13 @@ def create_database(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
-def insert_song(conn: sqlite3.Connection, song: dict):
+def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
     """Insert a song into the database."""
     import json
 
     conn.execute("""
-        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         song['title'],
         song['default_key'],
@@ -280,6 +283,7 @@ def insert_song(conn: sqlite3.Connection, song: dict):
         json.dumps(song.get('core_files', [])),
         song.get('low_note_midi'),
         song.get('high_note_midi'),
+        source,
     ))
 
 
@@ -295,6 +299,7 @@ def main():
     parser.add_argument("--skip-ranges", action="store_true", help="Skip note ranges entirely")
     parser.add_argument("--limit", type=int, help="Limit number of songs to process (for testing)")
     parser.add_argument("--output", type=str, default=str(CATALOG_DB), help="Output database path")
+    parser.add_argument("--custom-dir", type=str, help="Path to custom charts directory (e.g., custom-charts)")
     args = parser.parse_args()
 
     # Check lilypond-data exists
@@ -350,12 +355,44 @@ def main():
                 print(f"[{i}/{len(wrappers)}] {song['title']}")
 
             # Insert into database
-            insert_song(conn, song)
+            insert_song(conn, song, source='standard')
 
         except Exception as e:
             error_msg = f"FAILED: {wrapper.name} - {e}"
             print(f"  -> {error_msg}")
             errors.append(error_msg)
+
+    # Process custom charts if --custom-dir provided
+    custom_count = 0
+    if args.custom_dir:
+        custom_dir = Path(args.custom_dir)
+        custom_wrappers_dir = custom_dir / "Wrappers"
+        if custom_wrappers_dir.exists():
+            custom_wrappers = get_standard_wrappers(custom_wrappers_dir)
+            print(f"\nProcessing {len(custom_wrappers)} custom wrapper files from {custom_wrappers_dir}...")
+
+            for wrapper in custom_wrappers:
+                try:
+                    song = extract_song_info(wrapper)
+
+                    # Skip if title already exists (standard charts take precedence)
+                    if song['title'] in seen_titles:
+                        print(f"  Skipping duplicate: {song['title']}")
+                        continue
+                    seen_titles.add(song['title'])
+
+                    # Custom charts don't have note ranges (yet)
+                    print(f"[custom] {song['title']}")
+
+                    insert_song(conn, song, source='custom')
+                    custom_count += 1
+
+                except Exception as e:
+                    error_msg = f"FAILED (custom): {wrapper.name} - {e}"
+                    print(f"  -> {error_msg}")
+                    errors.append(error_msg)
+        else:
+            print(f"Warning: Custom wrappers directory not found: {custom_wrappers_dir}")
 
     # Add metadata
     conn.execute("INSERT INTO metadata (key, value) VALUES (?, ?)",
@@ -369,6 +406,8 @@ def main():
     # Report results
     print(f"\nCatalog built: {db_path}")
     print(f"  Songs: {len(seen_titles)}")
+    if custom_count > 0:
+        print(f"  Custom charts: {custom_count}")
     if args.ranges_file:
         print(f"  With note ranges: {songs_with_ranges}")
 

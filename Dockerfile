@@ -28,11 +28,14 @@ COPY crop_detector.py .
 COPY lilypond-data/Core /app/lilypond-data/Core
 COPY lilypond-data/Include /app/lilypond-data/Include
 
+# Copy custom charts Core files
+COPY custom-charts/Core /app/custom-charts/Core
+
 # Note: catalog.db will be downloaded from S3 on startup
 # Wrappers are generated dynamically, not copied
 
 # Create directories for generated files and cache
-RUN mkdir -p /app/cache/pdfs /app/lilypond-data/Generated
+RUN mkdir -p /app/cache/pdfs /app/lilypond-data/Generated /app/custom-charts/Generated
 
 # Expose Flask port
 EXPOSE 5001
