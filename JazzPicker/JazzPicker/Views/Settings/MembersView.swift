@@ -40,21 +40,26 @@ struct MembersView: View {
             }
 
             Section {
-                Button(action: copyCode) {
+                Button(action: copyInvite) {
                     HStack {
-                        Text("Share Code")
+                        Text("Copy Invite Link")
                         Spacer()
-                        Text(band.code)
-                            .monospaced()
-                            .foregroundStyle(.secondary)
                         if codeCopied {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.green)
+                        } else {
+                            Image(systemName: "doc.on.doc")
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
+            } footer: {
+                Text(band.code)
+                    .monospaced()
             }
         }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         .navigationTitle(band.name)
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -70,8 +75,9 @@ struct MembersView: View {
         }
     }
 
-    private func copyCode() {
-        UIPasteboard.general.string = band.code
+    private func copyInvite() {
+        let message = "Please join my band \"\(band.name)\" on Jazz Picker: https://jazzpicker.pianohouseproject.org/?join=\(band.code)"
+        UIPasteboard.general.string = message
         codeCopied = true
         Task {
             try? await Task.sleep(for: .seconds(2))

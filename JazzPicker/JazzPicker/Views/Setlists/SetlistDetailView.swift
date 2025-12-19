@@ -15,8 +15,13 @@ struct SetlistDetailView: View {
 
     let setlist: Setlist
 
+    @Environment(\.editMode) private var editMode
+
     @State private var selectedItem: SetlistItem?
     @State private var showingOfflineToast = false
+    @State private var isAddingSetBreak = false
+    @State private var showingCopiedToast = false
+    @State private var editedName: String = ""
 
     private var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -28,6 +33,10 @@ struct SetlistDetailView: View {
 
     private var bandName: String? {
         bandStore.bands.first { $0.id == currentSetlist.groupId }?.name
+    }
+
+    private var shareURL: URL {
+        URL(string: "https://jazzpicker.pianohouseproject.org?setlist=\(currentSetlist.id)")!
     }
 
     private var showBandName: Bool {
@@ -48,6 +57,14 @@ struct SetlistDetailView: View {
         )
     }
 
+    private func saveNameIfChanged() {
+        let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != currentSetlist.name else { return }
+        Task {
+            await setlistStore.renameSetlist(currentSetlist, to: trimmed)
+        }
+    }
+
     var body: some View {
         Group {
             if currentSetlist.items.isEmpty {
@@ -62,15 +79,7 @@ struct SetlistDetailView: View {
                         if item.isSetBreak {
                             SetBreakRow()
                         } else {
-                            SongItemRow(
-                                item: item,
-                                isCached: pdfCacheService.isCached(
-                                    songTitle: item.songTitle,
-                                    concertKey: item.concertKey,
-                                    transposition: instrument.transposition,
-                                    clef: instrument.clef
-                                )
-                            ) {
+                            SongItemRow(item: item) {
                                 selectedItem = item
                             }
                         }
@@ -99,12 +108,21 @@ struct SetlistDetailView: View {
                     }
                 }
                 .listStyle(.plain)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
             }
         }
         .navigationTitle(currentSetlist.name)
         .toolbar {
-            if showBandName, let bandName = bandName {
-                ToolbarItem(placement: .principal) {
+            ToolbarItem(placement: .principal) {
+                if editMode?.wrappedValue.isEditing == true {
+                    TextField("Setlist Name", text: $editedName)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 200)
+                        .onSubmit {
+                            saveNameIfChanged()
+                        }
+                } else if showBandName, let bandName = bandName {
                     VStack(spacing: 0) {
                         Text(currentSetlist.name)
                             .font(.headline)
@@ -114,15 +132,49 @@ struct SetlistDetailView: View {
                     }
                 }
             }
+            ToolbarItem(placement: .primaryAction) {
+                EditButton()
+                    .disabled(!networkMonitor.isConnected)
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    UIPasteboard.general.url = shareURL
+                    showingCopiedToast = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        showingCopiedToast = false
+                    }
+                } label: {
+                    Label("Copy Link", systemImage: "link")
+                }
+            }
             if !currentSetlist.items.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    EditButton()
-                        .disabled(!networkMonitor.isConnected)
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        if networkMonitor.isConnected {
+                            isAddingSetBreak = true
+                            Task {
+                                try? await setlistStore.addSetBreak(to: currentSetlist)
+                                isAddingSetBreak = false
+                            }
+                        } else {
+                            showingOfflineToast = true
+                        }
+                    } label: {
+                        Label("Add Set Break", systemImage: "minus")
+                    }
+                    .disabled(isAddingSetBreak || !networkMonitor.isConnected)
                 }
             }
         }
         .onAppear {
             setlistStore.markOpened(currentSetlist)
+        }
+        .onChange(of: editMode?.wrappedValue) { oldValue, newValue in
+            if newValue?.isEditing == true {
+                editedName = currentSetlist.name
+            } else if oldValue?.isEditing == true {
+                saveNameIfChanged()
+            }
         }
         .task {
             // Auto-download uncached songs for offline use
@@ -144,7 +196,20 @@ struct SetlistDetailView: View {
             if showingOfflineToast {
                 offlineToast
             }
+            if showingCopiedToast {
+                copiedToast
+            }
         }
+    }
+
+    private var copiedToast: some View {
+        Text("Link copied")
+            .font(.subheadline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.green.opacity(0.9), in: Capsule())
+            .padding(.bottom, 20)
     }
 
     private var offlineToast: some View {
@@ -165,7 +230,6 @@ struct SetlistDetailView: View {
 
 struct SongItemRow: View {
     let item: SetlistItem
-    let isCached: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -174,14 +238,6 @@ struct SongItemRow: View {
                 Text(item.songTitle)
                     .foregroundStyle(.primary)
                 Spacer()
-
-                // Subtle cache indicator
-                if isCached {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary.opacity(0.4))
-                }
-
                 Text(formatKey(item.concertKey))
                     .foregroundStyle(.secondary)
             }

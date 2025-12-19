@@ -14,6 +14,7 @@ struct SetlistListView: View {
     @State private var newSetlistName = ""
     @State private var selectedGroupId: String?
     @State private var setlistToDelete: Setlist?
+    @State private var setlistToRename: Setlist?
     @State private var showingOfflineToast = false
     @State private var showingErrorToast = false
 
@@ -85,6 +86,13 @@ struct SetlistListView: View {
                     Text("Are you sure you want to delete \"\(setlist.name)\"?")
                 }
             }
+            .sheet(item: $setlistToRename) { setlist in
+                RenameSetlistSheet(setlist: setlist, initialName: setlist.name) { newName in
+                    Task {
+                        await setlistStore.renameSetlist(setlist, to: newName)
+                    }
+                }
+            }
             .overlay(alignment: .bottom) {
                 if showingOfflineToast {
                     offlineToast
@@ -135,6 +143,15 @@ struct SetlistListView: View {
                         showBand: showBandBadge
                     )
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button {
+                        setlistToRename = setlist
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+                    .tint(.blue)
+                    .disabled(!networkMonitor.isConnected)
+                }
             }
             .onDelete { indexSet in
                 if !networkMonitor.isConnected {
@@ -147,6 +164,8 @@ struct SetlistListView: View {
             }
         }
         .listStyle(.plain)
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         .navigationDestination(for: Setlist.self) { setlist in
             SetlistDetailView(setlist: setlist)
         }
@@ -276,6 +295,49 @@ struct CreateSetlistSheet: View {
                 }
             }
         }
+    }
+}
+
+struct RenameSetlistSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let setlist: Setlist
+    let initialName: String
+    let onRename: (String) -> Void
+
+    @State private var name: String = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Setlist name", text: $name)
+                        .focused($isFocused)
+                }
+            }
+            .navigationTitle("Rename Setlist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let newName = name.trimmingCharacters(in: .whitespaces)
+                        if !newName.isEmpty && newName != setlist.name {
+                            onRename(newName)
+                        }
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .onAppear {
+                name = initialName
+                isFocused = true
+            }
+        }
+        .presentationDetents([.height(200)])
     }
 }
 

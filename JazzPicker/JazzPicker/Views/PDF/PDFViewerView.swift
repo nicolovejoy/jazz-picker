@@ -31,8 +31,7 @@ struct PDFViewerView: View {
     @State private var cropBounds: CropBounds?
     @State private var isLoading = true
     @State private var error: Error?
-    @State private var showControls = true
-    @State private var hideControlsTask: Task<Void, Never>?
+    @State private var showControls = false
     @State private var isLandscape = false
     @State private var showKeyPicker = false
     @State private var showAddToSetlist = false
@@ -142,9 +141,6 @@ struct PDFViewerView: View {
                 withAnimation {
                     showControls.toggle()
                 }
-                if showControls {
-                    scheduleHideControls()
-                }
             }
             .highPriorityGesture(swipeDownGesture)
             .onChange(of: geometry.size) { _, newSize in
@@ -152,7 +148,6 @@ struct PDFViewerView: View {
             }
             .onAppear {
                 isLandscape = geometry.size.width > geometry.size.height
-                scheduleHideControls()
             }
         }
         .navigationTitle(song.title)
@@ -232,7 +227,6 @@ struct PDFViewerView: View {
             await loadPDF()
         }
         .onDisappear {
-            hideControlsTask?.cancel()
             pendingOctaveSave?.cancel()
         }
         .onChange(of: octaveOffset) { _, newOffset in
@@ -405,24 +399,6 @@ struct PDFViewerView: View {
             // In 2-up mode, last page might be pageCount-1 or pageCount-2 depending on odd/even
             isAtLastPage = currentPage >= totalPages - (isLandscape ? 2 : 1)
         }
-    }
-
-    // MARK: - Controls
-
-    private func scheduleHideControls() {
-        hideControlsTask?.cancel()
-        hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(5))
-            if !Task.isCancelled {
-                withAnimation {
-                    showControls = false
-                }
-            }
-        }
-    }
-
-    private func cancelHideControls() {
-        hideControlsTask?.cancel()
     }
 
     private func loadPDF() async {

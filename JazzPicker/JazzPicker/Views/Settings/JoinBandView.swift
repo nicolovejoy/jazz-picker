@@ -32,6 +32,8 @@ struct JoinBandView: View {
                 }
             }
         }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         .navigationTitle("Join Band")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(isJoining)

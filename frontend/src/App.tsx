@@ -11,6 +11,7 @@ import { SignIn } from './components/SignIn';
 import { OnboardingModal } from './components/OnboardingModal';
 import { InstrumentPickerModal } from './components/InstrumentPickerModal';
 import { GroupsSection } from './components/GroupsSection';
+import { JoinBandModal } from './components/JoinBandModal';
 import { useAuth } from './contexts/AuthContext';
 import { useUserProfile } from './contexts/UserProfileContext';
 import type { Setlist } from '@/types/setlist';
@@ -63,6 +64,7 @@ function App() {
   const [catalogNav, setCatalogNav] = useState<CatalogNavigation | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [isPdfTransitioning, setIsPdfTransitioning] = useState(false);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -141,6 +143,7 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const setlistId = params.get('setlist');
+    const joinCode = params.get('join');
 
     if (setlistId && instrument) {
       getSetlist(setlistId).then(setlist => {
@@ -152,7 +155,16 @@ function App() {
         console.error('Failed to load setlist from URL:', err);
       });
     }
-  }, [instrument]);
+
+    // Handle join band deep link (only after profile is loaded)
+    if (joinCode && profile) {
+      setPendingJoinCode(joinCode);
+      // Clear the join param from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('join');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [instrument, profile]);
 
   // Update URL when setlist changes
   useEffect(() => {
@@ -564,6 +576,14 @@ function App() {
             setShowInstrumentPicker(false);
           }}
           onClose={() => setShowInstrumentPicker(false)}
+        />
+      )}
+
+      {pendingJoinCode && (
+        <JoinBandModal
+          code={pendingJoinCode}
+          onClose={() => setPendingJoinCode(null)}
+          onJoined={() => setPendingJoinCode(null)}
         />
       )}
     </div>

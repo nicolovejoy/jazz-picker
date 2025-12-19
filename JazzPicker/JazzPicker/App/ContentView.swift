@@ -11,9 +11,11 @@ struct ContentView: View {
     @Environment(CatalogStore.self) private var catalogStore
     @Environment(CachedKeysStore.self) private var cachedKeysStore
     @Environment(UserProfileStore.self) private var userProfileStore
+    @Environment(\.pendingJoinCode) private var pendingJoinCode
     @State private var selectedTab = 0
     @State private var previousTab = 0
     @State private var spinSong: Song?
+    @State private var joinCodeToProcess: String?
 
     var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -75,7 +77,23 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: pendingJoinCode.wrappedValue) { _, newValue in
+            if let code = newValue {
+                joinCodeToProcess = code
+                pendingJoinCode.wrappedValue = nil
+            }
+        }
+        .sheet(item: $joinCodeToProcess) { code in
+            NavigationStack {
+                DeepLinkJoinView(code: code)
+            }
+        }
     }
+}
+
+// Make String conform to Identifiable for sheet presentation
+extension String: @retroactive Identifiable {
+    public var id: String { self }
 }
 
 #Preview {

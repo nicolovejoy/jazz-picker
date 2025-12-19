@@ -63,6 +63,8 @@ struct OnboardingView: View {
                     }
                 }
             }
+            .frame(maxWidth: 600)
+            .frame(maxWidth: .infinity)
             .navigationTitle("Welcome")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

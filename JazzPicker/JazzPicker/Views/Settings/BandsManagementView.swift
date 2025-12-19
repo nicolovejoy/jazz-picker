@@ -40,7 +40,9 @@ struct BandsManagementView: View {
             } else {
                 Section("Your Bands") {
                     ForEach(bandStore.bands) { band in
-                        NavigationLink(value: band) {
+                        NavigationLink {
+                            MembersView(band: band)
+                        } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(band.name)
                                     .font(.headline)
@@ -79,10 +81,9 @@ struct BandsManagementView: View {
             }
             .disabled(!networkMonitor.isConnected)
         }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         .navigationTitle("Bands")
-        .navigationDestination(for: Band.self) { band in
-            MembersView(band: band)
-        }
         // Leave alert
         .alert("Leave Band?", isPresented: .init(
             get: { bandToLeave != nil },

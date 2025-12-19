@@ -7,20 +7,9 @@ import SwiftUI
 
 struct SongCard: View {
     @Environment(CachedKeysStore.self) private var cachedKeysStore
-    @Environment(PDFCacheService.self) private var pdfCacheService
     let song: Song
     let instrument: Instrument
     let onTap: (String) -> Void  // Called with the selected concert key
-
-    /// Check if default key PDF is cached
-    private var isDefaultKeyCached: Bool {
-        pdfCacheService.isCached(
-            songTitle: song.title,
-            concertKey: song.defaultKey,
-            transposition: instrument.transposition,
-            clef: instrument.clef
-        )
-    }
 
     /// Get ordered keys: standard (always first), sticky (if exists, 2nd), then others by recency
     private var orderedKeys: [(key: String, isStandard: Bool, isSticky: Bool)] {
@@ -62,13 +51,6 @@ struct SongCard: View {
                 }
 
                 Spacer()
-
-                // Subtle cache indicator
-                if isDefaultKeyCached {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -210,5 +192,4 @@ struct KeyPillButton: View {
     }
     .padding()
     .environment(CachedKeysStore())
-    .environment(PDFCacheService.shared)
 }

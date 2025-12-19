@@ -10,7 +10,7 @@ service cloud.firestore {
     // Helper: Check if user is an admin of a group
     function isGroupAdmin(groupId) {
       let memberDoc = get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
-      return memberDoc != null && memberDoc.data.role == 'admin';
+      return memberDoc.data != null && memberDoc.data.role == 'admin';
     }
 
     // Users can only read/write their own profile

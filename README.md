@@ -29,4 +29,4 @@ open JazzPicker/JazzPicker.xcodeproj  # iOS
 
 - [CLAUDE.md](docs/CLAUDE.md) — Development reference
 - [ROADMAP.md](docs/ROADMAP.md) — Backlog
-- [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) — Deployment
+- [DEPLOY.md](docs/DEPLOY.md) — Deploy workflow & cache invalidation

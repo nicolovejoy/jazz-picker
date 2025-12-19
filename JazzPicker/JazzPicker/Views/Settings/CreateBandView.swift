@@ -29,13 +29,12 @@ struct CreateBandView: View {
                         Text("\(band.name) created!")
                             .font(.headline)
 
-                        Text("Share this code with your band:")
+                        Text("Share this invite with your band:")
                             .foregroundStyle(.secondary)
 
-                        Button(action: copyCode) {
+                        Button(action: copyInvite) {
                             HStack {
-                                Text(band.code)
-                                    .font(.title2.monospaced())
+                                Text("Copy Invite Link")
                                 Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
                                     .foregroundStyle(codeCopied ? .green : .accentColor)
                             }
@@ -44,6 +43,10 @@ struct CreateBandView: View {
                             .cornerRadius(8)
                         }
                         .buttonStyle(.plain)
+
+                        Text(band.code)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical)
@@ -64,6 +67,8 @@ struct CreateBandView: View {
                 }
             }
         }
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         .navigationTitle(createdBand != nil ? "Band Created" : "Create Band")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(createdBand != nil || isCreating)
@@ -97,9 +102,10 @@ struct CreateBandView: View {
         }
     }
 
-    private func copyCode() {
+    private func copyInvite() {
         guard let band = createdBand else { return }
-        UIPasteboard.general.string = band.code
+        let message = "Please join my band \"\(band.name)\" on Jazz Picker: https://jazzpicker.pianohouseproject.org/?join=\(band.code)"
+        UIPasteboard.general.string = message
         codeCopied = true
         Task {
             try? await Task.sleep(for: .seconds(2))
