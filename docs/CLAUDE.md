@@ -55,11 +55,12 @@ PDFs cached in S3. LilyPond generates on cache miss. Custom charts route to sepa
 
 ## Key Concepts
 
-- **Concert Key**: What audience hears (stored in setlist items)
+- **Concert Key**: What audience hears (stored in setlist items, includes 'm' suffix for minor)
 - **Written Key**: What player sees (calculated from instrument transposition)
 - **Preferred Key**: User's preferred key for a song (Firestore, sparse)
 - **Octave Offset**: +/-2 adjustment when transposition lands too high/low
 - **Source**: 'standard' (Eric's charts) or 'custom' (user-submitted)
+- **Key Normalization**: iOS/Web strip 'm' suffix before API calls; backend determines minor from catalog
 
 ## Firestore Schema
 
