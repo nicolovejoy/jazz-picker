@@ -11,155 +11,98 @@ struct SongCard: View {
     let instrument: Instrument
     let onTap: (String) -> Void  // Called with the selected concert key
 
-    /// Get ordered keys: standard (always first), sticky (if exists, 2nd), then others by recency
-    private var orderedKeys: [(key: String, isStandard: Bool, isSticky: Bool)] {
-        var result: [(key: String, isStandard: Bool, isSticky: Bool)] = []
-
-        // Always add standard key first
-        result.append((song.defaultKey, true, false))
-
-        // Get cached keys (already ordered with sticky first)
-        let cachedKeys = cachedKeysStore.getCachedKeys(for: song)
-        let stickyKey = cachedKeysStore.getStickyKey(for: song)
-
-        for key in cachedKeys {
-            let isSticky = key == stickyKey
-            result.append((key, false, isSticky))
-        }
-
-        return result
+    private var standardKey: String { song.defaultKey }
+    private var preferredKey: String {
+        cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
     }
+    private var hasPreference: Bool { preferredKey != standardKey }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Title area - tappable for default key
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(song.title)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+            // Title and composer
+            VStack(alignment: .leading, spacing: 4) {
+                Text(song.title)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
 
-                    if let composer = song.composer {
-                        Text(composer)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                if let composer = song.composer {
+                    Text(composer)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                // Use sticky key if set, otherwise default
-                let key = cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
-                onTap(key)
             }
 
             Spacer()
 
-            // Key pills row
-            HStack(spacing: 6) {
-                ForEach(Array(orderedKeys.enumerated()), id: \.offset) { _, keyInfo in
-                    KeyPillButton(
-                        concertKey: keyInfo.key,
-                        instrument: instrument,
-                        isStandard: keyInfo.isStandard,
-                        isSticky: keyInfo.isSticky
-                    ) {
-                        onTap(keyInfo.key)
-                    }
+            // Keys row: standard key, preferred key in parens if different
+            HStack(spacing: 4) {
+                Button {
+                    onTap(standardKey)
+                } label: {
+                    Text(displayKey(standardKey))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                if hasPreference {
+                    Text("(\(displayKey(preferredKey)))")
+                        .foregroundStyle(.orange)
                 }
 
                 Spacer()
             }
+            .font(.subheadline)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap(preferredKey)
+        }
     }
-}
 
-/// A tappable key pill with standard (green) or cached (orange) styling
-struct KeyPillButton: View {
-    let concertKey: String
-    let instrument: Instrument
-    let isStandard: Bool
-    let isSticky: Bool
-    let onTap: () -> Void
+    /// Format key for display, accounting for instrument transposition
+    private func displayKey(_ concertKey: String) -> String {
+        let isMinor = concertKey.hasSuffix("m")
+        let baseKey = isMinor ? String(concertKey.dropLast()) : concertKey
 
-    private var displayText: String {
-        let formatted = formatKey(concertKey)
-
+        let displayBase: String
         if instrument.transposition == .C {
-            return formatted
+            displayBase = formatPitch(baseKey)
         } else {
-            let written = transposeKey(concertKey, for: instrument.transposition)
-            return "\(written) (\(formatted))"
+            displayBase = formatPitch(transposeKey(baseKey, for: instrument.transposition))
         }
+
+        return isMinor ? "\(displayBase) Minor" : "\(displayBase) Major"
     }
 
-    private var backgroundColor: Color {
-        if isStandard {
-            return Color.green.opacity(0.2)
-        } else {
-            return Color.orange.opacity(isSticky ? 0.35 : 0.2)
-        }
-    }
-
-    private var foregroundColor: Color {
-        if isStandard {
-            return Color.green
-        } else {
-            return Color.orange
-        }
-    }
-
-    var body: some View {
-        Button(action: onTap) {
-            Text(displayText)
-                .font(.body)
-                .fontWeight(isSticky ? .semibold : .medium)
-                .foregroundStyle(foregroundColor)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(backgroundColor)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func formatKey(_ key: String) -> String {
-        let isMinor = key.hasSuffix("m")
-        let pitchPart = isMinor ? String(key.dropLast()) : key
-
-        var result = pitchPart.prefix(1).uppercased()
-
-        if pitchPart.count > 1 {
-            let modifier = pitchPart.dropFirst()
+    /// Format pitch class: "bf" -> "Bb", "fs" -> "F#"
+    private func formatPitch(_ pitch: String) -> String {
+        var result = pitch.prefix(1).uppercased()
+        if pitch.count > 1 {
+            let modifier = pitch.dropFirst()
             if modifier == "f" {
                 result += "b"
             } else if modifier == "s" {
                 result += "#"
             }
         }
-
-        return isMinor ? result + " Minor" : result
+        return result
     }
 
+    /// Transpose concert pitch to written pitch
     private func transposeKey(_ concertKey: String, for transposition: Transposition) -> String {
         let keys = ["c", "df", "d", "ef", "e", "f", "gf", "g", "af", "a", "bf", "b"]
-
-        let isMinor = concertKey.hasSuffix("m")
-        let pitchClass = isMinor ? String(concertKey.dropLast()).lowercased() : concertKey.lowercased()
+        let pitchClass = concertKey.lowercased()
 
         guard let index = keys.firstIndex(of: pitchClass) else {
-            return formatKey(concertKey)
+            return concertKey
         }
 
         let semitones: Int
@@ -170,21 +113,20 @@ struct KeyPillButton: View {
         }
 
         let newIndex = (index + semitones) % 12
-        let transposedPitch = keys[newIndex]
-        return formatKey(isMinor ? transposedPitch + "m" : transposedPitch)
+        return keys[newIndex]
     }
 }
 
 #Preview {
     LazyVGrid(columns: [GridItem(.adaptive(minimum: 320))], spacing: 16) {
         SongCard(
-            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "cm", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
             instrument: .trumpet
         ) { key in
             print("Selected \(key)")
         }
         SongCard(
-            song: Song(title: "Autumn Leaves", defaultKey: "g", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil),
             instrument: .piano
         ) { key in
             print("Selected \(key)")

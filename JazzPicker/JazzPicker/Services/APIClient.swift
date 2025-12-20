@@ -10,6 +10,23 @@ final class APIClient: Sendable {
 
     private let baseURL = URL(string: "https://jazz-picker.fly.dev/api/v2")!
 
+    /// Normalize key format for API: strip minor 'm' suffix, convert accidentals
+    /// "am" -> "a", "Bb" -> "bf", "F#" -> "fs"
+    private func normalizeKey(_ key: String) -> String {
+        var k = key.lowercased()
+        // Strip minor 'm' suffix (API determines minor from song's default key)
+        if k.hasSuffix("m") && k.count > 1 {
+            k = String(k.dropLast())
+        }
+        // Convert # to s (sharp)
+        k = k.replacingOccurrences(of: "#", with: "s")
+        // Convert flat notation: xb -> xf (but not "b" alone or "bf")
+        if k.count == 2 && k.last == "b" && k.first != "b" {
+            k = String(k.first!) + "f"
+        }
+        return k
+    }
+
     func fetchCatalog() async throws -> [Song] {
         let url = baseURL.appendingPathComponent("catalog")
         let (data, response) = try await URLSession.shared.data(from: url)
@@ -74,9 +91,11 @@ final class APIClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let normalizedKey = normalizeKey(concertKey)
+
         var body: [String: Any] = [
             "song": song,
-            "concert_key": concertKey,
+            "concert_key": normalizedKey,
             "transposition": transposition.rawValue,
             "clef": clef.rawValue
         ]
@@ -92,7 +111,7 @@ final class APIClient: Sendable {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        print("🌐 API Request: \(song) in \(concertKey) for \(transposition.rawValue) oct:\(octaveOffset.map { String($0) } ?? "auto")")
+        print("🌐 API Request: \(song) in \(concertKey) → \(normalizedKey) for \(transposition.rawValue) oct:\(octaveOffset.map { String($0) } ?? "auto")")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
