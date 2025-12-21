@@ -178,6 +178,15 @@ struct PDFViewerView: View {
                         Label("Change Key", systemImage: "music.quarternote.3")
                     }
 
+                    Button {
+                        printPDF()
+                    } label: {
+                        Label("Print", systemImage: "printer")
+                    }
+                    .disabled(pdfDocument == nil)
+
+                    Divider()
+
                     // Add to setlist options
                     if let current = setlistStore.currentSetlist {
                         Button {
@@ -306,6 +315,25 @@ struct PDFViewerView: View {
 
         // Update concert key (triggers PDF reload via task)
         concertKey = newKey
+    }
+
+    // MARK: - Print
+
+    private func printPDF() {
+        guard let document = pdfDocument,
+              let pdfData = document.dataRepresentation() else {
+            return
+        }
+
+        let printController = UIPrintInteractionController.shared
+        let printInfo = UIPrintInfo(dictionary: nil)
+        printInfo.jobName = "\(song.title) - \(formatKeyForDisplay(concertKey))"
+        printInfo.outputType = .general
+
+        printController.printInfo = printInfo
+        printController.printingItem = pdfData
+
+        printController.present(animated: true)
     }
 
     private func formatKeyForDisplay(_ key: String) -> String {
