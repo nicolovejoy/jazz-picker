@@ -3,34 +3,25 @@
 //  JazzPicker
 //
 
+import Combine
 import FirebaseFirestore
 import Foundation
-import Observation
 
-@Observable
-class UserProfileStore {
-    private(set) var profile: UserProfile?
-    private(set) var isLoading = false
-    private(set) var error: String?
+class UserProfileStore: ObservableObject {
+    @Published private(set) var profile: UserProfile?
+    @Published private(set) var isLoading = false
+    @Published private(set) var error: String?
 
-    @ObservationIgnored
     private var listener: ListenerRegistration?
 
-    @ObservationIgnored
     private var db: Firestore {
         Firestore.firestore()
     }
 
-    @ObservationIgnored
     private var hasMigratedStickyKeys = false
-
-    @ObservationIgnored
     private let stickyKeysMigratedKey = "stickyKeysMigrated"
-
-    @ObservationIgnored
     private let legacyStickyKeysKey = "stickyKeys"
 
-    @ObservationIgnored
     private let cacheURL: URL = {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documents.appendingPathComponent("userProfile.json")

@@ -7,8 +7,8 @@ import FirebaseAuth
 import SwiftUI
 
 struct OnboardingView: View {
-    @Environment(AuthStore.self) private var authStore
-    @Environment(UserProfileStore.self) private var userProfileStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
 
     @State private var selectedInstrument: Instrument = .piano
     @State private var displayName: String = ""
@@ -130,6 +130,6 @@ struct OnboardingView: View {
 
 #Preview {
     OnboardingView()
-        .environment(AuthStore())
-        .environment(UserProfileStore())
+        .environmentObject(AuthStore())
+        .environmentObject(UserProfileStore())
 }

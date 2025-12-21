@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct GroupsSection: View {
-    @Environment(BandStore.self) private var bandStore
+    @EnvironmentObject private var bandStore: BandStore
 
     private var bandsSummary: String {
         let bands = bandStore.bands
@@ -41,5 +41,5 @@ struct GroupsSection: View {
             GroupsSection()
         }
     }
-    .environment(BandStore())
+    .environmentObject(BandStore())
 }

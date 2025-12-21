@@ -8,8 +8,8 @@ import SwiftUI
 
 struct DeepLinkJoinView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthStore.self) private var authStore
-    @Environment(BandStore.self) private var bandStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var bandStore: BandStore
 
     let code: String
 
@@ -123,6 +123,6 @@ struct DeepLinkJoinView: View {
     NavigationStack {
         DeepLinkJoinView(code: "bebop-monk-cool")
     }
-    .environment(AuthStore())
-    .environment(BandStore())
+    .environmentObject(AuthStore())
+    .environmentObject(BandStore())
 }

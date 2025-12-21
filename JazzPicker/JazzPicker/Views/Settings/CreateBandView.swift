@@ -8,8 +8,8 @@ import SwiftUI
 
 struct CreateBandView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthStore.self) private var authStore
-    @Environment(BandStore.self) private var bandStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var bandStore: BandStore
 
     @State private var name = ""
     @State private var isCreating = false
@@ -118,6 +118,6 @@ struct CreateBandView: View {
     NavigationStack {
         CreateBandView()
     }
-    .environment(AuthStore())
-    .environment(BandStore())
+    .environmentObject(AuthStore())
+    .environmentObject(BandStore())
 }

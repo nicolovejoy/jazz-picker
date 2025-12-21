@@ -6,8 +6,8 @@
 import SwiftUI
 
 struct BrowseView: View {
-    @Environment(CatalogStore.self) private var catalogStore
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @EnvironmentObject private var catalogStore: CatalogStore
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let instrument: Instrument
 
@@ -110,7 +110,7 @@ struct BrowseView: View {
 
 #Preview {
     BrowseView(instrument: .piano)
-        .environment(CatalogStore())
-        .environment(CachedKeysStore())
-        .environment(PDFCacheService.shared)
+        .environmentObject(CatalogStore())
+        .environmentObject(CachedKeysStore())
+        .environmentObject(PDFCacheService.shared)
 }

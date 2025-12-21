@@ -3,18 +3,17 @@
 //  JazzPicker
 //
 
+import Combine
 import FirebaseAuth
 import Foundation
-import Observation
 
 /// Manages cached keys from S3 and delegates sticky key operations to UserProfileStore
-@Observable
-class CachedKeysStore {
+class CachedKeysStore: ObservableObject {
     /// Map of song slug -> array of cached concert keys
-    private(set) var cachedKeys: [String: [String]] = [:]
+    @Published private(set) var cachedKeys: [String: [String]] = [:]
 
-    private(set) var isLoading = false
-    private(set) var error: Error?
+    @Published private(set) var isLoading = false
+    @Published private(set) var error: Error?
 
     // Delegate sticky keys to UserProfileStore
     private weak var userProfileStore: UserProfileStore?

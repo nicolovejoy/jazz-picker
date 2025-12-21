@@ -3,16 +3,14 @@
 //  JazzPicker
 //
 
+import Combine
 import Foundation
-import Observation
 
-@Observable
-class BandStore {
-    private(set) var bands: [Band] = []
-    private(set) var isLoading = false
-    private(set) var error: String?
+class BandStore: ObservableObject {
+    @Published private(set) var bands: [Band] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var error: String?
 
-    @ObservationIgnored
     private var currentUserId: String?
 
     // MARK: - Loading

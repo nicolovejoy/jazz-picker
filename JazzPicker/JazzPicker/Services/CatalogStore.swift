@@ -3,14 +3,13 @@
 //  JazzPicker
 //
 
+import Combine
 import Foundation
-import Observation
 
-@Observable
-class CatalogStore {
-    private(set) var songs: [Song] = []
-    private(set) var isLoading = false
-    private(set) var error: Error?
+class CatalogStore: ObservableObject {
+    @Published private(set) var songs: [Song] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var error: Error?
 
     private let cacheURL: URL = {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!

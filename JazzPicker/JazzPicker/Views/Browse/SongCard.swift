@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct SongCard: View {
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     let song: Song
     let instrument: Instrument
     let onTap: (String) -> Void  // Called with the selected concert key
@@ -133,5 +133,5 @@ struct SongCard: View {
         }
     }
     .padding()
-    .environment(CachedKeysStore())
+    .environmentObject(CachedKeysStore())
 }

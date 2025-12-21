@@ -8,9 +8,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(CatalogStore.self) private var catalogStore
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
-    @Environment(UserProfileStore.self) private var userProfileStore
+    @EnvironmentObject private var catalogStore: CatalogStore
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     @Environment(\.pendingJoinCode) private var pendingJoinCode
     @State private var selectedTab = 0
     @State private var previousTab = 0
@@ -98,9 +98,9 @@ extension String: @retroactive Identifiable {
 
 #Preview {
     ContentView()
-        .environment(CatalogStore())
-        .environment(CachedKeysStore())
-        .environment(SetlistStore())
-        .environment(PDFCacheService.shared)
-        .environment(UserProfileStore())
+        .environmentObject(CatalogStore())
+        .environmentObject(CachedKeysStore())
+        .environmentObject(SetlistStore())
+        .environmentObject(PDFCacheService.shared)
+        .environmentObject(UserProfileStore())
 }

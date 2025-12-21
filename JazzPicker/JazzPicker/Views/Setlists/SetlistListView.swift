@@ -6,10 +6,10 @@
 import SwiftUI
 
 struct SetlistListView: View {
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(BandStore.self) private var bandStore
-    @Environment(UserProfileStore.self) private var userProfileStore
-    @Environment(NetworkMonitor.self) private var networkMonitor
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
     @State private var showingCreateSheet = false
     @State private var newSetlistName = ""
     @State private var selectedGroupId: String?
@@ -343,22 +343,22 @@ struct RenameSetlistSheet: View {
 
 #Preview("With Setlists") {
     SetlistListView()
-        .environment(SetlistStore())
-        .environment(BandStore())
-        .environment(UserProfileStore())
-        .environment(NetworkMonitor())
-        .environment(CatalogStore())
-        .environment(CachedKeysStore())
-        .environment(PDFCacheService.shared)
+        .environmentObject(SetlistStore())
+        .environmentObject(BandStore())
+        .environmentObject(UserProfileStore())
+        .environmentObject(NetworkMonitor())
+        .environmentObject(CatalogStore())
+        .environmentObject(CachedKeysStore())
+        .environmentObject(PDFCacheService.shared)
 }
 
 #Preview("Empty") {
     SetlistListView()
-        .environment(SetlistStore())
-        .environment(BandStore())
-        .environment(UserProfileStore())
-        .environment(NetworkMonitor())
-        .environment(CatalogStore())
-        .environment(CachedKeysStore())
-        .environment(PDFCacheService.shared)
+        .environmentObject(SetlistStore())
+        .environmentObject(BandStore())
+        .environmentObject(UserProfileStore())
+        .environmentObject(NetworkMonitor())
+        .environmentObject(CatalogStore())
+        .environmentObject(CachedKeysStore())
+        .environmentObject(PDFCacheService.shared)
 }

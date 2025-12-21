@@ -7,10 +7,10 @@ import FirebaseAuth
 import SwiftUI
 
 struct BandsManagementView: View {
-    @Environment(AuthStore.self) private var authStore
-    @Environment(BandStore.self) private var bandStore
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(NetworkMonitor.self) private var networkMonitor
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
 
     @State private var bandToLeave: Band?
     @State private var bandToDelete: Band?
@@ -146,8 +146,8 @@ struct BandsManagementView: View {
     NavigationStack {
         BandsManagementView()
     }
-    .environment(AuthStore())
-    .environment(BandStore())
-    .environment(SetlistStore())
-    .environment(NetworkMonitor())
+    .environmentObject(AuthStore())
+    .environmentObject(BandStore())
+    .environmentObject(SetlistStore())
+    .environmentObject(NetworkMonitor())
 }

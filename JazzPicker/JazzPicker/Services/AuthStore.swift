@@ -4,24 +4,18 @@
 //
 
 import AuthenticationServices
+import Combine
 import CryptoKit
 import FirebaseAuth
 import Foundation
-import Observation
 
-@Observable
-class AuthStore {
-    private(set) var user: User?
-    private(set) var isLoading = true
-    private(set) var error: String?
+class AuthStore: ObservableObject {
+    @Published private(set) var user: User?
+    @Published private(set) var isLoading = true
+    @Published private(set) var error: String?
 
-    @ObservationIgnored
     private var authStateHandle: AuthStateDidChangeListenerHandle?
-
-    @ObservationIgnored
     private var currentNonce: String?
-
-    @ObservationIgnored
     private var didStart = false
 
     init() {

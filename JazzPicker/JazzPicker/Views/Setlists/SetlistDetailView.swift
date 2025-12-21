@@ -6,12 +6,12 @@
 import SwiftUI
 
 struct SetlistDetailView: View {
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(BandStore.self) private var bandStore
-    @Environment(CatalogStore.self) private var catalogStore
-    @Environment(PDFCacheService.self) private var pdfCacheService
-    @Environment(NetworkMonitor.self) private var networkMonitor
-    @Environment(UserProfileStore.self) private var userProfileStore
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var catalogStore: CatalogStore
+    @EnvironmentObject private var pdfCacheService: PDFCacheService
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
+    @EnvironmentObject private var userProfileStore: UserProfileStore
 
     let setlist: Setlist
 
@@ -284,11 +284,11 @@ struct SetBreakRow: View {
     NavigationStack {
         SetlistDetailView(setlist: Setlist(name: "Friday Gig", ownerId: "preview-user", groupId: "preview-group"))
     }
-    .environment(SetlistStore())
-    .environment(BandStore())
-    .environment(NetworkMonitor())
-    .environment(CatalogStore())
-    .environment(CachedKeysStore())
-    .environment(PDFCacheService.shared)
-    .environment(UserProfileStore())
+    .environmentObject(SetlistStore())
+    .environmentObject(BandStore())
+    .environmentObject(NetworkMonitor())
+    .environmentObject(CatalogStore())
+    .environmentObject(CachedKeysStore())
+    .environmentObject(PDFCacheService.shared)
+    .environmentObject(UserProfileStore())
 }

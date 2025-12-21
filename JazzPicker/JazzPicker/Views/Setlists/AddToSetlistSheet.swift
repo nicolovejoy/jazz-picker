@@ -6,10 +6,10 @@
 import SwiftUI
 
 struct AddToSetlistSheet: View {
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(BandStore.self) private var bandStore
-    @Environment(UserProfileStore.self) private var userProfileStore
-    @Environment(NetworkMonitor.self) private var networkMonitor
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
     @Environment(\.dismiss) private var dismiss
 
     let songTitle: String
@@ -200,8 +200,8 @@ struct AddToSetlistSheet: View {
 
 #Preview {
     AddToSetlistSheet(songTitle: "Blue Bossa", concertKey: "c", octaveOffset: 0)
-        .environment(SetlistStore())
-        .environment(BandStore())
-        .environment(UserProfileStore())
-        .environment(NetworkMonitor())
+        .environmentObject(SetlistStore())
+        .environmentObject(BandStore())
+        .environmentObject(UserProfileStore())
+        .environmentObject(NetworkMonitor())
 }

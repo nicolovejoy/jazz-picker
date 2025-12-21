@@ -6,8 +6,8 @@
 import SwiftUI
 
 struct MembersView: View {
-    @Environment(BandStore.self) private var bandStore
-    @Environment(UserProfileStore.self) private var userProfileStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
 
     let band: Band
 
@@ -90,6 +90,6 @@ struct MembersView: View {
     NavigationStack {
         MembersView(band: Band(name: "Test Band", code: "bebop-monk-cool"))
     }
-    .environment(BandStore())
-    .environment(UserProfileStore())
+    .environmentObject(BandStore())
+    .environmentObject(UserProfileStore())
 }

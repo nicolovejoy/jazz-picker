@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct SongRow: View {
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     let song: Song
     let instrument: Instrument
     let onTap: () -> Void
@@ -98,5 +98,5 @@ struct SongRow: View {
         SongRow(song: Song(title: "Blue Bossa", defaultKey: "cm", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil), instrument: .trumpet) {}
         SongRow(song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil), instrument: .piano) {}
     }
-    .environment(CachedKeysStore())
+    .environmentObject(CachedKeysStore())
 }

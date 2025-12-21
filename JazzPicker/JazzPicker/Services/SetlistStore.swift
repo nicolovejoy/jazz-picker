@@ -3,9 +3,9 @@
 //  JazzPicker
 //
 
+import Combine
 import FirebaseFirestore
 import Foundation
-import Observation
 
 enum SetlistError: LocalizedError {
     case songAlreadyInSetlist(songTitle: String)
@@ -30,22 +30,14 @@ enum SetlistError: LocalizedError {
     }
 }
 
-@Observable
-class SetlistStore {
-    private(set) var setlists: [Setlist] = []
-    private(set) var isLoading: Bool = false
-    private(set) var lastError: String?
+class SetlistStore: ObservableObject {
+    @Published private(set) var setlists: [Setlist] = []
+    @Published private(set) var isLoading: Bool = false
+    @Published private(set) var lastError: String?
 
-    @ObservationIgnored
     private var listener: ListenerRegistration?
-
-    @ObservationIgnored
     private var currentOwnerId: String?
-
-    @ObservationIgnored
     private var currentGroupIds: [String]?
-
-    @ObservationIgnored
     private let lastOpenedKey = "setlistLastOpened"
 
     /// Active setlists sorted by most recently opened

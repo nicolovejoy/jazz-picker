@@ -3,9 +3,9 @@
 //  JazzPicker
 //
 
+import Combine
 import Foundation
 import PDFKit
-import Observation
 
 /// Cached PDF metadata
 struct CachedPDF: Codable, Identifiable {
@@ -63,18 +63,17 @@ enum CacheResult {
 }
 
 /// Manages local PDF caching with ETag-based freshness
-@Observable
-class PDFCacheService {
+class PDFCacheService: ObservableObject {
     static let shared = PDFCacheService()
 
     /// All cached PDFs (for UI display)
-    private(set) var cachedPDFs: [CachedPDF] = []
+    @Published private(set) var cachedPDFs: [CachedPDF] = []
 
     /// Total cache size in bytes
-    private(set) var totalCacheSize: Int64 = 0
+    @Published private(set) var totalCacheSize: Int64 = 0
 
     /// Currently downloading items (for progress tracking)
-    private(set) var downloadingKeys: Set<String> = []
+    @Published private(set) var downloadingKeys: Set<String> = []
 
     private let fileManager = FileManager.default
 

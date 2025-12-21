@@ -23,9 +23,9 @@ struct PDFViewerView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(PDFCacheService.self) private var pdfCacheService
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var pdfCacheService: PDFCacheService
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -229,7 +229,7 @@ struct PDFViewerView: View {
                 }
             }
         }
-        .toolbarVisibility(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
+        .toolbar(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls && error == nil)
         .task(id: "\(song.id)-\(concertKey)-\(octaveOffset)") {
@@ -723,7 +723,7 @@ struct PDFKitView: UIViewRepresentable {
             navigationContext: .single
         )
     }
-    .environment(CachedKeysStore())
-    .environment(SetlistStore())
-    .environment(PDFCacheService.shared)
+    .environmentObject(CachedKeysStore())
+    .environmentObject(SetlistStore())
+    .environmentObject(PDFCacheService.shared)
 }

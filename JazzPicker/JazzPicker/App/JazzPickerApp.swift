@@ -24,14 +24,13 @@ extension EnvironmentValues {
 struct JazzPickerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
-    @State private var authStore = AuthStore()
-    @State private var userProfileStore = UserProfileStore()
-    @State private var catalogStore = CatalogStore()
-    @State private var cachedKeysStore = CachedKeysStore()
-    @State private var setlistStore = SetlistStore()
-    @State private var bandStore = BandStore()
-    @State private var pdfCacheService = PDFCacheService.shared
-    @State private var networkMonitor = NetworkMonitor()
+    @StateObject private var authStore = AuthStore()
+    @StateObject private var userProfileStore = UserProfileStore()
+    @StateObject private var catalogStore = CatalogStore()
+    @StateObject private var cachedKeysStore = CachedKeysStore()
+    @StateObject private var setlistStore = SetlistStore()
+    @StateObject private var bandStore = BandStore()
+    @StateObject private var networkMonitor = NetworkMonitor()
 
     @State private var pendingJoinCode: String?
 
@@ -40,14 +39,14 @@ struct JazzPickerApp: App {
             AuthGateView {
                 ContentView()
             }
-            .environment(authStore)
-            .environment(userProfileStore)
-            .environment(catalogStore)
-            .environment(cachedKeysStore)
-            .environment(setlistStore)
-            .environment(bandStore)
-            .environment(pdfCacheService)
-            .environment(networkMonitor)
+            .environmentObject(authStore)
+            .environmentObject(userProfileStore)
+            .environmentObject(catalogStore)
+            .environmentObject(cachedKeysStore)
+            .environmentObject(setlistStore)
+            .environmentObject(bandStore)
+            .environmentObject(PDFCacheService.shared)
+            .environmentObject(networkMonitor)
             .environment(\.pendingJoinCode, $pendingJoinCode)
             .onOpenURL { url in
                 handleDeepLink(url)

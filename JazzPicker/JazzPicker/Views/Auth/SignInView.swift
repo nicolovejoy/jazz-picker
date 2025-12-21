@@ -7,7 +7,7 @@ import AuthenticationServices
 import SwiftUI
 
 struct SignInView: View {
-    @Environment(AuthStore.self) private var authStore
+    @EnvironmentObject private var authStore: AuthStore
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -64,5 +64,5 @@ struct SignInView: View {
 
 #Preview {
     SignInView()
-        .environment(AuthStore())
+        .environmentObject(AuthStore())
 }

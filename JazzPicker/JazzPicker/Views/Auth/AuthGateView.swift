@@ -7,11 +7,11 @@ import FirebaseAuth
 import SwiftUI
 
 struct AuthGateView<Content: View>: View {
-    @Environment(AuthStore.self) private var authStore
-    @Environment(UserProfileStore.self) private var userProfileStore
-    @Environment(SetlistStore.self) private var setlistStore
-    @Environment(BandStore.self) private var bandStore
-    @Environment(CachedKeysStore.self) private var cachedKeysStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var cachedKeysStore: CachedKeysStore
 
     let content: () -> Content
 
@@ -86,9 +86,9 @@ struct AuthGateView<Content: View>: View {
     AuthGateView {
         Text("Main Content")
     }
-    .environment(AuthStore())
-    .environment(UserProfileStore())
-    .environment(SetlistStore())
-    .environment(BandStore())
-    .environment(CachedKeysStore())
+    .environmentObject(AuthStore())
+    .environmentObject(UserProfileStore())
+    .environmentObject(SetlistStore())
+    .environmentObject(BandStore())
+    .environmentObject(CachedKeysStore())
 }

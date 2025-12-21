@@ -13,10 +13,10 @@ struct BuildEntry: Codable {
 }
 
 struct SettingsView: View {
-    @Environment(AuthStore.self) private var authStore
-    @Environment(UserProfileStore.self) private var userProfileStore
-    @Environment(PDFCacheService.self) private var pdfCacheService
-    @Environment(BandStore.self) private var bandStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var pdfCacheService: PDFCacheService
+    @EnvironmentObject private var bandStore: BandStore
     @State private var showClearCacheConfirm = false
     @State private var showSignOutConfirm = false
 
@@ -183,8 +183,8 @@ struct SettingsView: View {
 // MARK: - Instrument Picker
 
 struct InstrumentPickerView: View {
-    @Environment(AuthStore.self) private var authStore
-    @Environment(UserProfileStore.self) private var userProfileStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedInstrument: Instrument = .piano
@@ -274,9 +274,9 @@ struct InstrumentPickerView: View {
 
 #Preview {
     SettingsView()
-        .environment(AuthStore())
-        .environment(UserProfileStore())
-        .environment(PDFCacheService.shared)
-        .environment(BandStore())
-        .environment(NetworkMonitor())
+        .environmentObject(AuthStore())
+        .environmentObject(UserProfileStore())
+        .environmentObject(PDFCacheService.shared)
+        .environmentObject(BandStore())
+        .environmentObject(NetworkMonitor())
 }

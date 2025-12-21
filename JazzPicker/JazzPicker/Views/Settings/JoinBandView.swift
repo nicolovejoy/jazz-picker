@@ -8,8 +8,8 @@ import SwiftUI
 
 struct JoinBandView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthStore.self) private var authStore
-    @Environment(BandStore.self) private var bandStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var bandStore: BandStore
 
     @State private var code = ""
     @State private var isJoining = false
@@ -66,6 +66,6 @@ struct JoinBandView: View {
     NavigationStack {
         JoinBandView()
     }
-    .environment(AuthStore())
-    .environment(BandStore())
+    .environmentObject(AuthStore())
+    .environmentObject(BandStore())
 }

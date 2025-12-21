@@ -3,16 +3,16 @@
 //  JazzPicker
 //
 
+import Combine
 import Foundation
 import Network
 
-@Observable
-final class NetworkMonitor {
+final class NetworkMonitor: ObservableObject {
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
 
-    private(set) var isConnected: Bool = true
-    private(set) var connectionType: ConnectionType = .unknown
+    @Published private(set) var isConnected: Bool = true
+    @Published private(set) var connectionType: ConnectionType = .unknown
 
     enum ConnectionType {
         case wifi
