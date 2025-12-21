@@ -5,6 +5,7 @@
 
 import SwiftUI
 import PDFKit
+import UIKit
 
 struct PDFViewerView: View {
     @State var song: Song
@@ -26,6 +27,7 @@ struct PDFViewerView: View {
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     @EnvironmentObject private var setlistStore: SetlistStore
     @EnvironmentObject private var pdfCacheService: PDFCacheService
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -235,8 +237,14 @@ struct PDFViewerView: View {
         .task(id: "\(song.id)-\(concertKey)-\(octaveOffset)") {
             await loadPDF()
         }
+        .onAppear {
+            // Prevent iPad from sleeping during gig
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
         .onDisappear {
             pendingOctaveSave?.cancel()
+            // Re-enable sleep when leaving PDF view
+            UIApplication.shared.isIdleTimerDisabled = false
         }
         .onChange(of: octaveOffset) { _, newOffset in
             Task { @MainActor in
@@ -253,6 +261,26 @@ struct PDFViewerView: View {
         }
         .sheet(isPresented: $showAddToSetlist) {
             AddToSetlistSheet(songTitle: song.title, concertKey: concertKey, octaveOffset: octaveOffset)
+        }
+    }
+
+    // MARK: - Groove Sync
+
+    /// If we're leading a Groove Sync session, sync the current song to followers
+    private func syncSongIfLeading() {
+        print("🎵 syncSongIfLeading called - isLeading: \(grooveSyncStore.isLeading)")
+        guard grooveSyncStore.isLeading else {
+            print("🎵 Not leading, skipping sync")
+            return
+        }
+
+        // Determine source based on catalog (standard vs custom)
+        // For now, assume standard - we can enhance this later
+        let source = "standard"
+
+        print("🎵 Syncing song: \(song.title) in key \(concertKey)")
+        Task {
+            await grooveSyncStore.syncSong(title: song.title, concertKey: concertKey, source: source)
         }
     }
 
@@ -511,6 +539,8 @@ struct PDFViewerView: View {
                     )
                     // pdfDocument already set from cache above
                     isLoading = false
+                    // Sync to followers if we're leading
+                    syncSongIfLeading()
                     return
                 } else if httpResponse.statusCode != 200 {
                     print("❌ HTTP error: \(httpResponse.statusCode)")
@@ -566,6 +596,11 @@ struct PDFViewerView: View {
         }
 
         isLoading = false
+
+        // If we successfully loaded and we're leading Groove Sync, sync this song
+        if error == nil {
+            syncSongIfLeading()
+        }
     }
 }
 
@@ -726,4 +761,5 @@ struct PDFKitView: UIViewRepresentable {
     .environmentObject(CachedKeysStore())
     .environmentObject(SetlistStore())
     .environmentObject(PDFCacheService.shared)
+    .environmentObject(GrooveSyncStore())
 }

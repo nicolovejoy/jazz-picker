@@ -12,6 +12,7 @@ struct SetlistDetailView: View {
     @EnvironmentObject private var pdfCacheService: PDFCacheService
     @EnvironmentObject private var networkMonitor: NetworkMonitor
     @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
 
     let setlist: Setlist
 
@@ -22,6 +23,7 @@ struct SetlistDetailView: View {
     @State private var isAddingSetBreak = false
     @State private var showingCopiedToast = false
     @State private var editedName: String = ""
+    @State private var isStartingGrooveSync = false
 
     private var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -41,6 +43,11 @@ struct SetlistDetailView: View {
 
     private var showBandName: Bool {
         bandStore.bands.count > 1
+    }
+
+    /// Whether we're currently leading Groove Sync for this setlist's group
+    private var isLeadingThisGroup: Bool {
+        grooveSyncStore.isLeading && grooveSyncStore.leadingGroupId == currentSetlist.groupId
     }
 
     /// Download all uncached songs in background
@@ -163,6 +170,33 @@ struct SetlistDetailView: View {
                         Label("Add Set Break", systemImage: "minus")
                     }
                     .disabled(isAddingSetBreak || !networkMonitor.isConnected)
+                }
+            }
+            // Groove Sync button
+            ToolbarItem(placement: .secondaryAction) {
+                if isLeadingThisGroup {
+                    Button {
+                        Task {
+                            await grooveSyncStore.stopLeading()
+                        }
+                    } label: {
+                        Label("Stop Sharing Charts", systemImage: "stop.circle")
+                    }
+                } else {
+                    Button {
+                        guard networkMonitor.isConnected else {
+                            showingOfflineToast = true
+                            return
+                        }
+                        isStartingGrooveSync = true
+                        Task {
+                            _ = await grooveSyncStore.startLeading(groupId: currentSetlist.groupId)
+                            isStartingGrooveSync = false
+                        }
+                    } label: {
+                        Label("Share Charts (Groove Sync)", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                    .disabled(isStartingGrooveSync || !networkMonitor.isConnected)
                 }
             }
         }
@@ -291,4 +325,5 @@ struct SetBreakRow: View {
     .environmentObject(CachedKeysStore())
     .environmentObject(PDFCacheService.shared)
     .environmentObject(UserProfileStore())
+    .environmentObject(GrooveSyncStore())
 }

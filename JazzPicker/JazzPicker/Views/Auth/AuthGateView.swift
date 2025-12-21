@@ -12,6 +12,7 @@ struct AuthGateView<Content: View>: View {
     @EnvironmentObject private var setlistStore: SetlistStore
     @EnvironmentObject private var bandStore: BandStore
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
 
     let content: () -> Content
 
@@ -43,6 +44,8 @@ struct AuthGateView<Content: View>: View {
             // Re-subscribe to setlists and reload bands when groups change
             if let uid = authStore.user?.uid {
                 setlistStore.startListening(ownerId: uid, groupIds: newGroups)
+                let displayName = userProfileStore.profile?.displayName ?? "Unknown"
+                grooveSyncStore.startListening(userId: uid, userName: displayName, groupIds: newGroups)
                 Task {
                     await bandStore.loadBands(userId: uid)
                 }
@@ -69,7 +72,9 @@ struct AuthGateView<Content: View>: View {
             }
             // Start listening with current groups (may be nil on first load, will update via onChange)
             let groupIds = userProfileStore.profile?.groups
+            let displayName = userProfileStore.profile?.displayName ?? "Unknown"
             setlistStore.startListening(ownerId: uid, groupIds: groupIds)
+            grooveSyncStore.startListening(userId: uid, userName: displayName, groupIds: groupIds)
             // Configure CachedKeysStore to delegate sticky keys to UserProfileStore
             cachedKeysStore.configure(userProfileStore: userProfileStore, authStore: authStore)
         } else if oldUID != nil {
@@ -77,6 +82,7 @@ struct AuthGateView<Content: View>: View {
             userProfileStore.stopListening()
             userProfileStore.clearCache()
             setlistStore.stopListening()
+            grooveSyncStore.stopListening()
             bandStore.clear()
         }
     }
@@ -91,4 +97,5 @@ struct AuthGateView<Content: View>: View {
     .environmentObject(SetlistStore())
     .environmentObject(BandStore())
     .environmentObject(CachedKeysStore())
+    .environmentObject(GrooveSyncStore())
 }
