@@ -1,5 +1,10 @@
 [
   {
+    "build": 15,
+    "date": "2025-12-21",
+    "notes": "Minor key fix, simplified song cards showing standard + preferred key, print PDF from viewer, deep link band invites (jazzpicker://join/code), key picker highlights standard key with bold outline, context-aware sharp/flat spelling."
+  },
+  {
     "build": 13,
     "date": "2025-12-17",
     "notes": "Bands - share setlists with your group. Create a band in Settings, share the join code, and everyone sees the same setlists in real-time. Preferred keys now sync across devices too. Setlist renaming via Edit button or swipe."

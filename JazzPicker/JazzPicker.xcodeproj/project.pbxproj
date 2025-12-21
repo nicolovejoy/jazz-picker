@@ -16,7 +16,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0377F8B12EF841BC0023CFFE /* Exceptions for "JazzPicker" folder in "JazzPicker" target */ = {
+		0377F8B42EF84F250023CFFE /* Exceptions for "JazzPicker" folder in "JazzPicker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -29,7 +29,7 @@
 		033FA67A2EE1D4E500975C3F /* JazzPicker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				0377F8B12EF841BC0023CFFE /* Exceptions for "JazzPicker" folder in "JazzPicker" target */,
+				0377F8B42EF84F250023CFFE /* Exceptions for "JazzPicker" folder in "JazzPicker" target */,
 			);
 			path = JazzPicker;
 			sourceTree = "<group>";
