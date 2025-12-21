@@ -8,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { GroupsProvider } from './contexts/GroupsContext';
 import { SetlistProvider } from './contexts/SetlistContext';
+import { GrooveSyncProvider } from './contexts/GrooveSyncContext';
 
 // Polyfill for URL.parse() - needed for Safari 17 and older browsers.
 // pdfjs-dist 5.x uses URL.parse() which was only added in Safari 18 (Sept 2024).
@@ -46,9 +47,11 @@ createRoot(document.getElementById('root')!).render(
       <UserProfileProvider>
         <GroupsProvider>
           <SetlistProvider>
-            <QueryClientProvider client={queryClient}>
-              <App />
-            </QueryClientProvider>
+            <GrooveSyncProvider>
+              <QueryClientProvider client={queryClient}>
+                <App />
+              </QueryClientProvider>
+            </GrooveSyncProvider>
           </SetlistProvider>
         </GroupsProvider>
       </UserProfileProvider>

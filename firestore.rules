@@ -43,11 +43,22 @@ service cloud.firestore {
         // User can add themselves (joining)
         allow create: if request.auth != null && request.auth.uid == memberId;
 
-        // Admin can update roles, or user can delete themselves (leaving)
-        allow update: if request.auth != null && isGroupAdmin(groupId);
+        // Admin can update roles, OR user can update their own (for Groove Sync following state)
+        allow update: if request.auth != null && (
+          isGroupAdmin(groupId) || request.auth.uid == memberId
+        );
         allow delete: if request.auth != null && (
           request.auth.uid == memberId || isGroupAdmin(groupId)
         );
+      }
+
+      // Groove Sync session subcollection
+      match /session/{sessionId} {
+        // Any group member can read the session
+        allow read: if request.auth != null && isGroupMember(groupId);
+
+        // Any group member can create/update/delete the session (leader management)
+        allow create, update, delete: if request.auth != null && isGroupMember(groupId);
       }
     }
 

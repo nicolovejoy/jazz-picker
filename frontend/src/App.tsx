@@ -12,8 +12,10 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { InstrumentPickerModal } from './components/InstrumentPickerModal';
 import { GroupsSection } from './components/GroupsSection';
 import { JoinBandModal } from './components/JoinBandModal';
+import { GrooveSyncFollower } from './components/GrooveSyncFollower';
 import { useAuth } from './contexts/AuthContext';
 import { useUserProfile } from './contexts/UserProfileContext';
+import { useGrooveSync } from './contexts/GrooveSyncContext';
 import type { Setlist } from '@/types/setlist';
 import { useSongsV2 } from './hooks/useSongsV2';
 import { api } from './services/api';
@@ -46,6 +48,7 @@ export interface CatalogNavigation {
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile, setPreferredKey } = useUserProfile();
+  const { isFollowing, activeSessions, startFollowing } = useGrooveSync();
 
   // Derive instrument from profile
   const instrument = profile?.instrument ? getInstrumentById(profile.instrument) : null;
@@ -585,6 +588,29 @@ function App() {
           onClose={() => setPendingJoinCode(null)}
           onJoined={() => setPendingJoinCode(null)}
         />
+      )}
+
+      {/* Groove Sync Follower View */}
+      {isFollowing && <GrooveSyncFollower />}
+
+      {/* Groove Sync Join Banner */}
+      {!isFollowing && !pdfUrl && activeSessions.length > 0 && activeSessions[0].leaderId !== user?.uid && (
+        <div className="fixed bottom-24 left-4 right-4 z-40">
+          <button
+            onClick={() => startFollowing(activeSessions[0])}
+            className="w-full flex items-center justify-between p-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-lg transition-colors"
+          >
+            <div className="text-left">
+              <p className="text-white font-medium">
+                {activeSessions[0].leaderName} is sharing charts
+              </p>
+              <p className="text-blue-200 text-sm">
+                Tap to follow along
+              </p>
+            </div>
+            <span className="text-white text-2xl">→</span>
+          </button>
+        </div>
       )}
     </div>
   );

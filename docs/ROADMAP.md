@@ -2,8 +2,9 @@
 
 ## Backlog
 
-1. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
-2. Setlist "now playing" indicator (see partner's current song)
+1. Groove Sync Phase 2: timeout, 3-second delay, follower modal, leader sees followers
+2. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
+3. iOS Groove Sync follower support
 
 ## Future
 
@@ -21,3 +22,4 @@
 - UI says "Band", Firestore uses `groups`
 - Band badges only show when user has 2+ bands
 - Landscape forms/lists use 600pt maxWidth
+- iPad disables idle timer when viewing PDFs (no sleep during gigs)
