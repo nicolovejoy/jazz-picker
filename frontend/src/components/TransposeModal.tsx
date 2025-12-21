@@ -4,21 +4,40 @@ import { api } from '@/services/api';
 import { formatKey, concertToWritten, type Instrument } from '@/types/catalog';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 
-// All 12 concert keys in circle of fifths order
-const CONCERT_KEYS = [
-  { value: 'c', label: 'C' },
-  { value: 'g', label: 'G' },
-  { value: 'd', label: 'D' },
-  { value: 'a', label: 'A' },
-  { value: 'e', label: 'E' },
-  { value: 'b', label: 'B' },
-  { value: 'fs', label: 'F♯' },
-  { value: 'df', label: 'D♭' },
-  { value: 'af', label: 'A♭' },
-  { value: 'ef', label: 'E♭' },
-  { value: 'bf', label: 'B♭' },
-  { value: 'f', label: 'F' },
-];
+// Determine if we should use flat spelling based on the standard key
+function shouldUseFlats(standardKey: string): boolean {
+  const flatKeys = ['f', 'bf', 'ef', 'af', 'df', 'gf', 'c'];
+  const baseKey = standardKey.replace(/m$/, '').toLowerCase();
+  return flatKeys.includes(baseKey);
+}
+
+// Build concert keys with context-appropriate enharmonic spelling
+function getConcertKeys(standardKey: string) {
+  const useFlats = shouldUseFlats(standardKey);
+  return [
+    { value: 'c', label: 'C' },
+    { value: 'g', label: 'G' },
+    { value: 'd', label: 'D' },
+    { value: 'a', label: 'A' },
+    { value: 'e', label: 'E' },
+    { value: 'b', label: 'B' },
+    { value: useFlats ? 'gf' : 'fs', label: useFlats ? 'G♭' : 'F♯' },
+    { value: 'df', label: 'D♭' },
+    { value: 'af', label: 'A♭' },
+    { value: 'ef', label: 'E♭' },
+    { value: 'bf', label: 'B♭' },
+    { value: 'f', label: 'F' },
+  ];
+}
+
+// Normalize key for comparison (handle enharmonics)
+function normalizeKey(key: string): string {
+  const enharmonics: Record<string, string> = {
+    cs: 'df', ds: 'ef', fs: 'gf', gs: 'af', as: 'bf',
+  };
+  const lower = key.toLowerCase().replace(/m$/, '');
+  return enharmonics[lower] ?? lower;
+}
 
 interface TransposeModalProps {
   songTitle: string;
@@ -40,6 +59,12 @@ export function TransposeModal({
 
   // Detect if song is minor from default key
   const isMinor = defaultConcertKey.endsWith('m');
+
+  // Build keys with context-appropriate enharmonic spelling
+  const concertKeys = getConcertKeys(defaultConcertKey);
+
+  // Normalize standard key for comparison
+  const standardKeyNormalized = normalizeKey(defaultConcertKey);
 
   const storedPreference = getPreferredKey(songTitle, defaultConcertKey);
   // Strip 'm' from stored preference for key picker (we'll add it back)
@@ -123,19 +148,25 @@ export function TransposeModal({
                 {isMinor && <span className="text-orange-400 ml-1">(Minor)</span>}
               </label>
               <div className="grid grid-cols-6 gap-2">
-                {CONCERT_KEYS.map((key) => (
-                  <button
-                    key={key.value}
-                    onClick={() => setSelectedConcertKey(key.value)}
-                    className={`py-2 text-sm rounded-lg border transition-all ${
-                      selectedConcertKey === key.value
-                        ? 'bg-blue-500 border-blue-400 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                    }`}
-                  >
-                    {key.label}
-                  </button>
-                ))}
+                {concertKeys.map((key) => {
+                  const isStandard = normalizeKey(key.value) === standardKeyNormalized;
+                  const isSelected = selectedConcertKey === key.value;
+                  return (
+                    <button
+                      key={key.value}
+                      onClick={() => setSelectedConcertKey(key.value)}
+                      className={`py-2 text-sm rounded-lg border-2 transition-all ${
+                        isSelected
+                          ? 'bg-blue-500 border-blue-400 text-white'
+                          : isStandard
+                          ? 'bg-white/5 border-white/60 text-gray-300 hover:border-white/80'
+                          : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                      }`}
+                    >
+                      {key.label}
+                    </button>
+                  );
+                })}
               </div>
               {instrument.transposition !== 'C' && (
                 <p className="text-xs text-gray-500 mt-2">

@@ -57,6 +57,13 @@ struct KeyPickerGrid: View {
         return normalizedCurrent == normalizedKey
     }
 
+    /// Check if this key is the standard/default key
+    private func isStandardKey(_ key: String) -> Bool {
+        let normalizedStandard = normalizeKey(standardKey.replacingOccurrences(of: "m", with: ""))
+        let normalizedKey = normalizeKey(key)
+        return normalizedStandard == normalizedKey
+    }
+
     private func normalizeKey(_ key: String) -> String {
         let enharmonics: [String: String] = [
             "cs": "df", "ds": "ef", "fs": "gf", "gs": "af", "as": "bf"
@@ -72,7 +79,8 @@ struct KeyPickerGrid: View {
                 ForEach(topRow, id: \.self) { key in
                     KeyGridButton(
                         label: displayName(for: key),
-                        isSelected: isCurrentKey(key)
+                        isSelected: isCurrentKey(key),
+                        isStandard: isStandardKey(key)
                     ) {
                         onSelect(key)
                     }
@@ -84,7 +92,8 @@ struct KeyPickerGrid: View {
                 ForEach(bottomRow, id: \.self) { key in
                     KeyGridButton(
                         label: displayName(for: key),
-                        isSelected: isCurrentKey(key)
+                        isSelected: isCurrentKey(key),
+                        isStandard: isStandardKey(key)
                     ) {
                         onSelect(key)
                     }
@@ -99,6 +108,7 @@ struct KeyPickerGrid: View {
 struct KeyGridButton: View {
     let label: String
     let isSelected: Bool
+    let isStandard: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -109,6 +119,10 @@ struct KeyGridButton: View {
                 .background(isSelected ? Color.accentColor : Color(.tertiarySystemBackground))
                 .foregroundStyle(isSelected ? .white : .primary)
                 .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.primary, lineWidth: isStandard ? 2.5 : 0)
+                )
         }
         .buttonStyle(.plain)
     }

@@ -11,11 +11,11 @@ iPad music stand app for jazz lead sheets.
 
 ## Features
 
-- 735 songs with dynamic PDF generation in any key
-- Multi-instrument transposition (C, Bb, Eb) + clef
-- Setlists with real-time sync across devices
-- Offline PDF caching for gigs
-- Octave adjustment (±2) for range issues
+- 700+ songs with dynamic PDF generation in any key
+- Support for transposition to any key and presentation in any clef
+- Setlists with real-time sync across devices, with "bands" or groups of musician
+- Offline PDF caching for gigs. printable PDFs.
+- Octave adjustment (±2) for range issues (make a chart more readable depending on the instrument.)
 
 ## Quick Start
 

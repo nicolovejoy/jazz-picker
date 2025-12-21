@@ -2,10 +2,8 @@
 
 ## Backlog
 
-1. iOS: Test deep link join (`jazzpicker://join/{code}`)
-2. Web: Transpose modal - all 12 keys (missing some sharps/flats)
-3. iOS/Web: Highlight standard key in key picker (bold outline)
-4. Setlist "now playing" indicator (see partner's current song)
+1. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
+2. Setlist "now playing" indicator (see partner's current song)
 
 ## Future
 
