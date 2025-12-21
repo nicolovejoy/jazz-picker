@@ -41,7 +41,7 @@ JazzPicker/JazzPicker/
 - Landscape: Forms/lists use `.frame(maxWidth: 600).frame(maxWidth: .infinity)`
 
 **URL Schemes:**
-- iOS: `jazzpicker://join/{code}` - implemented, needs testing
+- iOS: `jazzpicker://join/{code}` - band invite deep links
 - Web: `https://jazzpicker.pianohouseproject.org/?join={code}`
 
 ## Backend API
