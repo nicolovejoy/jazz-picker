@@ -13,9 +13,11 @@ service cloud.firestore {
       return memberDoc.data != null && memberDoc.data.role == 'admin';
     }
 
-    // Users can only read/write their own profile
+    // Users: any authenticated user can read profiles (for band member display names)
+    // Only the owner can write their own profile
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Groups
@@ -34,8 +36,9 @@ service cloud.firestore {
 
       // Group members subcollection
       match /members/{memberId} {
-        // Members can read other members
-        allow read: if request.auth != null && isGroupMember(groupId);
+        // Members can read other members, OR user can read their own (for join check)
+        allow read: if request.auth != null &&
+          (isGroupMember(groupId) || request.auth.uid == memberId);
 
         // User can add themselves (joining)
         allow create: if request.auth != null && request.auth.uid == memberId;
@@ -48,22 +51,17 @@ service cloud.firestore {
       }
     }
 
-    // Setlists
+    // Setlists - restricted to group members
     match /setlists/{setlistId} {
-      // During migration: allow read/write if authenticated (legacy behavior)
-      // After migration: restrict to group members only
-      //
-      // Legacy rule (current):
-      allow read, write: if request.auth != null;
-      //
-      // Future rule (after migration, uncomment to enable):
-      // allow read, write: if request.auth != null &&
-      //   resource.data.groupId != null &&
-      //   isGroupMember(resource.data.groupId);
-      //
-      // allow create: if request.auth != null &&
-      //   request.resource.data.groupId != null &&
-      //   isGroupMember(request.resource.data.groupId);
+      // Read/update/delete: must be member of the setlist's group
+      allow read, update, delete: if request.auth != null &&
+        resource.data.groupId != null &&
+        isGroupMember(resource.data.groupId);
+
+      // Create: must be member of the target group
+      allow create: if request.auth != null &&
+        request.resource.data.groupId != null &&
+        isGroupMember(request.resource.data.groupId);
     }
 
     // Audit log - append only, readable by group members

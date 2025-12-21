@@ -10,6 +10,7 @@ export function GroupsSection() {
   const [viewingMembers, setViewingMembers] = useState<{ group: Group; members: GroupMember[]; displayNames: Map<string, string> } | null>(null);
   const [leaveConfirm, setLeaveConfirm] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState<string | null>(null);
 
   const handleViewMembers = async (group: Group) => {
     try {
@@ -42,6 +43,13 @@ export function GroupsSection() {
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
+  };
+
+  const handleInvite = (group: Group) => {
+    const inviteText = `Join my band "${group.name}" on Jazz Picker!\n\nCode: ${group.code}\n\nhttps://jazzpicker.pianohouseproject.org/?join=${group.code}`;
+    navigator.clipboard.writeText(inviteText);
+    setInviteCopied(group.id);
+    setTimeout(() => setInviteCopied(null), 2000);
   };
 
   return (
@@ -87,6 +95,21 @@ export function GroupsSection() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
+                  <button
+                    onClick={() => handleInvite(group)}
+                    className={`p-2 transition-colors ${inviteCopied === group.id ? 'text-green-400' : 'text-gray-400 hover:text-blue-400'}`}
+                    title={inviteCopied === group.id ? 'Copied!' : 'Copy invite link'}
+                  >
+                    {inviteCopied === group.id ? (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                    )}
+                  </button>
                   <button
                     onClick={() => handleViewMembers(group)}
                     className="p-2 text-gray-400 hover:text-white transition-colors"

@@ -32,32 +32,26 @@ function toSetlist(id: string, data: SetlistData): Setlist {
 /**
  * Subscribe to setlists.
  * @param callback - Called with updated setlists
- * @param groupIds - If provided, filter to these groups. If undefined, show all (legacy mode).
+ * @param groupIds - Filter to these groups. If undefined or empty, returns no setlists.
  */
 export function subscribeToSetlists(
   callback: (setlists: Setlist[]) => void,
   groupIds?: string[]
 ): Unsubscribe {
-  // If groupIds provided but empty, return no setlists
-  if (groupIds !== undefined && groupIds.length === 0) {
+  // If groupIds is undefined or empty, user has no groups -> no setlists
+  // (undefined means profile hasn't loaded yet OR user has no groups field)
+  if (!groupIds || groupIds.length === 0) {
     callback([]);
     return () => {}; // No-op unsubscribe
   }
 
-  // Build query
-  let q;
-  if (groupIds && groupIds.length > 0) {
-    // Firestore 'in' supports up to 30 values
-    const limitedGroupIds = groupIds.slice(0, 30);
-    q = query(
-      collection(db, COLLECTION),
-      where('groupId', 'in', limitedGroupIds),
-      orderBy('updatedAt', 'desc')
-    );
-  } else {
-    // Legacy mode: all setlists
-    q = query(collection(db, COLLECTION), orderBy('updatedAt', 'desc'));
-  }
+  // Firestore 'in' supports up to 30 values
+  const limitedGroupIds = groupIds.slice(0, 30);
+  const q = query(
+    collection(db, COLLECTION),
+    where('groupId', 'in', limitedGroupIds),
+    orderBy('updatedAt', 'desc')
+  );
 
   return onSnapshot(q, (snapshot) => {
     const setlists = snapshot.docs.map((doc) =>

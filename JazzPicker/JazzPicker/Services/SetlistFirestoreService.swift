@@ -16,21 +16,18 @@ enum SetlistFirestoreService {
         groupIds: [String]?,
         callback: @escaping ([Setlist]) -> Void
     ) -> ListenerRegistration {
-        // If groupIds is provided but empty, user has no groups -> no setlists
-        if let ids = groupIds, ids.isEmpty {
+        // If groupIds is nil or empty, user has no groups -> no setlists
+        // (nil means profile hasn't loaded yet OR user has no groups field)
+        guard let ids = groupIds, !ids.isEmpty else {
             callback([])
             // Return a dummy listener that does nothing
             return db.collection(collection).limit(to: 0).addSnapshotListener { _, _ in }
         }
 
-        var query: Query = db.collection(collection)
+        let limitedIds = Array(ids.prefix(30))  // Firestore 'in' limit
+        let query = db.collection(collection)
+            .whereField("groupId", in: limitedIds)
             .order(by: "updatedAt", descending: true)
-
-        // Filter by groups if provided (nil = legacy mode, show all)
-        if let ids = groupIds, !ids.isEmpty {
-            let limitedIds = Array(ids.prefix(30))  // Firestore 'in' limit
-            query = query.whereField("groupId", in: limitedIds)
-        }
 
         return query.addSnapshotListener { snapshot, error in
             if let error = error {

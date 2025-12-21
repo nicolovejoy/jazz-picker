@@ -15,6 +15,7 @@ struct BandsManagementView: View {
     @State private var bandToLeave: Band?
     @State private var bandToDelete: Band?
     @State private var deleteBlockedBand: Band?
+    @State private var bandToShare: Band?
 
     private func setlistCount(for bandId: String) -> Int {
         setlistStore.setlists.filter { $0.groupId == bandId }.count
@@ -61,6 +62,14 @@ struct BandsManagementView: View {
                                 bandToLeave = band
                             }
                             .tint(.orange)
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                bandToShare = band
+                            } label: {
+                                Label("Invite", systemImage: "square.and.arrow.up")
+                            }
+                            .tint(.blue)
                         }
                     }
                 }
@@ -130,6 +139,10 @@ struct BandsManagementView: View {
                 Text("\(band.name) has \(count) setlist\(count == 1 ? "" : "s"). Delete them first.")
             }
         }
+        // Share sheet for inviting to band
+        .sheet(item: $bandToShare) { band in
+            InviteToBandSheet(band: band)
+        }
     }
 
     private func handleDeleteTap(_ band: Band) {
@@ -138,6 +151,60 @@ struct BandsManagementView: View {
             deleteBlockedBand = band
         } else {
             bandToDelete = band
+        }
+    }
+}
+
+// MARK: - Invite Sheet
+
+struct InviteToBandSheet: View {
+    let band: Band
+    @Environment(\.dismiss) private var dismiss
+
+    private var inviteMessage: String {
+        "Join my band \"\(band.name)\" on Jazz Picker!\n\nCode: \(band.code)\n\nhttps://jazzpicker.pianohouseproject.org/?join=\(band.code)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Text("Invite to \(band.name)")
+                        .font(.headline)
+
+                    Text("Share this code with your bandmates:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Band code display
+                Text(band.code)
+                    .font(.title)
+                    .fontDesign(.monospaced)
+                    .fontWeight(.semibold)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                // Share button
+                ShareLink(item: inviteMessage) {
+                    Label("Share Invite", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }
