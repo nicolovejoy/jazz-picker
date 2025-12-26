@@ -103,3 +103,7 @@ See `docs/GROOVE_SYNC.md` for full spec.
 - **Firebase** - Auth + Firestore
 
 Never commit secrets. GoogleService-Info.plist is gitignored.
+
+## Tools
+
+`tools/musicxml_to_lilypond.py` - Convert MusicXML arrangements to multi-part LilyPond files. Extracts chord symbols, expands repeats.

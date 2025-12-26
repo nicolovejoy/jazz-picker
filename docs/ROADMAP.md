@@ -2,13 +2,12 @@
 
 ## Backlog
 
-1. Multi-part scores polish (see MULTI_PART_SCORES.md)
-   - Add chord symbols from MusicXML `<harmony>` elements
-   - Handle repeat signs (currently 23 bars instead of 32)
-   - Fix: part subtitle shows user instrument, should show part name
+1. Multi-part: regenerate charts with new converter (chords, repeats, subtitle)
+   - Converter updated but existing charts not regenerated yet
 2. Groove Sync Phase 2: timeout, follower modal, leader sees followers
 3. iOS Groove Sync follower support
 4. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
+5. Multi-part: UI grouping (show part picker instead of separate songs)
 
 ## Future
 
