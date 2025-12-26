@@ -211,3 +211,50 @@ def get_song_source(title):
         if row and row['source']:
             return row['source']
         return 'standard'
+
+
+def get_providers():
+    """
+    Get providers metadata including includeVersion for cache invalidation.
+    Returns dict of provider objects, e.g.:
+    {
+        'standard': {'id': 'standard', 'name': 'Eric Royer', 'includeVersion': 'abc123'},
+        'custom': {'id': 'custom', 'name': 'Custom Charts', 'includeVersion': 'abc123'}
+    }
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT value FROM metadata WHERE key = 'providers'"
+        )
+        row = cursor.fetchone()
+        if row and row['value']:
+            return json.loads(row['value'])
+        return {}
+
+
+def get_include_version(source='standard'):
+    """
+    Get the includeVersion for a source/provider.
+    Returns None if not found.
+    """
+    providers = get_providers()
+    provider = providers.get(source)
+    if provider:
+        return provider.get('includeVersion')
+    return None
+
+
+def get_song_core_modified(title):
+    """
+    Get the core_modified timestamp for a song.
+    Returns ISO timestamp string or None if not found.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT core_modified FROM songs WHERE title = ?",
+            (title,)
+        )
+        row = cursor.fetchone()
+        if row and row['core_modified']:
+            return row['core_modified']
+        return None

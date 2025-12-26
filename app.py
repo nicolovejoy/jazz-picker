@@ -324,16 +324,19 @@ def get_catalog():
     """
     Get full catalog of song titles (lightweight, for navigation).
     Returns all songs sorted alphabetically - just titles and default keys.
+    Also includes providers with includeVersion for cache invalidation.
     """
     # Check ETag - if client has current version, return 304
     if check_etag(db_etag):
         return make_response('', 304)
 
     songs = db.get_all_songs()
+    providers = db.get_providers()
 
     response = make_response(jsonify({
         'songs': songs,
-        'total': len(songs)
+        'total': len(songs),
+        'providers': providers
     }))
 
     # Cache for 5 minutes
@@ -787,6 +790,9 @@ def generate_pdf():
     source = db.get_song_source(song_title)
     s3_bucket = S3_CUSTOM_BUCKET if source == 'custom' else S3_BUCKET
 
+    # Get current includeVersion for cache invalidation
+    include_version = db.get_include_version(source)
+
     # Auto-calculate octave offset if not explicitly provided
     if not octave_offset_provided and instrument_label:
         octave_offset = calculate_optimal_octave(song_title, concert_key, instrument_label)
@@ -802,7 +808,19 @@ def generate_pdf():
     if s3_client:
         try:
             head_response = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
-            # Already exists - return presigned URL with crop metadata
+
+            # Check includeVersion for cache invalidation
+            metadata = head_response.get('Metadata', {})
+            cached_include_version = metadata.get('includeversion')  # S3 lowercases metadata keys
+
+            # If includeVersion doesn't match, regenerate
+            if include_version and cached_include_version != include_version:
+                print(f"🔄 Cache stale for {song_title}: includeVersion {cached_include_version} != {include_version}")
+                # Delete stale cache and continue to regenerate
+                s3_client.delete_object(Bucket=s3_bucket, Key=s3_key)
+                raise ClientError({'Error': {'Code': 'CacheStale'}}, 'head_object')
+
+            # Already exists and valid - return presigned URL with crop metadata
             url = s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': s3_bucket, 'Key': s3_key},
@@ -812,7 +830,6 @@ def generate_pdf():
 
             # Retrieve crop metadata if available
             crop = None
-            metadata = head_response.get('Metadata', {})
             if 'crop' in metadata:
                 try:
                     crop = json.loads(metadata['crop'])
@@ -823,16 +840,17 @@ def generate_pdf():
                 'url': url,
                 'cached': True,
                 'generation_time_ms': generation_time,
-                'octave_offset': octave_offset
+                'octave_offset': octave_offset,
+                'includeVersion': include_version
             }
             if crop:
                 response_data['crop'] = crop
 
             return jsonify(response_data)
         except ClientError as e:
-            if e.response['Error']['Code'] != '404':
+            if e.response['Error']['Code'] not in ('404', 'CacheStale'):
                 print(f"⚠️  S3 error checking cache: {e}")
-            # Not cached, continue to generate
+            # Not cached or stale, continue to generate
 
     # Create generated directory if needed
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
@@ -886,10 +904,16 @@ def generate_pdf():
         # Upload to S3 if available
         if s3_client:
             try:
-                # Prepare metadata with crop bounds
-                extra_args = {'ContentType': 'application/pdf'}
+                # Prepare metadata with crop bounds and includeVersion
+                s3_metadata = {}
                 if crop:
-                    extra_args['Metadata'] = {'crop': json.dumps(crop)}
+                    s3_metadata['crop'] = json.dumps(crop)
+                if include_version:
+                    s3_metadata['includeVersion'] = include_version
+
+                extra_args = {'ContentType': 'application/pdf'}
+                if s3_metadata:
+                    extra_args['Metadata'] = s3_metadata
 
                 s3_client.upload_file(
                     str(pdf_path),
@@ -914,7 +938,8 @@ def generate_pdf():
                     'url': url,
                     'cached': False,
                     'generation_time_ms': generation_time,
-                    'octave_offset': octave_offset
+                    'octave_offset': octave_offset,
+                    'includeVersion': include_version
                 }
                 if crop:
                     response_data['crop'] = crop
@@ -931,6 +956,7 @@ def generate_pdf():
             'cached': False,
             'generation_time_ms': generation_time,
             'octave_offset': octave_offset,
+            'includeVersion': include_version,
             'note': 'Local file (S3 not available)'
         }
         if crop:

@@ -2,18 +2,20 @@
 
 ## Backlog
 
-1. Multi-part: regenerate charts with new converter (chords, repeats, subtitle)
-   - Converter updated but existing charts not regenerated yet
-2. Groove Sync Phase 2: timeout, follower modal, leader sees followers
-3. iOS Groove Sync follower support
-4. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
-5. Multi-part: UI grouping (show part picker instead of separate songs)
+1. Groove Sync Phase 2: timeout, follower modal, leader sees followers
+2. iOS Groove Sync follower support
+3. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
+4. Multi-part: UI grouping (show part picker instead of separate songs)
+
+## Recently Completed
+
+- **Cache invalidation**: Per-song `coreModified` + per-provider `includeVersion`. See `docs/CACHE_INVALIDATION.md`
 
 ## Future
 
 - Guitar tablature output (LilyPond TabStaff)
-- Custom chart upload UI (web) - currently manual via CLI
-- Per-user/band song access (see MULTI_PART_SCORES.md)
+- Custom chart upload UI (web)
+- Per-user/band song access
 
 ## Design Decisions
 

@@ -21,12 +21,13 @@ struct CachedPDF: Codable, Identifiable {
     let filePath: String  // relative to PDFCache directory
     let fileSize: Int64
     let cropBounds: CropBounds?
+    let includeVersion: String?  // For cache invalidation when Include files change
 
     var cacheKey: String {
         "\(songTitle)-\(concertKey)-\(transposition)-\(clef)-\(octaveOffset)"
     }
 
-    // Migration: decode old entries without octaveOffset as 0
+    // Migration: decode old entries without octaveOffset/includeVersion
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         songTitle = try container.decode(String.self, forKey: .songTitle)
@@ -39,9 +40,10 @@ struct CachedPDF: Codable, Identifiable {
         filePath = try container.decode(String.self, forKey: .filePath)
         fileSize = try container.decode(Int64.self, forKey: .fileSize)
         cropBounds = try container.decodeIfPresent(CropBounds.self, forKey: .cropBounds)
+        includeVersion = try container.decodeIfPresent(String.self, forKey: .includeVersion)
     }
 
-    init(songTitle: String, concertKey: String, transposition: String, clef: String, octaveOffset: Int, cachedAt: Date, etag: String?, filePath: String, fileSize: Int64, cropBounds: CropBounds?) {
+    init(songTitle: String, concertKey: String, transposition: String, clef: String, octaveOffset: Int, cachedAt: Date, etag: String?, filePath: String, fileSize: Int64, cropBounds: CropBounds?, includeVersion: String?) {
         self.songTitle = songTitle
         self.concertKey = concertKey
         self.transposition = transposition
@@ -52,6 +54,7 @@ struct CachedPDF: Codable, Identifiable {
         self.filePath = filePath
         self.fileSize = fileSize
         self.cropBounds = cropBounds
+        self.includeVersion = includeVersion
     }
 }
 
@@ -100,7 +103,9 @@ class PDFCacheService: ObservableObject {
     }
 
     /// Get cached PDF if available
-    func getCachedPDF(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0) -> CacheResult {
+    /// - Parameters:
+    ///   - expectedIncludeVersion: If provided, returns .stale if cached version doesn't match
+    func getCachedPDF(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0, expectedIncludeVersion: String? = nil) -> CacheResult {
         let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
 
         guard let cached = cachedPDFs.first(where: { $0.cacheKey == key }) else {
@@ -113,6 +118,14 @@ class PDFCacheService: ObservableObject {
             // File missing, remove from manifest
             removeCachedPDF(key: key)
             return .miss
+        }
+
+        // Check includeVersion for staleness
+        if let expected = expectedIncludeVersion,
+           let cachedVersion = cached.includeVersion,
+           cachedVersion != expected {
+            print("📦 Cache stale for \(songTitle): includeVersion \(cachedVersion) != \(expected)")
+            return .stale(data: data, crop: cached.cropBounds)
         }
 
         return .hit(data: data, crop: cached.cropBounds)
@@ -133,7 +146,8 @@ class PDFCacheService: ObservableObject {
         clef: Clef,
         octaveOffset: Int = 0,
         etag: String?,
-        cropBounds: CropBounds?
+        cropBounds: CropBounds?,
+        includeVersion: String? = nil
     ) {
         let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
         let fileName = "\(key).pdf"
@@ -155,7 +169,8 @@ class PDFCacheService: ObservableObject {
                 etag: etag,
                 filePath: fileName,
                 fileSize: Int64(data.count),
-                cropBounds: cropBounds
+                cropBounds: cropBounds,
+                includeVersion: includeVersion
             )
 
             cachedPDFs.append(cached)
@@ -168,8 +183,8 @@ class PDFCacheService: ObservableObject {
         }
     }
 
-    /// Update ETag for existing cached PDF (after 304 response)
-    func updateETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0, etag: String?) {
+    /// Update ETag and/or includeVersion for existing cached PDF (after 304 response)
+    func updateETag(songTitle: String, concertKey: String, transposition: Transposition, clef: Clef, octaveOffset: Int = 0, etag: String?, includeVersion: String? = nil) {
         let key = cacheKey(songTitle: songTitle, concertKey: concertKey, transposition: transposition, clef: clef, octaveOffset: octaveOffset)
 
         if let index = cachedPDFs.firstIndex(where: { $0.cacheKey == key }) {
@@ -184,7 +199,8 @@ class PDFCacheService: ObservableObject {
                 etag: etag ?? old.etag,
                 filePath: old.filePath,
                 fileSize: old.fileSize,
-                cropBounds: old.cropBounds
+                cropBounds: old.cropBounds,
+                includeVersion: includeVersion ?? old.includeVersion
             )
             saveManifest()
         }

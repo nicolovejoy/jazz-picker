@@ -34,6 +34,7 @@ struct GenerateResponse: Codable, Sendable {
     let generationTimeMs: Int?
     let crop: CropBounds?
     let octaveOffset: Int?
+    let includeVersion: String?
 
     enum CodingKeys: String, CodingKey {
         case url
@@ -41,6 +42,7 @@ struct GenerateResponse: Codable, Sendable {
         case generationTimeMs = "generation_time_ms"
         case crop
         case octaveOffset = "octave_offset"
+        case includeVersion
     }
 }
 

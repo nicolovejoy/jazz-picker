@@ -18,6 +18,9 @@ Usage:
 import sqlite3
 import os
 import re
+import subprocess
+import hashlib
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -29,6 +32,53 @@ from datetime import datetime
 LILYPOND_DATA = Path(__file__).parent / "lilypond-data"
 WRAPPERS_DIR = LILYPOND_DATA / "Wrappers"
 CATALOG_DB = Path(__file__).parent / "catalog.db"
+
+# =============================================================================
+# CACHE INVALIDATION - Git dates and Include versioning
+# =============================================================================
+
+def get_git_commit_date(file_path: Path) -> str | None:
+    """
+    Get the ISO timestamp of the last git commit that modified a file.
+    Returns None if file is not in git or git command fails.
+
+    Runs git from the file's directory to handle submodules correctly.
+    """
+    try:
+        # Run git from the file's directory (important for submodules)
+        result = subprocess.run(
+            ['git', 'log', '-1', '--format=%cI', '--', file_path.name],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=file_path.parent
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return None
+
+
+def compute_include_version(include_dir: Path) -> str:
+    """
+    Compute a hash of all Include/*.ily files for cache invalidation.
+    Returns first 12 chars of SHA256 hash.
+    """
+    if not include_dir.exists():
+        return "unknown"
+
+    hasher = hashlib.sha256()
+
+    # Sort files for deterministic ordering
+    ily_files = sorted(include_dir.glob("*.ily"))
+
+    for f in ily_files:
+        # Hash filename and content
+        hasher.update(f.name.encode())
+        hasher.update(f.read_bytes())
+
+    return hasher.hexdigest()[:12]
 
 # =============================================================================
 # RANGE FILE PARSING (Eric's parsed ambitus output)
@@ -173,12 +223,16 @@ def extract_composer_from_core(core_filename: str) -> str | None:
     return None
 
 
-def extract_song_info(wrapper_path: Path) -> dict:
+def extract_song_info(wrapper_path: Path, core_dir: Path = None) -> dict:
     """
     Extract song info from wrapper filename and content.
 
     Filename format: 'Song Title - Ly - Key Variant.ly'
-    Returns: {'title': str, 'default_key': str, 'core_files': list[str], 'composer': str|None}
+    Returns: {'title': str, 'default_key': str, 'core_files': list[str], 'composer': str|None, 'core_modified': str|None}
+
+    Args:
+        wrapper_path: Path to the wrapper .ly file
+        core_dir: Directory containing Core files (for git date lookup)
     """
     name = wrapper_path.stem  # Remove .ly extension
 
@@ -206,14 +260,21 @@ def extract_song_info(wrapper_path: Path) -> dict:
 
     # Extract composer from first core file
     composer = None
+    core_modified = None
     if core_files:
         composer = extract_composer_from_core(core_files[0])
+        # Get git commit date for core file
+        if core_dir:
+            core_path = core_dir / core_files[0]
+            if core_path.exists():
+                core_modified = get_git_commit_date(core_path)
 
     return {
         'title': title,
         'default_key': default_key,
         'core_files': core_files,
         'composer': composer,
+        'core_modified': core_modified,
     }
 
 
@@ -253,6 +314,7 @@ def create_database(db_path: Path) -> sqlite3.Connection:
             low_note_midi INTEGER,
             high_note_midi INTEGER,
             source TEXT DEFAULT 'standard',
+            core_modified TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -271,11 +333,9 @@ def create_database(db_path: Path) -> sqlite3.Connection:
 
 def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
     """Insert a song into the database."""
-    import json
-
     conn.execute("""
-        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source, core_modified)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         song['title'],
         song['default_key'],
@@ -284,6 +344,7 @@ def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
         song.get('low_note_midi'),
         song.get('high_note_midi'),
         source,
+        song.get('core_modified'),
     ))
 
 
@@ -330,6 +391,14 @@ def main():
     db_path = Path(args.output)
     conn = create_database(db_path)
 
+    # Compute includeVersion for standard charts (Eric's lilypond-data/Include/)
+    include_dir = LILYPOND_DATA / "Include"
+    standard_include_version = compute_include_version(include_dir)
+    print(f"Standard includeVersion: {standard_include_version}")
+
+    # Standard Core directory
+    standard_core_dir = LILYPOND_DATA / "Core"
+
     errors = []
     seen_titles = set()  # Skip duplicate song titles
     songs_with_ranges = 0
@@ -337,7 +406,7 @@ def main():
     for i, wrapper in enumerate(wrappers, 1):
         try:
             # Extract song info from wrapper
-            song = extract_song_info(wrapper)
+            song = extract_song_info(wrapper, core_dir=standard_core_dir)
 
             # Skip duplicate song titles (some songs have multiple Standard versions in different keys)
             if song['title'] in seen_titles:
@@ -364,16 +433,23 @@ def main():
 
     # Process custom charts if --custom-dir provided
     custom_count = 0
+    custom_include_version = None
     if args.custom_dir:
         custom_dir = Path(args.custom_dir)
         custom_wrappers_dir = custom_dir / "Wrappers"
+        custom_core_dir = custom_dir / "Core"
+
+        # Custom charts use the same Include files as standard (for now)
+        # In future, could have per-provider includes
+        custom_include_version = standard_include_version
+
         if custom_wrappers_dir.exists():
             custom_wrappers = get_standard_wrappers(custom_wrappers_dir)
             print(f"\nProcessing {len(custom_wrappers)} custom wrapper files from {custom_wrappers_dir}...")
 
             for wrapper in custom_wrappers:
                 try:
-                    song = extract_song_info(wrapper)
+                    song = extract_song_info(wrapper, core_dir=custom_core_dir)
 
                     # Skip if title already exists (standard charts take precedence)
                     if song['title'] in seen_titles:
@@ -399,6 +475,23 @@ def main():
                  ('built_at', datetime.now().isoformat()))
     conn.execute("INSERT INTO metadata (key, value) VALUES (?, ?)",
                  ('song_count', str(len(seen_titles))))
+
+    # Store providers with includeVersion for cache invalidation
+    providers = {
+        'standard': {
+            'id': 'standard',
+            'name': 'Eric Royer',
+            'includeVersion': standard_include_version,
+        }
+    }
+    if custom_include_version:
+        providers['custom'] = {
+            'id': 'custom',
+            'name': 'Custom Charts',
+            'includeVersion': custom_include_version,
+        }
+    conn.execute("INSERT INTO metadata (key, value) VALUES (?, ?)",
+                 ('providers', json.dumps(providers)))
 
     conn.commit()
     conn.close()
