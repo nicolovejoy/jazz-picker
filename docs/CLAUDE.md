@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Jazz Picker is an iPad music stand app. 743 jazz lead sheets.
+Jazz Picker is an iPad music stand app. 750+ jazz lead sheets.
 
 **Stack:**
 - iOS App: `JazzPicker/` (SwiftUI, iOS 17+) - primary client

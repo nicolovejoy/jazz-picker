@@ -2,11 +2,13 @@
 
 ## Automatic (Eric's updates)
 
-GitHub workflow `.github/workflows/update-catalog.yml`:
-1. Rebuilds `catalog.db` from lilypond-lead-sheets
+GitHub workflow in Eric's repo (`.github/workflows/update-catalog.yml`):
+1. Rebuilds `catalog.db` from lilypond-lead-sheets + custom-charts
 2. Uploads to S3
-3. Deploys to Fly.io
-4. Clears standard PDF cache (not custom)
+3. Restarts Fly.io app
+4. Clears standard PDF cache
+
+Template lives in jazz-picker repo. Eric must sync changes manually.
 
 ## Manual
 
@@ -23,6 +25,12 @@ aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
 
 # Clear custom PDF cache (optional)
 aws s3 rm s3://jazz-picker-custom-pdfs/generated/ --recursive
+```
+
+## Testing
+
+```bash
+python3 test_catalog.py  # Verifies standard + custom songs included
 ```
 
 ## Verification
