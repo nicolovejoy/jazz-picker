@@ -240,6 +240,13 @@ struct PDFViewerView: View {
         .onAppear {
             // Prevent iPad from sleeping during gig
             UIApplication.shared.isIdleTimerDisabled = true
+
+            // Apply user preference if not in setlist context and no octave set
+            if navigationContext.currentSetlistItem == nil, octaveOffset == 0 {
+                if let preferred = cachedKeysStore.getPreferredOctaveOffset(for: song) {
+                    octaveOffset = preferred
+                }
+            }
         }
         .onDisappear {
             pendingOctaveSave?.cancel()
@@ -278,24 +285,15 @@ struct PDFViewerView: View {
         // For now, assume standard - we can enhance this later
         let source = "standard"
 
-        print("🎵 Syncing song: \(song.title) in key \(concertKey)")
+        print("🎵 Syncing song: \(song.title) in key \(concertKey) (octave: \(octaveOffset))")
         Task {
-            await grooveSyncStore.syncSong(title: song.title, concertKey: concertKey, source: source)
+            await grooveSyncStore.syncSong(title: song.title, concertKey: concertKey, source: source, octaveOffset: octaveOffset)
         }
     }
 
     // MARK: - Octave Persistence
 
     private func saveOctaveOffset(_ offset: Int) {
-        // Only save for setlist context
-        guard let setlistID = navigationContext.setlistID,
-              let item = navigationContext.currentSetlistItem else {
-            print("🎵 saveOctaveOffset: skipped (no setlist context)")
-            return
-        }
-
-        print("🎵 saveOctaveOffset: \(offset) for item \(item.id) in setlist \(setlistID)")
-
         // Cancel any pending save
         pendingOctaveSave?.cancel()
 
@@ -307,14 +305,21 @@ struct PDFViewerView: View {
                 return
             }
 
-            // Find the current setlist from the store
-            guard let setlist = setlistStore.setlists.first(where: { $0.id == setlistID }) else {
-                print("🎵 saveOctaveOffset: setlist not found in store")
-                return
+            // Priority: setlist item > user preference
+            if let setlistID = navigationContext.setlistID,
+               let item = navigationContext.currentSetlistItem {
+                // Save to setlist item
+                print("🎵 saveOctaveOffset: \(offset) for item \(item.id) in setlist \(setlistID)")
+                guard let setlist = setlistStore.setlists.first(where: { $0.id == setlistID }) else {
+                    print("🎵 saveOctaveOffset: setlist not found in store")
+                    return
+                }
+                await setlistStore.updateItemOctaveOffset(in: setlist, itemID: item.id, octaveOffset: offset)
+            } else {
+                // Save to user preference
+                print("🎵 saveOctaveOffset: \(offset) as preference for \(song.title)")
+                cachedKeysStore.setPreferredOctaveOffset(offset, for: song)
             }
-
-            print("🎵 saveOctaveOffset: calling updateItemOctaveOffset")
-            await setlistStore.updateItemOctaveOffset(in: setlist, itemID: item.id, octaveOffset: offset)
         }
     }
 
@@ -338,10 +343,8 @@ struct PDFViewerView: View {
         // Update sticky key in store
         cachedKeysStore.setStickyKey(newKey, for: song)
 
-        // Reset octave for new key
-        octaveOffset = 0
-
         // Update concert key (triggers PDF reload via task)
+        // Note: octave preference is per-song, not per-key, so we keep the current offset
         concertKey = newKey
     }
 
@@ -431,8 +434,15 @@ struct PDFViewerView: View {
         print("🔄 navigateToSong: \(newSong.title) (key: \(newKey))")
         print("🔄 Old song.id: \(song.id), New song.id: \(newSong.id)")
 
-        // Get octave offset from the new setlist item, or reset to 0
-        let newOctaveOffset = newContext.currentSetlistItem?.octaveOffset ?? 0
+        // Priority: setlist item > user preference > 0
+        let newOctaveOffset: Int
+        if let setlistOffset = newContext.currentSetlistItem?.octaveOffset {
+            newOctaveOffset = setlistOffset
+        } else if let preferredOffset = cachedKeysStore.getPreferredOctaveOffset(for: newSong) {
+            newOctaveOffset = preferredOffset
+        } else {
+            newOctaveOffset = 0
+        }
 
         withAnimation(.easeInOut(duration: 0.3)) {
             song = newSong

@@ -7,7 +7,8 @@ Real-time song sharing during gigs. iOS leads, web follows. Leader syncs charts 
 - iOS can start sharing from setlist detail view
 - Web shows modal when session active, full-screen follower view
 - Modal reappears after viewing a PDF if session still active
-- Concert key synced, each follower transposes for their instrument
+- Concert key and octave offset synced from leader to followers
+- Followers transpose for their instrument
 - Immediate sync on song open (no delay)
 
 ## Files
@@ -35,7 +36,6 @@ groups/{groupId}/session/current
 
 ## Not Yet Implemented
 
-- Sync octaveOffset from leader (iOS sends, web reads)
 - 5-minute timeout with prompt
 - Leader sees who's following
 - iOS as follower

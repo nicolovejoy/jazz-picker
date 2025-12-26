@@ -86,8 +86,8 @@ export function GrooveSyncFollower() {
       return;
     }
 
-    // Create a unique key for this song+key combination
-    const songKey = `${currentSong.title}-${currentSong.concertKey}`;
+    // Create a unique key for this song+key+octave combination
+    const songKey = `${currentSong.title}-${currentSong.concertKey}-${currentSong.octaveOffset ?? 0}`;
     if (songKey === lastSongKey) {
       return; // Already loaded this song
     }
@@ -98,13 +98,14 @@ export function GrooveSyncFollower() {
       setCurrentPage(1);
 
       try {
-        console.log('🎵 Loading PDF for follower:', currentSong.title, 'in', currentSong.concertKey);
+        console.log('🎵 Loading PDF for follower:', currentSong.title, 'in', currentSong.concertKey, 'octave:', currentSong.octaveOffset);
         const response = await api.generatePDF(
           currentSong.title,
           currentSong.concertKey,
           instrument.transposition,
           instrument.clef,
-          instrument.label
+          instrument.label,
+          currentSong.octaveOffset
         );
 
         // Fetch the PDF and create a blob URL

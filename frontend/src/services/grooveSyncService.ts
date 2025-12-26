@@ -10,6 +10,7 @@ export interface SharedSong {
   title: string;
   concertKey: string;
   source: 'standard' | 'custom';
+  octaveOffset?: number;
 }
 
 export interface GrooveSyncSession {
@@ -30,6 +31,7 @@ interface SessionData {
     title: string;
     concertKey: string;
     source?: string;
+    octaveOffset?: number;
   } | null;
 }
 
@@ -45,6 +47,7 @@ function toSession(groupId: string, data: SessionData): GrooveSyncSession {
           title: data.currentSong.title,
           concertKey: data.currentSong.concertKey,
           source: (data.currentSong.source as 'standard' | 'custom') ?? 'standard',
+          octaveOffset: data.currentSong.octaveOffset,
         }
       : null,
   };

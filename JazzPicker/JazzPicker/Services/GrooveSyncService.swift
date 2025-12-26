@@ -11,11 +11,13 @@ struct SharedSong: Sendable {
     let title: String
     let concertKey: String
     let source: String  // "standard" or "custom"
+    let octaveOffset: Int?
 
-    init(title: String, concertKey: String, source: String = "standard") {
+    init(title: String, concertKey: String, source: String = "standard", octaveOffset: Int? = nil) {
         self.title = title
         self.concertKey = concertKey
         self.source = source
+        self.octaveOffset = octaveOffset
     }
 
     init?(from data: [String: Any]) {
@@ -26,14 +28,19 @@ struct SharedSong: Sendable {
         self.title = title
         self.concertKey = concertKey
         self.source = data["source"] as? String ?? "standard"
+        self.octaveOffset = data["octaveOffset"] as? Int
     }
 
     func toFirestoreData() -> [String: Any] {
-        [
+        var data: [String: Any] = [
             "title": title,
             "concertKey": concertKey,
             "source": source
         ]
+        if let octaveOffset = octaveOffset {
+            data["octaveOffset"] = octaveOffset
+        }
+        return data
     }
 }
 

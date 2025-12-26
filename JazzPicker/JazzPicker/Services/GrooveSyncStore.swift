@@ -144,14 +144,14 @@ class GrooveSyncStore: ObservableObject {
     }
 
     /// Sync the current song to followers
-    func syncSong(title: String, concertKey: String, source: String = "standard") async {
+    func syncSong(title: String, concertKey: String, source: String = "standard", octaveOffset: Int? = nil) async {
         print("🎵 syncSong called - leadingGroupId: \(leadingGroupId ?? "nil"), isLeading: \(isLeading)")
         guard let groupId = leadingGroupId, isLeading else {
             print("🎵 ❌ Not leading or no groupId, cannot sync")
             return
         }
 
-        let song = SharedSong(title: title, concertKey: concertKey, source: source)
+        let song = SharedSong(title: title, concertKey: concertKey, source: source, octaveOffset: octaveOffset)
         do {
             print("🎵 Calling GrooveSyncService.updateCurrentSong...")
             try await GrooveSyncService.updateCurrentSong(groupId: groupId, song: song)
