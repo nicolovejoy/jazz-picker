@@ -64,7 +64,6 @@ Custom PDFs are preserved when Eric's charts are rebuilt.
 
 ## Conversion Tools
 
-- `tmp/midi_to_lilypond.py` - MIDI → LilyPond (notes/rhythms only)
-- `tmp/musicxml_to_lilypond.py` - MusicXML → LilyPond (multi-part extraction)
+- `tools/musicxml_to_lilypond.py` - MusicXML → LilyPond (multi-part extraction, chord symbols)
 
 See [MULTI_PART_SCORES.md](MULTI_PART_SCORES.md) for multi-part scores.

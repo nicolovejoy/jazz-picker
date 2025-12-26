@@ -4,10 +4,10 @@ MusicXML → LilyPond conversion for arrangements with separate instrument parts
 
 ## Current State (MVP Complete)
 
-`tmp/musicxml_to_lilypond.py` extracts parts from MusicXML:
+`tools/musicxml_to_lilypond.py` extracts parts from MusicXML:
 ```bash
 source venv/bin/activate
-python tmp/musicxml_to_lilypond.py path/to/file.xml
+python tools/musicxml_to_lilypond.py path/to/file.xml
 ```
 
 Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separate song in the catalog (e.g., "My Window Faces the South (Lead)").
@@ -16,7 +16,6 @@ Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separ
 
 ## Known Issues
 
-- **No chord symbols** - MusicXML has `<harmony>` elements, not yet extracted
 - **Repeats not expanded** - charts show 23 bars instead of 32
 - **Subtitle shows user instrument** - should show part name instead
 - **Clef override** - Bass parts may render in treble via API transposition
