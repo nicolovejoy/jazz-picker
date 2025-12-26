@@ -77,10 +77,12 @@ def analyze_xml(xml_path: str) -> dict:
             part_name = inst.instrumentName
 
         notes = part.flatten().notes
+        measures = part.getElementsByClass('Measure')
         part_info = {
             "index": i,
             "name": part_name,
             "note_count": len(notes),
+            "measure_count": len(measures),
             "low": None,
             "high": None,
         }
@@ -98,6 +100,12 @@ def analyze_xml(xml_path: str) -> dict:
                 part_info["high"] = max(pitches, key=lambda p: p.midi)
 
         info["parts"].append(part_info)
+
+    # Sanity check: all parts should have the same number of measures
+    if info["parts"]:
+        measure_counts = [p["measure_count"] for p in info["parts"]]
+        if len(set(measure_counts)) > 1:
+            print(f"WARNING: Parts have different measure counts: {measure_counts}")
 
     return info
 
@@ -262,7 +270,90 @@ def _fill_measure(current_beats: float, beats_per_measure: float) -> list:
     return rests
 
 
-def _extract_harmonies_from_xml(xml_path: str, part_id: str = None) -> list:
+def _extract_repeat_structure(xml_path: str) -> list:
+    """
+    Extract measure playback order from MusicXML repeat structure.
+
+    Returns list of original measure numbers in playback order.
+    """
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    parts = root.findall('.//part')
+    if not parts:
+        return []
+
+    part = parts[0]
+    measures = part.findall('measure')
+
+    # Build repeat structure
+    repeat_start = None
+    first_ending_start = None
+    first_ending_end = None
+    playback_order = []
+    current_ending = None
+
+    for m in measures:
+        m_num = int(m.get('number', 0))
+
+        # Check for repeat signs and endings
+        for barline in m.findall('barline'):
+            repeat = barline.find('repeat')
+            ending = barline.find('ending')
+
+            if repeat is not None:
+                direction = repeat.get('direction')
+                if direction == 'forward':
+                    repeat_start = m_num
+                elif direction == 'backward':
+                    # End of repeated section
+                    if current_ending == '1':
+                        first_ending_end = m_num
+
+            if ending is not None:
+                ending_type = ending.get('type')
+                ending_number = ending.get('number', '1')
+                if ending_type == 'start':
+                    current_ending = ending_number
+                    if ending_number == '1':
+                        first_ending_start = m_num
+                elif ending_type in ('stop', 'discontinue'):
+                    current_ending = None
+
+    # Build list of all measure numbers
+    all_measures = [int(m.get('number', 0)) for m in measures]
+
+    # If we have a repeat structure with endings, expand it
+    if repeat_start is not None and first_ending_start is not None and first_ending_end is not None:
+        # Structure:
+        # - First time: play from start through first ending
+        # - Second time: repeat section, skip first ending, play second ending
+
+        second_ending_start = first_ending_end + 1
+
+        expanded = []
+
+        # First time through: pickup + repeated section + first ending
+        for m_num in all_measures:
+            if m_num <= first_ending_end:
+                expanded.append(m_num)
+
+        # Second time: repeated section (skip pickup and first ending) + second ending
+        for m_num in all_measures:
+            if repeat_start <= m_num < first_ending_start:
+                expanded.append(m_num)
+
+        # Add second ending
+        for m_num in all_measures:
+            if m_num >= second_ending_start:
+                expanded.append(m_num)
+
+        return expanded
+
+    return all_measures
+
+
+def _extract_harmonies_from_xml(xml_path: str, part_id: str = None, expand_repeats: bool = False) -> list:
     """
     Extract harmony elements directly from MusicXML.
 
@@ -347,6 +438,35 @@ def _extract_harmonies_from_xml(xml_path: str, part_id: str = None) -> list:
                 duration = elem.find('duration')
                 if duration is not None:
                     current_offset -= int(duration.text) / divisions
+
+    # Optionally expand harmonies according to repeat structure
+    if expand_repeats:
+        playback_order = _extract_repeat_structure(xml_path)
+        if playback_order:
+            # Build a map of original measure -> harmonies in that measure
+            harmonies_by_measure = {}
+            for h in harmonies:
+                m = h['measure']
+                if m not in harmonies_by_measure:
+                    harmonies_by_measure[m] = []
+                harmonies_by_measure[m].append(h)
+
+            # Expand harmonies following playback order
+            expanded_harmonies = []
+            new_measure_num = 0
+            for orig_measure in playback_order:
+                new_measure_num += 1
+                if orig_measure in harmonies_by_measure:
+                    for h in harmonies_by_measure[orig_measure]:
+                        expanded_harmonies.append({
+                            'measure': new_measure_num,
+                            'beat': h['beat'],
+                            'root': h['root'],
+                            'alter': h['alter'],
+                            'kind': h['kind'],
+                        })
+
+            return expanded_harmonies
 
     return harmonies
 
@@ -609,10 +729,10 @@ def generate_core_file(part, info: dict, part_name: str, clef_name: str = None, 
 
     measures, pickup_beats = _notes_to_lilypond_measures(part, beats)
 
-    # Extract chord symbols from XML
+    # Extract chord symbols from XML (with repeat expansion)
     chords_content = ""
     if xml_path:
-        harmonies = _extract_harmonies_from_xml(xml_path)
+        harmonies = _extract_harmonies_from_xml(xml_path, expand_repeats=True)
         if harmonies:
             chords_content = _harmonies_to_chordmode(harmonies, beats)
 
@@ -755,6 +875,9 @@ def extract_all_parts(xml_path: str, output_dir: str = None, compile_pdf: bool =
     key_display = _key_to_display(key_obj)
 
     score = converter.parse(xml_path)
+
+    # Expand repeats to get full chart
+    score = score.expandRepeats()
 
     # Track violin numbering
     part_name_counts = {}
