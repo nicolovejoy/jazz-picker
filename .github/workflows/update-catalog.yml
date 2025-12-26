@@ -48,7 +48,7 @@ jobs:
           # Remove submodule placeholder and symlink to the fresh checkout
           rm -rf lilypond-data
           ln -s ../lilypond-data lilypond-data
-          python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt
+          python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt --custom-dir custom-charts
           echo "Catalog built successfully"
           ls -la catalog.db
 
