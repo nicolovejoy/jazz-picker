@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { api } from '@/services/api';
 import { formatKey, concertToWritten, type Instrument } from '@/types/catalog';
 import { useUserProfile } from '@/contexts/UserProfileContext';
@@ -71,6 +72,7 @@ export function TransposeModal({
   const initialKey = storedPreference.endsWith('m') ? storedPreference.slice(0, -1) : storedPreference;
 
   const [selectedConcertKey, setSelectedConcertKey] = useState(initialKey);
+  const [octaveOffset, setOctaveOffset] = useState(0);
   const [isTransposing, setIsTransposing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +104,8 @@ export function TransposeModal({
         effectiveKey,
         instrument.transposition,
         instrument.clef,
-        instrument.label
+        instrument.label,
+        octaveOffset
       );
       clearInterval(progressInterval);
       setProgress(100);
@@ -173,6 +176,35 @@ export function TransposeModal({
                   Written key: {getWrittenKeyDisplay(selectedConcertKey)}
                 </p>
               )}
+            </div>
+
+            {/* Octave Adjustment */}
+            <div className="mb-6">
+              <label className="block text-sm text-gray-400 mb-2">Octave Adjustment</label>
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setOctaveOffset((o) => Math.max(-2, o - 1))}
+                  disabled={octaveOffset <= -2}
+                  className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Octave down"
+                >
+                  <FiChevronDown size={20} />
+                </button>
+                <span className="text-white w-16 text-center font-medium">
+                  {octaveOffset === 0 ? '0' : octaveOffset > 0 ? `+${octaveOffset}` : octaveOffset}
+                </span>
+                <button
+                  onClick={() => setOctaveOffset((o) => Math.min(2, o + 1))}
+                  disabled={octaveOffset >= 2}
+                  className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Octave up"
+                >
+                  <FiChevronUp size={20} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Shift melody up or down for instrument range
+              </p>
             </div>
 
             {error && (

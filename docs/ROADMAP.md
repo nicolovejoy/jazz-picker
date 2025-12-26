@@ -6,6 +6,7 @@
 2. iOS Groove Sync follower support
 3. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
 4. Multi-part: UI grouping (show part picker instead of separate songs)
+5. Web: Octave transpose support (parity with iOS)
 
 ## Future
 
