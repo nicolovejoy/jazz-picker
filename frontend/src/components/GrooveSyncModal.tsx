@@ -5,9 +5,10 @@ interface GrooveSyncModalProps {
   session: GrooveSyncSession;
   onJoin: () => void;
   onDismiss: () => void;
+  onDismissSession: () => void;
 }
 
-export function GrooveSyncModal({ session, onJoin, onDismiss }: GrooveSyncModalProps) {
+export function GrooveSyncModal({ session, onJoin, onDismiss, onDismissSession }: GrooveSyncModalProps) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-2xl">
@@ -38,6 +39,13 @@ export function GrooveSyncModal({ session, onJoin, onDismiss }: GrooveSyncModalP
               Follow
             </button>
           </div>
+
+          <button
+            onClick={onDismissSession}
+            className="mt-4 text-gray-500 hover:text-gray-400 text-sm transition-colors"
+          >
+            Don't ask again for this session
+          </button>
         </div>
       </div>
     </div>

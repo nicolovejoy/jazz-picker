@@ -70,6 +70,7 @@ function App() {
   const [isPdfTransitioning, setIsPdfTransitioning] = useState(false);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [grooveSyncModalDismissed, setGrooveSyncModalDismissed] = useState(false);
+  const [grooveSyncSessionDismissedId, setGrooveSyncSessionDismissedId] = useState<string | null>(null);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -606,11 +607,12 @@ function App() {
       {isFollowing && <GrooveSyncFollower />}
 
       {/* Groove Sync Modal */}
-      {!isFollowing && !pdfUrl && !grooveSyncModalDismissed && activeSessions.length > 0 && activeSessions[0].leaderId !== user?.uid && (
+      {!isFollowing && !pdfUrl && !grooveSyncModalDismissed && activeSessions.length > 0 && activeSessions[0].leaderId !== user?.uid && grooveSyncSessionDismissedId !== activeSessions[0].leaderId && (
         <GrooveSyncModal
           session={activeSessions[0]}
           onJoin={() => startFollowing(activeSessions[0])}
           onDismiss={() => setGrooveSyncModalDismissed(true)}
+          onDismissSession={() => setGrooveSyncSessionDismissedId(activeSessions[0].leaderId)}
         />
       )}
     </div>
