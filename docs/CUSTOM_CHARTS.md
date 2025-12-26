@@ -62,10 +62,9 @@ fly deploy
 
 Custom PDFs are preserved when Eric's charts are rebuilt.
 
-## MIDI Conversion
+## Conversion Tools
 
-`tmp/midi_to_lilypond.py` converts MIDI to lead sheet format. MIDI provides notes/rhythms but not chord symbols or lyrics.
+- `tmp/midi_to_lilypond.py` - MIDI → LilyPond (notes/rhythms only)
+- `tmp/musicxml_to_lilypond.py` - MusicXML → LilyPond (multi-part extraction)
 
-## Multi-Part Charts
-
-Eric's format supports `refrainMelody`, `refrainBass`, `refrainRightHand`, `refrainLeftHand`. Separate wrappers render each part. Not yet exposed in Jazz Picker UI.
+See [MULTI_PART_SCORES.md](MULTI_PART_SCORES.md) for multi-part scores.
