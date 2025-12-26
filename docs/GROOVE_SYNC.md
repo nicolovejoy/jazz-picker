@@ -33,9 +33,7 @@ groups/{groupId}/session/current
 
 ## Not Yet Implemented
 
-- 3-second delay before sync (avoid noise from quick browsing)
 - 5-minute timeout with prompt
-- Follower modal when session starts
 - Leader sees who's following
 - iOS as follower
 - Crash/restart persistence

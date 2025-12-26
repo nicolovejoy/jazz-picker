@@ -13,6 +13,7 @@ import { InstrumentPickerModal } from './components/InstrumentPickerModal';
 import { GroupsSection } from './components/GroupsSection';
 import { JoinBandModal } from './components/JoinBandModal';
 import { GrooveSyncFollower } from './components/GrooveSyncFollower';
+import { GrooveSyncModal } from './components/GrooveSyncModal';
 import { useAuth } from './contexts/AuthContext';
 import { useUserProfile } from './contexts/UserProfileContext';
 import { useGrooveSync } from './contexts/GrooveSyncContext';
@@ -68,6 +69,7 @@ function App() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [isPdfTransitioning, setIsPdfTransitioning] = useState(false);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [grooveSyncModalDismissed, setGrooveSyncModalDismissed] = useState(false);
   const LIMIT = 50;
 
   const queryClient = useQueryClient();
@@ -179,6 +181,16 @@ function App() {
     }
     window.history.replaceState({}, '', url.toString());
   }, [activeSetlist]);
+
+  // Reset Groove Sync modal dismissed state when closing PDF viewer
+  const prevPdfUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    // When transitioning from PDF to non-PDF, reset the dismissed state
+    if (prevPdfUrlRef.current && !pdfUrl) {
+      setGrooveSyncModalDismissed(false);
+    }
+    prevPdfUrlRef.current = pdfUrl;
+  }, [pdfUrl]);
 
   // Fetch full catalog for navigation (Spin + alphabetical browsing)
   useEffect(() => {
@@ -593,24 +605,13 @@ function App() {
       {/* Groove Sync Follower View */}
       {isFollowing && <GrooveSyncFollower />}
 
-      {/* Groove Sync Join Banner */}
-      {!isFollowing && !pdfUrl && activeSessions.length > 0 && activeSessions[0].leaderId !== user?.uid && (
-        <div className="fixed bottom-24 left-4 right-4 z-40">
-          <button
-            onClick={() => startFollowing(activeSessions[0])}
-            className="w-full flex items-center justify-between p-4 bg-blue-600 hover:bg-blue-500 rounded-lg shadow-lg transition-colors"
-          >
-            <div className="text-left">
-              <p className="text-white font-medium">
-                {activeSessions[0].leaderName} is sharing charts
-              </p>
-              <p className="text-blue-200 text-sm">
-                Tap to follow along
-              </p>
-            </div>
-            <span className="text-white text-2xl">→</span>
-          </button>
-        </div>
+      {/* Groove Sync Modal */}
+      {!isFollowing && !pdfUrl && !grooveSyncModalDismissed && activeSessions.length > 0 && activeSessions[0].leaderId !== user?.uid && (
+        <GrooveSyncModal
+          session={activeSessions[0]}
+          onJoin={() => startFollowing(activeSessions[0])}
+          onDismiss={() => setGrooveSyncModalDismissed(true)}
+        />
       )}
     </div>
   );
