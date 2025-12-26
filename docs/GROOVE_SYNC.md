@@ -30,11 +30,12 @@ Real-time song sharing during gigs. iOS leads, web follows. Leader syncs charts 
 ```
 groups/{groupId}/session/current
   - leaderId, leaderName, startedAt, lastActivityAt
-  - currentSong: { title, concertKey, source }
+  - currentSong: { title, concertKey, source, octaveOffset? }
 ```
 
 ## Not Yet Implemented
 
+- Sync octaveOffset from leader (iOS sends, web reads)
 - 5-minute timeout with prompt
 - Leader sees who's following
 - iOS as follower

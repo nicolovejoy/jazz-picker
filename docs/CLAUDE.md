@@ -43,24 +43,24 @@ JazzPicker/JazzPicker/
 ## Backend API
 
 ```
-GET  /api/v2/catalog    # Song list
-POST /api/v2/generate   # PDF {song, concert_key, transposition, clef, instrument_label}
+GET  /api/v2/catalog    # Song list with includeVersion for cache invalidation
+POST /api/v2/generate   # PDF {song, concert_key, transposition, clef, instrument_label, octave_offset}
 ```
 
-PDFs cached in S3. LilyPond generates on cache miss.
+PDFs cached in S3 with `includeVersion` metadata. Regenerates on cache miss or version mismatch.
 
 ## Key Concepts
 
 - **Concert Key**: What audience hears (stored, includes 'm' for minor)
 - **Written Key**: What player sees (calculated from transposition)
-- **Octave Offset**: ±2 adjustment when transposition lands too high/low
+- **Octave Offset**: ±2 adjustment when transposition lands too high/low. Priority: setlist item > Groove Sync leader > user preference > auto-calc > 0
 - **Source**: 'standard' or 'custom'
 
 ## Firestore Schema
 
 ```
 users/{uid}
-  - instrument, displayName, preferredKeys, groups[], lastUsedGroupId
+  - instrument, displayName, preferredKeys, preferredOctaveOffsets, groups[], lastUsedGroupId
 
 groups/{groupId}
   - name, code (jazz slug)
@@ -111,7 +111,7 @@ Never commit secrets. GoogleService-Info.plist is gitignored.
 ## Docs
 
 - `ROADMAP.md` - Priority queue
-- `CACHE_INVALIDATION.md` - Per-song timestamps + provider versioning
-- `MULTI_PART_SCORES.md` - MusicXML converter usage
+- `DEPLOY.md` - Deploy workflow
 - `CUSTOM_CHARTS.md` - Manual chart creation
+- `MULTI_PART_SCORES.md` - MusicXML converter usage
 - `GROOVE_SYNC.md` - Real-time chart sharing spec

@@ -2,11 +2,13 @@
 
 ## Backlog
 
-1. Groove Sync Phase 2: timeout, leader sees followers
-2. iOS Groove Sync follower support
-3. Multi-part: Conductor view (all parts stacked for bandleader)
-4. Multi-part: UI grouping (part picker instead of separate songs)
-5. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
+1. Preferred octave offsets per-user, per-song (like preferredKeys)
+2. Groove Sync: sync octaveOffset from leader to followers
+3. Groove Sync Phase 2: timeout, leader sees followers
+4. iOS Groove Sync follower support
+5. Multi-part: Conductor view (all parts stacked for bandleader)
+6. Multi-part: UI grouping (part picker instead of separate songs)
+7. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
 
 ## Future
 
@@ -18,6 +20,7 @@
 
 - iOS primary, web secondary
 - Preferred keys per-user, per-song in Firestore (sparse)
+- Octave offset priority: setlist item > Groove Sync leader > user preference > auto-calc > 0
 - Song cards show: standard key (gray) + preferred key (orange parens) when different
 - Key picker highlights standard key with bold outline
 - Enharmonic spelling context-aware (Gb for flat keys, F# for sharp keys)
