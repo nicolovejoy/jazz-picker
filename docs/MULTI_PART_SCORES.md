@@ -2,73 +2,36 @@
 
 MusicXML → LilyPond conversion for arrangements with separate instrument parts.
 
-## Current State (MVP Complete)
+## Usage
 
-`tools/musicxml_to_lilypond.py` extracts parts from MusicXML:
 ```bash
 source venv/bin/activate
 python tools/musicxml_to_lilypond.py path/to/file.xml
 ```
 
-Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separate song in the catalog (e.g., "My Window Faces the South (Lead)").
+Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separate song in the catalog.
 
-**Test case:** "My Window Faces the South" - 6 parts deployed and rendering.
+## Converter Features
+
+- Chord symbol extraction from MusicXML harmony elements
+- Repeat expansion (uses own logic, not music21's buggy `expandRepeats()`)
+- Global pickup detection (consistent measure numbers across all parts)
+- Rhythm slash detection (skips parts that are just strum patterns)
+- Part name in subtitle
+- Automatic clef selection (bass clef for low parts)
+- Octave reference adjustment (`\relative f,` for bass, `\relative f` for guitar)
 
 ## Known Issues
 
-- **Clef override** - Bass parts may render in treble via API transposition
+- **LilyPond version**: lilypond-data submodule uses 2.25+ features. Local compilation requires LilyPond 2.25+; backend on Fly.io handles this.
 
 ## File Naming
 
-Multi-part Core files: `{Title} - Ly Core - {PartName} - {Key}.ly`
-Multi-part Wrappers: `{Title} ({PartName}) - Ly - {Key} Standard.ly`
+- Core: `{Title} - Ly Core - {PartName} - {Key}.ly`
+- Wrapper: `{Title} ({PartName}) - Ly - {Key} Standard.ly`
 
-## Future Phases
+## Future
 
-### UI Grouping
-- Add `score_id`, `part_name` to catalog.db
-- Group parts in song list, show part picker on tap
-
-### Score View
-- Conductor's view with all parts stacked (LilyPond StaffGroup)
-
-## Per-User/Band Song Access
-
-**Key insight:** There is no "public" catalog. All songs have copyright implications.
-
-- Eric's 750+ charts belong to Eric's band(s) - not globally available
-- James's charts belong to James's band(s)
-- Users only see songs uploaded by themselves or shared with their bands
-- Some songs *may* be marked public/open-source eventually, but that's the exception
-
-**Current state (temporary):**
-- catalog.db serves everyone (small user base, acceptable for now)
-- No access control
-
-**Future model:**
-- All songs live in Firestore with ownership
-- `ownerId`: user who uploaded
-- `sharedWith`: [bandId, bandId, ...]
-- Catalog = songs you own + songs shared with your bands
-- catalog.db becomes just a build artifact, not the source of truth
-
-**Migration path (not now):**
-1. Add Firestore song collection with ownership fields
-2. Migrate existing songs, assign to appropriate owners
-3. Update catalog endpoint to query Firestore with user context
-4. Remove global catalog.db serving
-
-**Not in current scope** - MVP keeps current architecture.
-
----
-
-## Test Case
-
-"My Window Faces the South" - 6 parts from James's MusicXML:
-- Lead (53 notes)
-- Violin 1 (54 notes)
-- Violin 2 (54 notes)
-- Rhythm (88 notes)
-- Electric Guitar (352 notes)
-- Bass (44 notes)
-- Score (conductor view, post-MVP)
+- **UI Grouping**: Add `score_id`, `part_name` to catalog.db; group parts in song list
+- **Score View**: Conductor's view with all parts stacked (LilyPond StaffGroup)
+- **Per-band song access**: Songs in Firestore with ownership, not global catalog

@@ -106,4 +106,12 @@ Never commit secrets. GoogleService-Info.plist is gitignored.
 
 ## Tools
 
-`tools/musicxml_to_lilypond.py` - Convert MusicXML arrangements to multi-part LilyPond files. Extracts chord symbols, expands repeats.
+`tools/musicxml_to_lilypond.py` - MusicXML → multi-part LilyPond. Chord symbols, repeat expansion, pickup detection.
+
+## Docs
+
+- `ROADMAP.md` - Priority queue
+- `CACHE_INVALIDATION.md` - Per-song timestamps + provider versioning
+- `MULTI_PART_SCORES.md` - MusicXML converter usage
+- `CUSTOM_CHARTS.md` - Manual chart creation
+- `GROOVE_SYNC.md` - Real-time chart sharing spec

@@ -7,10 +7,6 @@
 3. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
 4. Multi-part: UI grouping (show part picker instead of separate songs)
 
-## Recently Completed
-
-- **Cache invalidation**: Per-song `coreModified` + per-provider `includeVersion`. See `docs/CACHE_INVALIDATION.md`
-
 ## Future
 
 - Guitar tablature output (LilyPond TabStaff)
