@@ -16,8 +16,6 @@ Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separ
 
 ## Known Issues
 
-- **Repeats not expanded** - charts show 23 bars instead of 32
-- **Subtitle shows user instrument** - should show part name instead
 - **Clef override** - Bass parts may render in treble via API transposition
 
 ## File Naming

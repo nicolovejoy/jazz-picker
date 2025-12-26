@@ -790,13 +790,14 @@ refrainChords = \\chordmode {{
 '''
 
     # Generate Core content
+    # For multi-part scores, subtitle shows just the part name
     ly_content = f'''%% -*- Mode: LilyPond -*-
 
 \\include "../../lilypond-data/Include/lead-sheets.ily"
 
 \\header {{
-  title = "{title} ({part_name})"
-  subtitle = \\instrument
+  title = "{title}"
+  subtitle = "{part_name}"
   poet = ""
   composer = "{composer}"
   copyright = \\markup \\small {{ \\now " " }}
