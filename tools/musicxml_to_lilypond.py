@@ -523,67 +523,121 @@ def _harmony_to_lilypond(harmony: dict, duration: str = "") -> str:
     return f"{root}{duration}{suffix}"
 
 
-def _harmonies_to_chordmode(harmonies: list, beats_per_measure: int = 4) -> str:
+def _harmonies_to_chordmode(harmonies: list, beats_per_measure: int = 4, total_measures: int = None, pickup_beats: float = 0) -> str:
     """
     Convert list of harmonies to LilyPond chordmode string.
+    Fills gaps between chord changes with the previous chord.
     Groups by measure with bar checks.
+
+    If pickup_beats > 0, the first measure is a partial measure and chords
+    are adjusted accordingly for consistent alignment with melody.
     """
     if not harmonies:
         return ""
 
     # Group harmonies by measure
-    measures = {}
+    chord_by_measure = {}
     for h in harmonies:
         m = h['measure']
-        if m not in measures:
-            measures[m] = []
-        measures[m].append(h)
+        if m not in chord_by_measure:
+            chord_by_measure[m] = []
+        chord_by_measure[m].append(h)
 
-    # Build chordmode content
+    # Determine total measures if not provided
+    if total_measures is None:
+        total_measures = max(chord_by_measure.keys())
+
+    # Build chordmode content, filling gaps with previous chord
     lines = []
-    current_measure = []
+    current_line = []
+    last_chord = None
 
-    for measure_num in sorted(measures.keys()):
-        measure_harmonies = sorted(measures[measure_num], key=lambda x: x['beat'])
-        measure_content = []
+    for measure_num in range(1, total_measures + 1):
+        # First measure may be a pickup (partial measure)
+        is_pickup_measure = (measure_num == 1 and pickup_beats > 0)
+        measure_beats = pickup_beats if is_pickup_measure else beats_per_measure
 
-        for i, h in enumerate(measure_harmonies):
-            # Calculate duration to next chord or end of measure
-            if i + 1 < len(measure_harmonies):
-                next_beat = measure_harmonies[i + 1]['beat']
+        if measure_num in chord_by_measure:
+            measure_harmonies = sorted(chord_by_measure[measure_num], key=lambda x: x['beat'])
+            measure_content = []
+
+            # For pickup measure, find chord that applies to the pickup portion
+            if is_pickup_measure:
+                # The pickup starts at (beats_per_measure - pickup_beats)
+                pickup_start = beats_per_measure - pickup_beats
+                # Find chord at or before pickup start
+                applicable_chord = None
+                for h in measure_harmonies:
+                    if h['beat'] <= pickup_start:
+                        applicable_chord = h
+                    else:
+                        break
+
+                if applicable_chord:
+                    dur_str = _beats_to_duration(pickup_beats, beats_per_measure)
+                    chord_str = _harmony_to_lilypond(applicable_chord, dur_str)
+                    measure_content.append(chord_str)
+                    last_chord = applicable_chord
+                else:
+                    # No chord for pickup - use skip (s) not rest (r)
+                    # This is the LilyPond convention for chordmode
+                    dur_str = _beats_to_duration(pickup_beats, beats_per_measure)
+                    measure_content.append(f"s{dur_str}")
             else:
-                next_beat = beats_per_measure
+                for i, h in enumerate(measure_harmonies):
+                    # Calculate duration to next chord or end of measure
+                    if i + 1 < len(measure_harmonies):
+                        next_beat = measure_harmonies[i + 1]['beat']
+                    else:
+                        next_beat = beats_per_measure
 
-            duration_beats = next_beat - h['beat']
+                    duration_beats = next_beat - h['beat']
+                    dur_str = _beats_to_duration(duration_beats, beats_per_measure)
 
-            # Convert beats to LilyPond duration
-            if abs(duration_beats - beats_per_measure) < 0.01:
-                dur_str = "1"
-            elif abs(duration_beats - beats_per_measure / 2) < 0.01:
-                dur_str = "2"
-            elif abs(duration_beats - beats_per_measure / 4) < 0.01:
-                dur_str = "4"
-            elif abs(duration_beats - beats_per_measure * 3 / 4) < 0.01:
-                dur_str = "2."
+                    chord_str = _harmony_to_lilypond(h, dur_str)
+                    measure_content.append(chord_str)
+                    last_chord = h  # Remember last chord for gaps
+
+            current_line.append(" ".join(measure_content))
+        else:
+            # No chord change this measure - use last chord
+            if last_chord:
+                dur_str = _beats_to_duration(measure_beats, beats_per_measure)
+                chord_str = _harmony_to_lilypond(last_chord, dur_str)
+                current_line.append(chord_str)
             else:
-                # Default to quarter note for complex durations
-                dur_str = "4"
+                # No chord yet (shouldn't happen in well-formed charts)
+                dur_str = _beats_to_duration(measure_beats, beats_per_measure)
+                current_line.append(f"r{dur_str}")
 
-            chord_str = _harmony_to_lilypond(h, dur_str)
-            measure_content.append(chord_str)
-
-        current_measure.append(" ".join(measure_content))
-
-        # Add bar line every measure, line break every 4 measures
-        if len(current_measure) == 4:
-            lines.append(" | ".join(current_measure))
-            current_measure = []
+        # Line break every 4 measures (no bar checks in chordmode)
+        if len(current_line) == 4:
+            lines.append(" ".join(current_line))
+            current_line = []
 
     # Add remaining measures
-    if current_measure:
-        lines.append(" | ".join(current_measure))
+    if current_line:
+        lines.append(" ".join(current_line))
 
     return "\n  ".join(lines)
+
+
+def _beats_to_duration(beats: float, beats_per_measure: int = 4) -> str:
+    """Convert beat count to LilyPond duration string."""
+    if abs(beats - beats_per_measure) < 0.01:
+        return "1"
+    elif abs(beats - beats_per_measure / 2) < 0.01:
+        return "2"
+    elif abs(beats - beats_per_measure / 4) < 0.01:
+        return "4"
+    elif abs(beats - beats_per_measure * 3 / 4) < 0.01:
+        return "2."
+    elif abs(beats - 1) < 0.01:
+        return "4"
+    elif abs(beats - 0.5) < 0.01:
+        return "8"
+    else:
+        return "4"
 
 
 def _detect_pickup(notes_and_rests, beats_per_measure=4) -> float:
@@ -602,16 +656,80 @@ def _detect_pickup(notes_and_rests, beats_per_measure=4) -> float:
     return 0.0
 
 
-def _notes_to_lilypond_measures(part, beats_per_measure=4) -> tuple:
-    """Convert notes to LilyPond relative notation, grouped by measure."""
-    notes_and_rests = list(part.flatten().notesAndRests)
+def _detect_global_pickup(score, beats_per_measure=4) -> float:
+    """
+    Detect pickup duration from the first part that has actual pickup notes.
+    This ensures all parts use consistent measure numbering.
+    """
+    for part in score.parts:
+        measures = list(part.getElementsByClass('Measure'))
+        if not measures:
+            continue
 
-    pickup_beats = _detect_pickup(notes_and_rests, beats_per_measure)
+        m1 = measures[0]
+        elements = list(m1.flatten().notesAndRests)
+
+        # Calculate rest at start of measure
+        rest_beats = 0.0
+        has_notes = False
+        for element in elements:
+            if element.isRest:
+                rest_beats += element.quarterLength
+            else:
+                has_notes = True
+                break
+
+        # If this part has notes after initial rest, use it to determine pickup
+        if has_notes and 0 < rest_beats < beats_per_measure:
+            pickup_beats = beats_per_measure - rest_beats
+            return pickup_beats
+
+    return 0.0
+
+
+def _extract_measures_from_part(part) -> dict:
+    """Extract notes/rests grouped by measure number from a part."""
+    measures_dict = {}
+    for measure in part.getElementsByClass('Measure'):
+        m_num = measure.number
+        elements = list(measure.flatten().notesAndRests)
+        measures_dict[m_num] = elements
+    return measures_dict
+
+
+def _notes_to_lilypond_measures(part, beats_per_measure=4, reference_midi=65, playback_order=None, global_pickup=None) -> tuple:
+    """Convert notes to LilyPond relative notation, grouped by measure.
+
+    If playback_order is provided, uses that to expand repeats instead of
+    relying on music21's expandRepeats().
+
+    If global_pickup is provided, uses that as the pickup duration for all parts
+    to ensure consistent measure numbering across the score.
+    """
+    if playback_order:
+        # Use our own repeat expansion
+        measures_dict = _extract_measures_from_part(part)
+
+        # Build flattened list of notes following playback order
+        all_elements = []
+        for orig_measure in playback_order:
+            if orig_measure in measures_dict:
+                all_elements.extend(measures_dict[orig_measure])
+
+        notes_and_rests = all_elements
+    else:
+        notes_and_rests = list(part.flatten().notesAndRests)
+
+    # Use global pickup if provided, otherwise detect from this part
+    if global_pickup is not None:
+        pickup_beats = global_pickup
+    else:
+        pickup_beats = _detect_pickup(notes_and_rests, beats_per_measure)
 
     measures = []
     current_measure = []
     current_beats = 0.0
-    tracker = RelativePitchTracker(reference_midi=65)  # F4 for \relative f'
+    tracker = RelativePitchTracker(reference_midi=reference_midi)
 
     start_idx = 0
     if pickup_beats > 0:
@@ -704,8 +822,12 @@ def _notes_to_lilypond_measures(part, beats_per_measure=4) -> tuple:
     return measures, pickup_beats
 
 
-def generate_core_file(part, info: dict, part_name: str, clef_name: str = None, xml_path: str = None) -> str:
-    """Generate LilyPond Core file in lilypond-lead-sheets style."""
+def generate_core_file(part, info: dict, part_name: str, clef_name: str = None, xml_path: str = None, global_pickup: float = None) -> str:
+    """Generate LilyPond Core file in lilypond-lead-sheets style.
+
+    If global_pickup is provided, uses that pickup duration for consistent
+    measure numbering across all parts in the score.
+    """
 
     title = info["title"]
     composer = info["composer"] or ""
@@ -713,13 +835,30 @@ def generate_core_file(part, info: dict, part_name: str, clef_name: str = None, 
     tempo_bpm = info["tempo"] or 120
     time_sig = info["time_signature"] or "4/4"
 
-    # Determine clef from part range
+    # Determine clef and reference pitch from part range
+    part_info = next((p for p in info["parts"] if p["name"] == part_name), None)
     if clef_name is None:
-        part_info = next((p for p in info["parts"] if p["name"] == part_name), None)
         if part_info and part_info.get("low") and part_info.get("high"):
             clef_name = suggest_clef(part_info["low"], part_info["high"])
         else:
             clef_name = "treble"
+
+    # Choose reference pitch based on part range
+    # F4 (MIDI 65) for treble, F3 (MIDI 53) for mid-range, F2 (MIDI 41) for bass
+    if part_info and part_info.get("low") and part_info.get("high"):
+        avg_midi = (part_info["low"].midi + part_info["high"].midi) / 2
+        if avg_midi < 48:  # Below C3 - very low (bass)
+            reference_midi = 41  # F2
+            relative_cmd = "f,"
+        elif avg_midi < 60:  # Below C4 - low-mid range
+            reference_midi = 53  # F3
+            relative_cmd = "f"
+        else:
+            reference_midi = 65  # F4
+            relative_cmd = "f'"
+    else:
+        reference_midi = 65
+        relative_cmd = "f'"
 
     # Parse time signature
     if "/" in time_sig:
@@ -727,14 +866,20 @@ def generate_core_file(part, info: dict, part_name: str, clef_name: str = None, 
     else:
         beats = 4
 
-    measures, pickup_beats = _notes_to_lilypond_measures(part, beats)
+    # Get playback order for repeat expansion (use our own logic, not music21's)
+    playback_order = None
+    if xml_path:
+        playback_order = _extract_repeat_structure(xml_path)
+
+    measures, pickup_beats = _notes_to_lilypond_measures(part, beats, reference_midi, playback_order, global_pickup)
+    total_measures = len(measures)
 
     # Extract chord symbols from XML (with repeat expansion)
     chords_content = ""
     if xml_path:
         harmonies = _extract_harmonies_from_xml(xml_path, expand_repeats=True)
         if harmonies:
-            chords_content = _harmonies_to_chordmode(harmonies, beats)
+            chords_content = _harmonies_to_chordmode(harmonies, beats, total_measures, pickup_beats)
 
     # Build melody with bar lines
     melody_lines = []
@@ -805,7 +950,7 @@ refrainChords = \\chordmode {{
 
 refrainKey = {refrain_key}
 {chords_section}
-refrainMelody = \\relative f' {{
+refrainMelody = \\relative {relative_cmd} {{
   \\time {time_sig}
   \\key \\refrainKey \\{"major" if key_obj.mode == "major" else "minor"}
   \\clef \\whatClef
@@ -853,6 +998,34 @@ def sanitize_part_name(name: str) -> str:
     return name
 
 
+def _is_rhythm_slash_part(part) -> bool:
+    """
+    Detect if a part uses rhythm slash notation (single repeated pitch).
+    These are typically guitar strum patterns notated on one line.
+    """
+    from music21 import note, chord, harmony
+
+    notes = part.flatten().notes
+    if not notes:
+        return False
+
+    # Collect unique pitch classes (ignoring octave)
+    # Only count actual Note and Chord objects, not ChordSymbol (harmony)
+    pitch_classes = set()
+    for n in notes:
+        # Skip ChordSymbol objects (they inherit from Chord but represent harmony, not melody)
+        if isinstance(n, harmony.ChordSymbol):
+            continue
+        if isinstance(n, note.Note) and hasattr(n, "pitch"):
+            pitch_classes.add(n.pitch.pitchClass)
+        elif isinstance(n, chord.Chord) and hasattr(n, "pitches") and n.pitches:
+            for p in n.pitches:
+                pitch_classes.add(p.pitchClass)
+
+    # If only one unique pitch class across all notes, likely slash notation
+    return len(pitch_classes) == 1
+
+
 def extract_all_parts(xml_path: str, output_dir: str = None, compile_pdf: bool = False):
     """Extract all parts from MusicXML and generate Core + Wrapper files."""
 
@@ -877,8 +1050,21 @@ def extract_all_parts(xml_path: str, output_dir: str = None, compile_pdf: bool =
 
     score = converter.parse(xml_path)
 
-    # Expand repeats to get full chart
-    score = score.expandRepeats()
+    # Note: We do NOT use music21's expandRepeats() because it gives inconsistent
+    # results per part. Instead, generate_core_file uses our own _extract_repeat_structure
+    # to expand repeats consistently across all parts.
+
+    # Detect global pickup from the first melodic part
+    # Parse time signature for beats per measure
+    time_sig = info["time_signature"] or "4/4"
+    if "/" in time_sig:
+        beats_per_measure = int(time_sig.split("/")[0])
+    else:
+        beats_per_measure = 4
+
+    global_pickup = _detect_global_pickup(score, beats_per_measure)
+    if global_pickup > 0:
+        print(f"\nDetected pickup: {global_pickup} beats")
 
     # Track violin numbering
     part_name_counts = {}
@@ -898,13 +1084,18 @@ def extract_all_parts(xml_path: str, output_dir: str = None, compile_pdf: bool =
 
         print(f"\nProcessing: {part_name}")
 
+        # Skip rhythm slash notation parts (single repeated pitch = strum pattern)
+        if _is_rhythm_slash_part(part):
+            print(f"  Skipping: rhythm slash notation (not a melodic part)")
+            continue
+
         # Determine clef based on pitch range
         clef = "treble"
         if part_info.get("low") and part_info.get("high"):
             clef = suggest_clef(part_info["low"], part_info["high"])
 
         # Generate Core file
-        core_content = generate_core_file(part, info, part_name, xml_path=xml_path)
+        core_content = generate_core_file(part, info, part_name, xml_path=xml_path, global_pickup=global_pickup)
         core_filename = f"{title} - Ly Core - {part_name} - {key_display}.ly"
         core_path = core_dir / core_filename
 
