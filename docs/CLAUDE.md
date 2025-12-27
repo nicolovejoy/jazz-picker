@@ -82,7 +82,7 @@ setlists/{id}
 UI says "Band", Firestore uses `groups`. Every setlist belongs to a band.
 
 **URL Schemes:**
-- iOS: `jazzpicker://join/{code}`, `jazzpicker://setlist/{id}`, `jazzpicker://song/{slug}`
+- iOS: `jazzpicker://join/{code}`, `jazzpicker://setlist/{id}`
 - Web: `/join/{code}`, `/setlist/{id}`, `/song/{slug}?key=g&octave=1` (React Router)
 
 ## Groove Sync
@@ -114,7 +114,7 @@ Vercel auto-deploys when you push to main. After deploy, test:
 4. Change key → URL adds `?key=...`
 5. Browser back → closes PDF, returns to browse
 
-SPA routing configured in `frontend/vercel.json` (rewrites all paths to index.html).
+SPA routing configured in root `vercel.json` (rewrites all paths to index.html).
 
 ## Tools
 
