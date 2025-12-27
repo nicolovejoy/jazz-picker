@@ -82,8 +82,8 @@ setlists/{id}
 UI says "Band", Firestore uses `groups`. Every setlist belongs to a band.
 
 **URL Schemes:**
-- iOS: `jazzpicker://join/{code}`, `jazzpicker://setlist/{id}`
-- Web: `/join/{code}`, `/setlist/{id}` (React Router)
+- iOS: `jazzpicker://join/{code}`, `jazzpicker://setlist/{id}`, `jazzpicker://song/{slug}`
+- Web: `/join/{code}`, `/setlist/{id}`, `/song/{slug}?key=g&octave=1` (React Router)
 
 ## Groove Sync
 
@@ -99,10 +99,22 @@ See `docs/GROOVE_SYNC.md` for full spec.
 
 - **Fly.io** - Flask backend
 - **AWS S3** - `jazz-picker-pdfs`, `jazz-picker-custom-pdfs`
-- **Vercel** - Web frontend
+- **Vercel** - Web frontend (auto-deploys from GitHub on push to main)
 - **Firebase** - Auth + Firestore
 
 Never commit secrets. GoogleService-Info.plist is gitignored.
+
+## Web Deploy & Test
+
+Vercel auto-deploys when you push to main. After deploy, test:
+
+1. Direct link: `/song/all-the-things-you-are` - should load song
+2. Direct link with key: `/song/autumn-leaves?key=g` - should load in G
+3. Browse → click song → URL updates to `/song/...`
+4. Change key → URL adds `?key=...`
+5. Browser back → closes PDF, returns to browse
+
+SPA routing configured in `frontend/vercel.json` (rewrites all paths to index.html).
 
 ## Tools
 
