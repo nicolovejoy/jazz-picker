@@ -7,9 +7,13 @@
 
 import SwiftUI
 
-// MARK: - Environment Key for Deep Link Join Code
+// MARK: - Environment Keys for Deep Links
 
 private struct PendingJoinCodeKey: EnvironmentKey {
+    static let defaultValue: Binding<String?> = .constant(nil)
+}
+
+private struct PendingSetlistIdKey: EnvironmentKey {
     static let defaultValue: Binding<String?> = .constant(nil)
 }
 
@@ -17,6 +21,11 @@ extension EnvironmentValues {
     var pendingJoinCode: Binding<String?> {
         get { self[PendingJoinCodeKey.self] }
         set { self[PendingJoinCodeKey.self] = newValue }
+    }
+
+    var pendingSetlistId: Binding<String?> {
+        get { self[PendingSetlistIdKey.self] }
+        set { self[PendingSetlistIdKey.self] = newValue }
     }
 }
 
@@ -34,6 +43,7 @@ struct JazzPickerApp: App {
     @StateObject private var networkMonitor = NetworkMonitor()
 
     @State private var pendingJoinCode: String?
+    @State private var pendingSetlistId: String?
 
     var body: some Scene {
         WindowGroup {
@@ -50,6 +60,7 @@ struct JazzPickerApp: App {
             .environmentObject(PDFCacheService.shared)
             .environmentObject(networkMonitor)
             .environment(\.pendingJoinCode, $pendingJoinCode)
+            .environment(\.pendingSetlistId, $pendingSetlistId)
             .onOpenURL { url in
                 handleDeepLink(url)
             }
@@ -57,12 +68,23 @@ struct JazzPickerApp: App {
     }
 
     private func handleDeepLink(_ url: URL) {
-        // Handle jazzpicker://join/code
-        if url.scheme == "jazzpicker", url.host == "join" {
+        guard url.scheme == "jazzpicker" else { return }
+
+        switch url.host {
+        case "join":
+            // jazzpicker://join/{code}
             let code = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             if !code.isEmpty {
                 pendingJoinCode = code
             }
+        case "setlist":
+            // jazzpicker://setlist/{id}
+            let id = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            if !id.isEmpty {
+                pendingSetlistId = id
+            }
+        default:
+            break
         }
     }
 }

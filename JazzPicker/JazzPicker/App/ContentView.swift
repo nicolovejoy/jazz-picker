@@ -11,11 +11,14 @@ struct ContentView: View {
     @EnvironmentObject private var catalogStore: CatalogStore
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var setlistStore: SetlistStore
     @Environment(\.pendingJoinCode) private var pendingJoinCode
+    @Environment(\.pendingSetlistId) private var pendingSetlistId
     @State private var selectedTab = 0
     @State private var previousTab = 0
     @State private var spinSong: Song?
     @State private var joinCodeToProcess: String?
+    @State private var setlistToOpen: Setlist?
 
     var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -83,9 +86,39 @@ struct ContentView: View {
                 pendingJoinCode.wrappedValue = nil
             }
         }
+        .onChange(of: pendingSetlistId.wrappedValue) { _, newValue in
+            if let id = newValue {
+                pendingSetlistId.wrappedValue = nil
+                // Find setlist in store or load it
+                if let existing = setlistStore.setlists.first(where: { $0.id == id }) {
+                    setlistToOpen = existing
+                } else {
+                    // Load setlist by ID
+                    Task {
+                        if let setlist = await SetlistFirestoreService.getSetlist(id: id) {
+                            await MainActor.run {
+                                setlistToOpen = setlist
+                            }
+                        }
+                    }
+                }
+            }
+        }
         .sheet(item: $joinCodeToProcess) { code in
             NavigationStack {
                 DeepLinkJoinView(code: code)
+            }
+        }
+        .fullScreenCover(item: $setlistToOpen) { setlist in
+            NavigationStack {
+                SetlistDetailView(setlist: setlist)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") {
+                                setlistToOpen = nil
+                            }
+                        }
+                    }
             }
         }
     }

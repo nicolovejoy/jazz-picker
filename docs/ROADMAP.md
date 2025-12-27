@@ -6,7 +6,6 @@
 2. iOS Groove Sync follower support
 3. Multi-part: Conductor view (all parts stacked for bandleader)
 4. Multi-part: UI grouping (part picker instead of separate songs)
-5. iOS: Setlist deep links (`jazzpicker://setlist/{id}`)
 
 ## Future
 

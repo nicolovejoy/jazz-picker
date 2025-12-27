@@ -247,7 +247,7 @@ export function SetlistViewer({ setlist, instrument, onOpenPdfUrl, onSetlistNav,
   };
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}?setlist=${setlist.id}`;
+    const url = `${window.location.origin}/setlist/${setlist.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

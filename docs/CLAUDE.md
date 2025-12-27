@@ -70,7 +70,7 @@ groups/{groupId}/members/{userId}
 
 groups/{groupId}/session/current   # Groove Sync
   - leaderId, leaderName, startedAt, lastActivityAt
-  - currentSong: { title, concertKey, source }
+  - currentSong: { title, concertKey, source, octaveOffset? }
 
 setlists/{id}
   - name, ownerId, groupId
@@ -82,8 +82,8 @@ setlists/{id}
 UI says "Band", Firestore uses `groups`. Every setlist belongs to a band.
 
 **URL Schemes:**
-- iOS: `jazzpicker://join/{code}`
-- Web: `https://jazzpicker.pianohouseproject.org/?join={code}`
+- iOS: `jazzpicker://join/{code}`, `jazzpicker://setlist/{id}`
+- Web: `/join/{code}`, `/setlist/{id}` (React Router)
 
 ## Groove Sync
 

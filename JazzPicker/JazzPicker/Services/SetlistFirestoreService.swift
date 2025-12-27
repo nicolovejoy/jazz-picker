@@ -47,6 +47,19 @@ enum SetlistFirestoreService {
         }
     }
 
+    // MARK: - Fetch
+
+    static func getSetlist(id: String) async -> Setlist? {
+        do {
+            let doc = try await db.collection(collection).document(id).getDocument()
+            guard let data = doc.data() else { return nil }
+            return Setlist(id: doc.documentID, from: data)
+        } catch {
+            print("❌ Failed to fetch setlist: \(error)")
+            return nil
+        }
+    }
+
     // MARK: - Create
 
     static func createSetlist(name: String, ownerId: String, groupId: String) async throws -> String {

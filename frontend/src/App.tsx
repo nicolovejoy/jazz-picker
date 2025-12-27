@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
 import { BottomNav, type AppContext } from './components/BottomNav';
@@ -46,7 +47,50 @@ export interface CatalogNavigation {
   catalog: SongSummary[];
 }
 
+// Route component for /setlist/:id
+function SetlistRoute({ onSetlistLoad }: { onSetlistLoad: (setlist: Setlist) => void }) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { profile } = useUserProfile();
+  const instrument = profile?.instrument ? getInstrumentById(profile.instrument) : null;
+
+  useEffect(() => {
+    if (!id || !instrument) return;
+
+    getSetlist(id).then(setlist => {
+      if (setlist) {
+        onSetlistLoad(setlist);
+      } else {
+        console.error('Setlist not found:', id);
+        navigate('/', { replace: true });
+      }
+    }).catch(err => {
+      console.error('Failed to load setlist:', err);
+      navigate('/', { replace: true });
+    });
+  }, [id, instrument, onSetlistLoad, navigate]);
+
+  return null; // Loading is handled by parent
+}
+
+// Route component for /join/:code
+function JoinRoute({ onJoinCode }: { onJoinCode: (code: string) => void }) {
+  const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
+  const { profile } = useUserProfile();
+
+  useEffect(() => {
+    if (!code || !profile) return;
+
+    onJoinCode(code);
+    navigate('/', { replace: true });
+  }, [code, profile, onJoinCode, navigate]);
+
+  return null;
+}
+
 function App() {
+  const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
   const { profile, loading: profileLoading, updateProfile, setPreferredKey } = useUserProfile();
   const { isFollowing, activeSessions, startFollowing } = useGrooveSync();
@@ -145,43 +189,24 @@ function App() {
     };
   }, [hasMore, isFetching]);
 
-  // Handle URL params for deep linking
+  // Legacy URL param redirect (for old ?setlist= and ?join= links)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const setlistId = params.get('setlist');
     const joinCode = params.get('join');
 
-    if (setlistId && instrument) {
-      getSetlist(setlistId).then(setlist => {
-        if (setlist) {
-          setActiveSetlist(setlist);
-          setActiveContext('setlist');
-        }
-      }).catch(err => {
-        console.error('Failed to load setlist from URL:', err);
-      });
+    if (setlistId) {
+      // Redirect to path-based route
+      window.location.replace(`/setlist/${setlistId}`);
+      return;
     }
 
-    // Handle join band deep link (only after profile is loaded)
-    if (joinCode && profile) {
-      setPendingJoinCode(joinCode);
-      // Clear the join param from URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete('join');
-      window.history.replaceState({}, '', url.toString());
+    if (joinCode) {
+      // Redirect to path-based route
+      window.location.replace(`/join/${joinCode}`);
+      return;
     }
-  }, [instrument, profile]);
-
-  // Update URL when setlist changes
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (activeSetlist) {
-      url.searchParams.set('setlist', activeSetlist.id);
-    } else {
-      url.searchParams.delete('setlist');
-    }
-    window.history.replaceState({}, '', url.toString());
-  }, [activeSetlist]);
+  }, []);
 
   // Reset Groove Sync modal dismissed state when closing PDF viewer
   const prevPdfUrlRef = useRef<string | null>(null);
@@ -389,6 +414,24 @@ function App() {
     }, 800);
   }, [catalog, openSongFromCatalog, isSpinning]);
 
+  // Handle setlist load from route
+  const handleSetlistLoad = useCallback((setlist: Setlist) => {
+    setActiveSetlist(setlist);
+    setActiveContext('setlist');
+  }, []);
+
+  // Handle setlist selection with navigation
+  const handleSelectSetlist = useCallback((setlist: Setlist) => {
+    setActiveSetlist(setlist);
+    navigate(`/setlist/${setlist.id}`);
+  }, [navigate]);
+
+  // Handle back from setlist with navigation
+  const handleSetlistBack = useCallback(() => {
+    setActiveSetlist(null);
+    navigate('/');
+  }, [navigate]);
+
   // Show loading while checking auth/profile state
   if (authLoading || profileLoading) {
     return (
@@ -415,6 +458,13 @@ function App() {
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-20">
+      {/* Route handlers for deep links */}
+      <Routes>
+        <Route path="/setlist/:id" element={<SetlistRoute onSetlistLoad={handleSetlistLoad} />} />
+        <Route path="/join/:code" element={<JoinRoute onJoinCode={setPendingJoinCode} />} />
+        <Route path="*" element={null} />
+      </Routes>
+
       {/* Header only shows on Browse context */}
       {activeContext === 'browse' && (
         <Header
@@ -476,11 +526,11 @@ function App() {
                 instrument={instrument}
                 onOpenPdfUrl={handleOpenPdfUrl}
                 onSetlistNav={setSetlistNav}
-                onBack={() => setActiveSetlist(null)}
+                onBack={handleSetlistBack}
               />
             ) : (
               <SetlistManager
-                onSelectSetlist={(setlist) => setActiveSetlist(setlist)}
+                onSelectSetlist={handleSelectSetlist}
                 onClose={() => setActiveContext('browse')}
               />
             )}
