@@ -72,9 +72,6 @@ jobs:
         run: |
           cd jazz-picker
           flyctl deploy --remote-only
-          echo "Deployed with fresh LilyPond source files"
-
-      - name: Clear PDF cache
-        run: |
-          aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
-          echo "PDF cache cleared - will regenerate on demand"
+          echo "Deployed with fresh catalog"
+          # Note: PDF cache invalidation is automatic via includeVersion hash.
+          # Stale PDFs regenerate on next access - no manual clearing needed.

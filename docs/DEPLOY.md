@@ -5,10 +5,17 @@
 GitHub workflow in Eric's repo (`.github/workflows/update-catalog.yml`):
 1. Rebuilds `catalog.db` from lilypond-lead-sheets + custom-charts
 2. Uploads to S3
-3. Restarts Fly.io app
-4. Clears standard PDF cache
+3. Deploys to Fly.io
 
 Template lives in jazz-picker repo. Eric must sync changes manually.
+
+## Cache Invalidation
+
+PDF cache invalidation is automatic via `includeVersion` hash:
+- `build_catalog.py` computes SHA256 of all Include/*.ily files
+- Hash stored in catalog.db and in S3 PDF metadata
+- On PDF request, backend compares hashes - regenerates if stale
+- No manual cache clearing needed
 
 ## Manual
 
@@ -19,12 +26,6 @@ python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt --cu
 # Upload catalog and restart
 aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
 fly deploy
-
-# Clear standard PDF cache (optional)
-aws s3 rm s3://jazz-picker-pdfs/generated/ --recursive
-
-# Clear custom PDF cache (optional)
-aws s3 rm s3://jazz-picker-custom-pdfs/generated/ --recursive
 ```
 
 ## Testing
