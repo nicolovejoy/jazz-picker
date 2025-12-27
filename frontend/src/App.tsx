@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Header } from './components/Header';
 import { BottomNav, type AppContext } from './components/BottomNav';
@@ -24,6 +24,7 @@ import { api } from './services/api';
 import { getSetlist } from './services/setlistFirestoreService';
 import { getInstrumentById, type Instrument, type SongSummary } from '@/types/catalog';
 import type { CropBounds } from '@/types/pdf';
+import { toSongSlug, findSongBySlug } from './utils/songSlug';
 
 export interface PdfMetadata {
   songTitle: string;
@@ -85,6 +86,37 @@ function JoinRoute({ onJoinCode }: { onJoinCode: (code: string) => void }) {
     onJoinCode(code);
     navigate('/', { replace: true });
   }, [code, profile, onJoinCode, navigate]);
+
+  return null;
+}
+
+// Route component for /song/:slug
+interface SongRouteProps {
+  catalog: SongSummary[];
+  instrument: Instrument | null;
+  onOpenSong: (title: string, concertKey: string, octaveOffset: number) => void;
+}
+
+function SongRoute({ catalog, instrument, onOpenSong }: SongRouteProps) {
+  const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!slug || !instrument || catalog.length === 0) return;
+
+    const song = findSongBySlug(catalog, slug);
+    if (!song) {
+      console.error('Song not found:', slug);
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const key = searchParams.get('key') || song.default_key;
+    const octave = parseInt(searchParams.get('octave') || '0', 10);
+
+    onOpenSong(song.title, key, octave);
+  }, [slug, catalog, instrument, searchParams, onOpenSong, navigate]);
 
   return null;
 }
@@ -291,6 +323,10 @@ function App() {
         catalog: catalog,
       });
 
+      // Update URL (replace since we're navigating within songs)
+      const slug = toSongSlug(song.title);
+      navigate(`/song/${slug}`, { replace: true });
+
       // Update PDF
       setPdfUrl(result.url);
       setPdfMetadata(metadata);
@@ -299,7 +335,7 @@ function App() {
     } finally {
       setIsPdfTransitioning(false);
     }
-  }, [catalog, instrument]);
+  }, [catalog, instrument, navigate]);
 
   const handleOpenPdfUrl = useCallback(async (url: string, metadata?: PdfMetadata, catalogIndex?: number) => {
     // Auto-detect catalog index from song title if not provided and not in setlist mode
@@ -317,10 +353,20 @@ function App() {
       }
     }
 
+    // Update URL when opening from browse (not setlist)
+    if (setlistNavRef.current === null && metadata?.songTitle && metadata?.key) {
+      const slug = toSongSlug(metadata.songTitle);
+      const song = catalog.find(s => s.title === metadata.songTitle);
+      const defaultKey = song?.default_key || metadata.key;
+      // Only include key param if different from default
+      const keyParam = metadata.key !== defaultKey ? `?key=${metadata.key}` : '';
+      navigate(`/song/${slug}${keyParam}`);
+    }
+
     // Web: use the React PDF viewer
     setPdfUrl(url);
     setPdfMetadata(metadata || null);
-  }, [catalog]);
+  }, [catalog, navigate]);
 
   const handleEnterPress = useCallback(async () => {
     // Only handle if exactly 1 song in results and we have an instrument
@@ -432,6 +478,48 @@ function App() {
     navigate('/');
   }, [navigate]);
 
+  // Handle song open from /song/:slug route
+  const handleOpenSongFromRoute = useCallback(async (title: string, concertKey: string, octaveOffset: number) => {
+    if (!instrument) return;
+
+    try {
+      const result = await api.generatePDF(
+        title,
+        concertKey,
+        instrument.transposition,
+        instrument.clef,
+        instrument.label,
+        octaveOffset
+      );
+
+      const metadata: PdfMetadata = {
+        songTitle: title,
+        key: concertKey,
+        clef: instrument.clef,
+        cached: result.cached,
+        generationTimeMs: result.generation_time_ms,
+        crop: result.crop,
+      };
+
+      // Find catalog index for navigation
+      const catalogIndex = catalog.findIndex(s => s.title === title);
+      if (catalogIndex >= 0) {
+        catalogIndexRef.current = catalogIndex;
+        setCatalogNav({
+          currentIndex: catalogIndex,
+          totalSongs: catalog.length,
+          catalog: catalog,
+        });
+      }
+
+      setPdfUrl(result.url);
+      setPdfMetadata(metadata);
+    } catch (error) {
+      console.error('Failed to open song from route:', error);
+      navigate('/', { replace: true });
+    }
+  }, [instrument, catalog, navigate]);
+
   // Show loading while checking auth/profile state
   if (authLoading || profileLoading) {
     return (
@@ -462,6 +550,7 @@ function App() {
       <Routes>
         <Route path="/setlist/:id" element={<SetlistRoute onSetlistLoad={handleSetlistLoad} />} />
         <Route path="/join/:code" element={<JoinRoute onJoinCode={setPendingJoinCode} />} />
+        <Route path="/song/:slug" element={<SongRoute catalog={catalog} instrument={instrument} onOpenSong={handleOpenSongFromRoute} />} />
         <Route path="*" element={null} />
       </Routes>
 
@@ -614,6 +703,10 @@ function App() {
           onClose={() => {
             setPdfUrl(null);
             setPdfMetadata(null);
+            // Navigate to / when closing from browse mode (not setlist)
+            if (setlistNav === null && catalogNav !== null) {
+              navigate('/');
+            }
             setCatalogNav(null);
           }}
           instrument={instrument}
@@ -625,6 +718,13 @@ function App() {
               const song = catalog.find(s => s.title === pdfMetadata.songTitle);
               const defaultKey = song?.default_key || 'c';
               setPreferredKey(pdfMetadata.songTitle, newKey, defaultKey).catch(console.error);
+
+              // Update URL when in browse mode (not setlist)
+              if (setlistNav === null) {
+                const slug = toSongSlug(pdfMetadata.songTitle);
+                const keyParam = newKey !== defaultKey ? `?key=${newKey}` : '';
+                navigate(`/song/${slug}${keyParam}`, { replace: true });
+              }
             }
           }}
         />
