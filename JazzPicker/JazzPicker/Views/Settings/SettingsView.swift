@@ -124,6 +124,12 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        Text("How to Use")
+                    }
+
                     HStack {
                         Text("Version")
                         Spacer()

@@ -1,5 +1,10 @@
 [
   {
+    "build": 16,
+    "date": "2025-12-27",
+    "notes": "Groove Sync follower - when someone in your band starts sharing charts, you'll see a prompt to follow along. Charts auto-open transposed for your instrument as the leader navigates. Also: per-song octave offset preferences now save to your profile."
+  },
+  {
     "build": 15,
     "date": "2025-12-21",
     "notes": "Minor key fix, simplified song cards showing standard + preferred key, print PDF from viewer, deep link band invites (jazzpicker://join/code), key picker highlights standard key with bold outline, context-aware sharp/flat spelling."
