@@ -16,6 +16,12 @@ class GrooveSyncStore: ObservableObject {
     /// The group ID where we're currently leading
     @Published private(set) var leadingGroupId: String?
 
+    /// Whether the current user is following a session
+    @Published private(set) var isFollowing: Bool = false
+
+    /// The session we're currently following (includes currentSong updates)
+    @Published private(set) var followingSession: GrooveSyncSession?
+
     /// Active sessions in user's groups (for "join" banners)
     @Published private(set) var activeSessions: [GrooveSyncSession] = []
 
@@ -72,6 +78,16 @@ class GrooveSyncStore: ObservableObject {
                     self?.leadingGroupId = nil
                 }
             }
+            // Update following session if we're following
+            if let followingId = self?.followingSession?.groupId {
+                if let updatedSession = sessions.first(where: { $0.groupId == followingId }) {
+                    self?.followingSession = updatedSession
+                } else {
+                    // Session ended
+                    self?.isFollowing = false
+                    self?.followingSession = nil
+                }
+            }
         }
     }
 
@@ -81,6 +97,8 @@ class GrooveSyncStore: ObservableObject {
         activeSessions = []
         isLeading = false
         leadingGroupId = nil
+        isFollowing = false
+        followingSession = nil
         currentUserId = nil
         currentUserName = nil
         currentGroupIds = nil
@@ -160,6 +178,55 @@ class GrooveSyncStore: ObservableObject {
             print("🎵 ❌ Failed to sync song: \(error)")
             lastError = "Couldn't sync song: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Follower Actions
+
+    /// Start following a Groove Sync session
+    func startFollowing(session: GrooveSyncSession) async {
+        guard let userId = currentUserId else {
+            lastError = "You must be signed in"
+            return
+        }
+
+        // Can't follow if we're leading
+        if isLeading {
+            lastError = "Stop sharing before following"
+            return
+        }
+
+        do {
+            try await GrooveSyncService.setFollowing(groupId: session.groupId, userId: userId, isFollowing: true)
+            await MainActor.run {
+                isFollowing = true
+                followingSession = session
+                lastError = nil
+            }
+            print("🎵 ✅ Started following \(session.leaderName)")
+        } catch {
+            print("🎵 ❌ Failed to start following: \(error)")
+            await MainActor.run {
+                lastError = "Couldn't join session: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Stop following the current session
+    func stopFollowing() async {
+        guard let userId = currentUserId, let session = followingSession else { return }
+
+        do {
+            try await GrooveSyncService.setFollowing(groupId: session.groupId, userId: userId, isFollowing: false)
+        } catch {
+            print("❌ Failed to clear following status: \(error)")
+            // Still clear local state even if remote fails
+        }
+
+        await MainActor.run {
+            isFollowing = false
+            followingSession = nil
+        }
+        print("🎵 Stopped following")
     }
 
     // MARK: - Helpers

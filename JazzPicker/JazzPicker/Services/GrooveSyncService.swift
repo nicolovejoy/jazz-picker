@@ -7,7 +7,7 @@ import FirebaseFirestore
 import Foundation
 
 /// Represents the current song being shared in a Groove Sync session
-struct SharedSong: Sendable {
+struct SharedSong: Sendable, Equatable {
     let title: String
     let concertKey: String
     let source: String  // "standard" or "custom"
@@ -45,7 +45,7 @@ struct SharedSong: Sendable {
 }
 
 /// Represents an active Groove Sync session for a band
-struct GrooveSyncSession: Sendable {
+struct GrooveSyncSession: Sendable, Equatable {
     let groupId: String
     let leaderId: String
     let leaderName: String

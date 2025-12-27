@@ -13,13 +13,13 @@ struct PDFViewerView: View {
     let instrument: Instrument
     @State var navigationContext: PDFNavigationContext
 
-    init(song: Song, concertKey: String, instrument: Instrument, navigationContext: PDFNavigationContext) {
+    init(song: Song, concertKey: String, instrument: Instrument, octaveOffset: Int? = nil, navigationContext: PDFNavigationContext) {
         self._song = State(initialValue: song)
         self._concertKey = State(initialValue: concertKey)
         self.instrument = instrument
         self._navigationContext = State(initialValue: navigationContext)
-        // Initialize octave offset from setlist item if in setlist context
-        let initialOctave = navigationContext.currentSetlistItem?.octaveOffset ?? 0
+        // Initialize octave offset: explicit param > setlist item > 0
+        let initialOctave = octaveOffset ?? navigationContext.currentSetlistItem?.octaveOffset ?? 0
         self._octaveOffset = State(initialValue: initialOctave)
     }
 

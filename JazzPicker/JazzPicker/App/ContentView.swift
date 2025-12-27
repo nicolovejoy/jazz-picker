@@ -7,11 +7,20 @@
 
 import SwiftUI
 
+/// Represents a song being followed via Groove Sync
+struct FollowingSong: Identifiable {
+    let id = UUID()
+    let song: Song
+    let concertKey: String
+    let octaveOffset: Int?
+}
+
 struct ContentView: View {
     @EnvironmentObject private var catalogStore: CatalogStore
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     @EnvironmentObject private var userProfileStore: UserProfileStore
     @EnvironmentObject private var setlistStore: SetlistStore
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
     @Environment(\.pendingJoinCode) private var pendingJoinCode
     @Environment(\.pendingSetlistId) private var pendingSetlistId
     @State private var selectedTab = 0
@@ -20,11 +29,30 @@ struct ContentView: View {
     @State private var joinCodeToProcess: String?
     @State private var setlistToOpen: Setlist?
 
+    // Groove Sync follower state
+    @State private var showGrooveSyncModal = false
+    @State private var dismissedSessionId: String?  // Track dismissed session to avoid re-showing
+    @State private var followingSong: FollowingSong?
+    @State private var lastFollowedSongTitle: String?  // Track to detect song changes
+
     var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
     }
 
     var body: some View {
+        mainContent
+            .withGrooveSyncFollower(
+                grooveSyncStore: grooveSyncStore,
+                catalogStore: catalogStore,
+                instrument: instrument,
+                showModal: $showGrooveSyncModal,
+                dismissedSessionId: $dismissedSessionId,
+                followingSong: $followingSong,
+                lastFollowedSongTitle: $lastFollowedSongTitle
+            )
+    }
+
+    private var mainContent: some View {
         TabView(selection: $selectedTab) {
             BrowseView(instrument: instrument)
                 .tabItem {
@@ -124,6 +152,154 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Groove Sync Follower ViewModifier
+
+struct GrooveSyncFollowerModifier: ViewModifier {
+    @ObservedObject var grooveSyncStore: GrooveSyncStore
+    let catalogStore: CatalogStore
+    let instrument: Instrument
+    @Binding var showModal: Bool
+    @Binding var dismissedSessionId: String?
+    @Binding var followingSong: FollowingSong?
+    @Binding var lastFollowedSongTitle: String?
+
+    func body(content: Content) -> some View {
+        content
+            .fullScreenCover(item: $followingSong) { following in
+                followingSongView(following)
+            }
+            .overlay { grooveSyncOverlay }
+            .onChangeOfJoinableSession(grooveSyncStore: grooveSyncStore, dismissedSessionId: dismissedSessionId) {
+                showModal = true
+            }
+            .onChangeOfFollowingSong(grooveSyncStore: grooveSyncStore, catalogStore: catalogStore, lastTitle: lastFollowedSongTitle) { song in
+                lastFollowedSongTitle = song.song.title
+                followingSong = song
+            }
+            .onChange(of: grooveSyncStore.activeSessions) { _, sessions in
+                handleActiveSessionsChange(sessions)
+            }
+    }
+
+    @ViewBuilder
+    private func followingSongView(_ following: FollowingSong) -> some View {
+        NavigationStack {
+            PDFViewerView(
+                song: following.song,
+                concertKey: following.concertKey,
+                instrument: instrument,
+                octaveOffset: following.octaveOffset,
+                navigationContext: .single
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Stop Following") {
+                        Task {
+                            await grooveSyncStore.stopFollowing()
+                        }
+                        followingSong = nil
+                        lastFollowedSongTitle = nil
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var grooveSyncOverlay: some View {
+        if showModal, let session = grooveSyncStore.firstJoinableSession {
+            ZStack {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showModal = false
+                        dismissedSessionId = session.leaderId
+                    }
+
+                GrooveSyncModal(
+                    session: session,
+                    onJoin: {
+                        showModal = false
+                        Task {
+                            await grooveSyncStore.startFollowing(session: session)
+                        }
+                    },
+                    onDismiss: {
+                        showModal = false
+                        dismissedSessionId = session.leaderId
+                    }
+                )
+            }
+        }
+    }
+
+    private func handleActiveSessionsChange(_ sessions: [GrooveSyncSession]) {
+        if let dismissedId = dismissedSessionId,
+           !sessions.contains(where: { $0.leaderId == dismissedId }) {
+            dismissedSessionId = nil
+        }
+    }
+}
+
+extension View {
+    func withGrooveSyncFollower(
+        grooveSyncStore: GrooveSyncStore,
+        catalogStore: CatalogStore,
+        instrument: Instrument,
+        showModal: Binding<Bool>,
+        dismissedSessionId: Binding<String?>,
+        followingSong: Binding<FollowingSong?>,
+        lastFollowedSongTitle: Binding<String?>
+    ) -> some View {
+        modifier(GrooveSyncFollowerModifier(
+            grooveSyncStore: grooveSyncStore,
+            catalogStore: catalogStore,
+            instrument: instrument,
+            showModal: showModal,
+            dismissedSessionId: dismissedSessionId,
+            followingSong: followingSong,
+            lastFollowedSongTitle: lastFollowedSongTitle
+        ))
+    }
+
+    func onChangeOfJoinableSession(
+        grooveSyncStore: GrooveSyncStore,
+        dismissedSessionId: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        self.onChange(of: grooveSyncStore.hasJoinableSession) { _, hasSession in
+            if hasSession,
+               !grooveSyncStore.isLeading,
+               !grooveSyncStore.isFollowing,
+               grooveSyncStore.firstJoinableSession?.leaderId != dismissedSessionId {
+                action()
+            }
+        }
+    }
+
+    func onChangeOfFollowingSong(
+        grooveSyncStore: GrooveSyncStore,
+        catalogStore: CatalogStore,
+        lastTitle: String?,
+        action: @escaping (FollowingSong) -> Void
+    ) -> some View {
+        self.onChange(of: grooveSyncStore.followingSession?.currentSong?.title) { _, newTitle in
+            guard grooveSyncStore.isFollowing,
+                  let session = grooveSyncStore.followingSession,
+                  let sharedSong = session.currentSong,
+                  newTitle != lastTitle else { return }
+
+            if let song = catalogStore.songs.first(where: { $0.title == sharedSong.title }) {
+                action(FollowingSong(
+                    song: song,
+                    concertKey: sharedSong.concertKey,
+                    octaveOffset: sharedSong.octaveOffset
+                ))
+            }
+        }
+    }
+}
+
 // Make String conform to Identifiable for sheet presentation
 extension String: @retroactive Identifiable {
     public var id: String { self }
@@ -136,4 +312,5 @@ extension String: @retroactive Identifiable {
         .environmentObject(SetlistStore())
         .environmentObject(PDFCacheService.shared)
         .environmentObject(UserProfileStore())
+        .environmentObject(GrooveSyncStore())
 }
