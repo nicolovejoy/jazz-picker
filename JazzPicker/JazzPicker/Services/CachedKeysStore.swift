@@ -117,6 +117,21 @@ class CachedKeysStore: ObservableObject {
         }
     }
 
+    // MARK: - Preferred Octave Offsets
+
+    /// Get preferred octave offset for a song (from Firestore)
+    func getPreferredOctaveOffset(for song: Song) -> Int? {
+        userProfileStore?.getPreferredOctaveOffset(for: song.title)
+    }
+
+    /// Set preferred octave offset for a song (synced to Firestore)
+    func setPreferredOctaveOffset(_ offset: Int, for song: Song) {
+        guard let uid = authStore?.user?.uid else { return }
+        Task {
+            await userProfileStore?.setPreferredOctaveOffset(offset, for: song.title, uid: uid)
+        }
+    }
+
     /// Convert song title to slug (matches backend slugify function)
     private func slugify(_ text: String) -> String {
         var result = text.lowercased()

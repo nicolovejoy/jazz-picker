@@ -214,6 +214,37 @@ class UserProfileStore: ObservableObject {
         }
     }
 
+    // MARK: - Preferred Octave Offsets
+
+    func getPreferredOctaveOffset(for songTitle: String) -> Int? {
+        profile?.preferredOctaveOffsets?[songTitle]
+    }
+
+    /// Set or clear a preferred octave offset for a song. Sparse storage: removes if offset is 0.
+    func setPreferredOctaveOffset(_ offset: Int, for songTitle: String, uid: String) async {
+        var updatedOffsets = profile?.preferredOctaveOffsets ?? [:]
+
+        // Sparse storage: only store if non-zero
+        if offset == 0 {
+            updatedOffsets.removeValue(forKey: songTitle)
+        } else {
+            updatedOffsets[songTitle] = offset
+        }
+
+        // Update Firestore
+        let data: [String: Any] = [
+            "preferredOctaveOffsets": updatedOffsets,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+            // Profile will be updated via listener
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     // MARK: - Fetch Other Users
 
     /// Fetch display names for a list of user IDs.
