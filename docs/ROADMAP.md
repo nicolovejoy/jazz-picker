@@ -3,9 +3,8 @@
 ## Backlog
 
 1. Groove Sync Phase 2: timeout, leader sees followers
-2. iOS Groove Sync follower support
-3. Multi-part: Conductor view (all parts stacked for bandleader)
-4. Multi-part: UI grouping (part picker instead of separate songs)
+2. Multi-part: Conductor view (all parts stacked for bandleader)
+3. Multi-part: UI grouping (part picker instead of separate songs)
 
 ## Future
 

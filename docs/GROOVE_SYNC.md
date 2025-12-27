@@ -1,30 +1,27 @@
 # Groove Sync
 
-Real-time song sharing during gigs. iOS leads, web follows. Leader syncs charts to followers who see them transposed for their instrument.
+Real-time chart sharing during gigs. iOS can lead or follow. Web can follow.
 
-## Current State
+## How It Works
 
-- iOS can start sharing from setlist detail view
-- Web shows modal when session active, full-screen follower view
-- Modal reappears after viewing a PDF if session still active
-- Concert key and octave offset synced from leader to followers
-- Followers transpose for their instrument
-- Immediate sync on song open (no delay)
+1. Leader opens setlist, taps "Share Charts"
+2. Followers see modal prompt to join
+3. As leader opens songs, followers see them auto-transposed for their instrument
 
 ## Files
 
 **iOS:**
 - `GrooveSyncService.swift` - Firestore read/write
-- `GrooveSyncStore.swift` - ObservableObject state
+- `GrooveSyncStore.swift` - leader/follower state
+- `GrooveSyncModal.swift` - follower join prompt
 - `SetlistDetailView.swift` - "Share Charts" button
-- `PDFViewerView.swift` - calls syncSong on load
+- `ContentView.swift` - follower integration
 
 **Web:**
 - `grooveSyncService.ts` - Firestore listener
 - `GrooveSyncContext.tsx` - React context
 - `GrooveSyncFollower.tsx` - full-screen PDF view
 - `GrooveSyncModal.tsx` - join modal
-- `App.tsx` - modal display, follower routing
 
 ## Firestore
 
@@ -38,5 +35,3 @@ groups/{groupId}/session/current
 
 - 5-minute timeout with prompt
 - Leader sees who's following
-- iOS as follower
-- Crash/restart persistence

@@ -87,13 +87,13 @@ UI says "Band", Firestore uses `groups`. Every setlist belongs to a band.
 
 ## Groove Sync
 
-Real-time chart sharing. iOS leads, web follows.
+Real-time chart sharing. iOS can lead or follow; web can follow only.
 
 **Files:**
-- iOS: `GrooveSyncService.swift`, `GrooveSyncStore.swift`
+- iOS: `GrooveSyncService.swift`, `GrooveSyncStore.swift`, `GrooveSyncModal.swift`
 - Web: `grooveSyncService.ts`, `GrooveSyncContext.tsx`, `GrooveSyncFollower.tsx`
 
-See `docs/GROOVE_SYNC.md` for full spec.
+See `docs/GROOVE_SYNC.md` for details.
 
 ## Infrastructure
 
