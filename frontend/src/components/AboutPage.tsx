@@ -1,4 +1,12 @@
-import { FiX, FiSearch, FiRefreshCw, FiList, FiUsers, FiRadio, FiDownload } from 'react-icons/fi';
+import {
+  FiX,
+  FiSearch,
+  FiRefreshCw,
+  FiList,
+  FiUsers,
+  FiRadio,
+  FiDownload,
+} from "react-icons/fi";
 
 declare const __BUILD_TIME__: string;
 
@@ -47,42 +55,60 @@ export function AboutPage({ onClose }: AboutPageProps) {
 
         {/* Content */}
         <div className="space-y-6 border-t border-white/10 pt-6">
-          <FeatureSection icon={<FiSearch className="text-xl" />} title="Browse & Play">
-            Search songs by title. Click to open the chart.
-            Click the key button to transpose—pick any of 12 keys.
-            Use octave offset (±2) if notes land too high or low for your range.
+          <FeatureSection
+            icon={<FiSearch className="text-xl" />}
+            title="Browse & Play"
+          >
+            Search songs by title. Click to open the chart. Click the key button
+            to transpose—pick any of 12 keys. Use octave offset (±2) if notes
+            land too high or low for your range.
           </FeatureSection>
 
-          <FeatureSection icon={<FiRefreshCw className="text-xl" />} title="Transposition">
-            Set your instrument in Settings. Charts auto-transpose to your written key.
-            Trumpet and clarinet see B♭ parts, alto sax sees E♭, bass sees bass clef.
+          <FeatureSection
+            icon={<FiRefreshCw className="text-xl" />}
+            title="Transposition"
+          >
+            Set your instrument in Settings. Charts auto-transpose to your
+            written key. Trumpet and clarinet see B♭ parts, alto sax sees E♭,
+            bass sees bass clef.
           </FeatureSection>
 
-          <FeatureSection icon={<FiList className="text-xl" />} title="Setlists">
-            Organize songs for a gig. Add songs via the menu button while viewing a chart.
-            Each setlist item remembers its key and octave. Reorder by dragging.
+          <FeatureSection
+            icon={<FiList className="text-xl" />}
+            title="Setlists"
+          >
+            Organize songs for a gig. Add songs via the menu button while
+            viewing a chart. Each setlist item remembers its key and octave.
+            Reorder by dragging.
           </FeatureSection>
 
           <FeatureSection icon={<FiUsers className="text-xl" />} title="Bands">
-            Share setlists with bandmates. Create a band in Settings and share the join code.
-            Everyone sees the same setlists, synced live.
+            Share setlists with bandmates. Create a band in Settings and share
+            the join code. Everyone sees the same setlists, synced live.
           </FeatureSection>
 
-          <FeatureSection icon={<FiRadio className="text-xl" />} title="Groove Sync">
+          <FeatureSection
+            icon={<FiRadio className="text-xl" />}
+            title="Groove Sync"
+          >
             Lead charts during a gig. Open a setlist and tap "Share Charts."
-            Bandmates following along see each song you open, auto-transposed for their instrument.
+            Bandmates following along see each song you open, auto-transposed
+            for their instrument.
           </FeatureSection>
 
-          <FeatureSection icon={<FiDownload className="text-xl" />} title="iOS App">
-            For offline PDF caching and the best gig experience, use the native iOS app.
-            Contact Nico for a TestFlight invite.
+          <FeatureSection
+            icon={<FiDownload className="text-xl" />}
+            title="iOS App"
+          >
+            For offline PDF caching and the best gig experience, use the native
+            iOS app. Contact Nico for a TestFlight invite.
           </FeatureSection>
         </div>
 
         {/* Credits */}
         <div className="mt-8 pt-4 border-t border-white/10">
           <p className="text-sm text-gray-500">
-            Lead sheets by Eric Stern, typeset in LilyPond.
+            Lead sheets by Eric, typeset in LilyPond.
           </p>
           <p className="text-sm text-gray-500">
             App by Nico — The Piano House Project

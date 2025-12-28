@@ -85,7 +85,7 @@ struct AboutView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Divider()
                         .padding(.top, 8)
-                    Text("Lead sheets by Eric Stern, typeset in LilyPond.")
+                    Text("Lead sheets by Eric, typeset in LilyPond.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Text("App by Nico — The Piano House Project")

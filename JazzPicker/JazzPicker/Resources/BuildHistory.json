@@ -1,6 +1,11 @@
 [
   {
-    "build": 16,
+    "build": 20,
+    "date": "2025-12-27",
+    "notes": "Ambitus display - see note range for each key in the transpose modal. Treble clef indicator shows staff context. Fixed crash on older iOS devices. Groove Sync sessions now auto-expire after 15 minutes of inactivity. Unified About page with feature descriptions."
+  },
+  {
+    "build": 19,
     "date": "2025-12-27",
     "notes": "Groove Sync follower - when someone in your band starts sharing charts, you'll see a prompt to follow along. Charts auto-open transposed for your instrument as the leader navigates. Also: per-song octave offset preferences now save to your profile."
   },
