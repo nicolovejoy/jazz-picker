@@ -732,6 +732,7 @@ export function PDFViewer({ pdfUrl, metadata, setlistNav, isTransitioning, onClo
           songTitle={metadata.songTitle}
           defaultConcertKey={metadata.key}
           instrument={instrument}
+          songRange={metadata.songRange}
           onClose={() => setShowTransposeModal(false)}
           onTransposed={(url, newKey) => {
             setShowTransposeModal(false);

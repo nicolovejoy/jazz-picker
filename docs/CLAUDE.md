@@ -55,6 +55,7 @@ PDFs cached in S3 with `includeVersion` metadata. Regenerates on cache miss or v
 - **Written Key**: What player sees (calculated from transposition)
 - **Octave Offset**: ±2 adjustment when transposition lands too high/low. Priority: setlist item > Groove Sync leader > user preference > auto-calc > 0
 - **Source**: 'standard' or 'custom'
+- **Ambitus**: Note range stored as MIDI (lowNoteMidi, highNoteMidi). Displayed in transpose modal via `AmbitusView` (client-rendered staff).
 
 ## Firestore Schema
 

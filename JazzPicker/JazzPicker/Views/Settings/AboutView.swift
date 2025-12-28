@@ -13,22 +13,41 @@ struct AboutView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Jazz Picker")
                         .font(.largeTitle.weight(.bold))
-                    Text("750+ jazz lead sheets, transposed for your instrument")
+                    Text("750+ jazz lead sheets for your gig")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 Divider()
 
+                // Browse & Play
+                featureSection(
+                    icon: "magnifyingglass",
+                    title: "Browse & Play",
+                    content: """
+                    Search songs by title. Tap to open the chart. \
+                    Tap the key button to transpose - pick any of 12 keys. \
+                    Use octave offset (±2) if notes land too high or low for your range.
+                    """
+                )
+
+                // Transposition
+                featureSection(
+                    icon: "arrow.left.arrow.right",
+                    title: "Transposition",
+                    content: """
+                    Set your instrument in Settings. Charts auto-transpose to your written key. \
+                    Trumpet and clarinet see B♭ parts, alto sax sees E♭, bass sees bass clef.
+                    """
+                )
+
                 // Setlists
                 featureSection(
                     icon: "music.note.list",
                     title: "Setlists",
                     content: """
-                    Create setlists to organize songs for a gig. Tap the Setlists tab, then + to create one. \
-                    Add songs from the PDF viewer using the "Add to Setlist" menu option. \
-                    Reorder songs by dragging, or swipe to delete. \
-                    Each song in a setlist remembers its key and octave offset.
+                    Organize songs for a gig. Add songs via the menu button while viewing a chart. \
+                    Each setlist item remembers its key and octave. Reorder by dragging.
                     """
                 )
 
@@ -37,24 +56,42 @@ struct AboutView: View {
                     icon: "person.3",
                     title: "Bands",
                     content: """
-                    Bands let you share setlists with other musicians. Go to Settings > Bands to create one. \
-                    Share the join code with bandmates - they enter it in Settings > Join Band. \
-                    Everyone in the band sees the same setlists, synced in real-time. \
-                    When you create a setlist, pick which band it belongs to.
+                    Share setlists with bandmates. Create a band in Settings and share the join code. \
+                    Everyone sees the same setlists, synced live.
                     """
                 )
 
                 // Groove Sync
                 featureSection(
-                    icon: "music.note",
+                    icon: "antenna.radiowaves.left.and.right",
                     title: "Groove Sync",
                     content: """
-                    Share your charts live during a gig. Open a setlist and tap "Share Charts" to start leading. \
-                    Bandmates on their devices will see a prompt to follow along. \
-                    As you open songs, they appear on followers' screens - automatically transposed for each player's instrument. \
-                    Great for calling tunes or keeping everyone on the same page.
+                    Lead charts during a gig. Open a setlist, tap "Share Charts." \
+                    Bandmates following along see each song you open, auto-transposed for their instrument.
                     """
                 )
+
+                // Offline
+                featureSection(
+                    icon: "arrow.down.circle",
+                    title: "Offline Mode",
+                    content: """
+                    PDFs cache automatically after viewing. Check Settings > Offline Storage. \
+                    Pre-load a setlist before a gig to ensure everything's available without wifi.
+                    """
+                )
+
+                // Credits
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider()
+                        .padding(.top, 8)
+                    Text("Lead sheets by Eric Stern, typeset in LilyPond.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("App by Nico — The Piano House Project")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer(minLength: 40)
             }

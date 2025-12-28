@@ -86,9 +86,18 @@ struct GrooveSyncSession: Sendable, Equatable {
 enum GrooveSyncService {
     private static var db: Firestore { Firestore.firestore() }
 
+    /// Session timeout in seconds (15 minutes)
+    private static let sessionTimeoutSeconds: TimeInterval = 15 * 60
+
     /// Get the session document reference for a group
     private static func sessionRef(groupId: String) -> DocumentReference {
         db.collection("groups").document(groupId).collection("session").document("current")
+    }
+
+    /// Check if a session is stale (no activity for 15 minutes)
+    private static func isSessionStale(_ session: GrooveSyncSession) -> Bool {
+        let elapsed = Date().timeIntervalSince(session.lastActivityAt)
+        return elapsed > sessionTimeoutSeconds
     }
 
     // MARK: - Subscribe
@@ -110,7 +119,22 @@ enum GrooveSyncService {
                 return
             }
 
-            let session = GrooveSyncSession(groupId: groupId, from: data)
+            guard let session = GrooveSyncSession(groupId: groupId, from: data) else {
+                callback(nil)
+                return
+            }
+
+            // Check for stale session (15 min timeout)
+            if isSessionStale(session) {
+                print("🎵 Session in group \(groupId) is stale, cleaning up...")
+                // Delete the stale session asynchronously
+                Task {
+                    try? await endSession(groupId: groupId)
+                }
+                callback(nil)
+                return
+            }
+
             callback(session)
         }
     }

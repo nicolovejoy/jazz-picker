@@ -1,9 +1,13 @@
 import {
   doc,
+  deleteDoc,
   onSnapshot,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+
+// Session timeout: 15 minutes in milliseconds
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 
 // Types for Groove Sync session
 export interface SharedSong {
@@ -54,7 +58,16 @@ function toSession(groupId: string, data: SessionData): GrooveSyncSession {
 }
 
 /**
+ * Check if a session is stale (no activity for 15 minutes)
+ */
+function isSessionStale(session: GrooveSyncSession): boolean {
+  const elapsed = Date.now() - session.lastActivityAt.getTime();
+  return elapsed > SESSION_TIMEOUT_MS;
+}
+
+/**
  * Subscribe to a Groove Sync session for a specific group.
+ * Automatically filters out and cleans up stale sessions (15 min timeout).
  * @param groupId - The group ID to watch
  * @param callback - Called with session data (null if no active session)
  */
@@ -76,7 +89,21 @@ export function subscribeToSession(
         callback(null);
         return;
       }
-      callback(toSession(groupId, data));
+
+      const session = toSession(groupId, data);
+
+      // Check for stale session (15 min timeout)
+      if (isSessionStale(session)) {
+        console.log(`[GrooveSync] Session in group ${groupId} is stale, cleaning up...`);
+        // Delete the stale session
+        deleteDoc(sessionRef).catch((err) => {
+          console.error('[GrooveSync] Failed to delete stale session:', err);
+        });
+        callback(null);
+        return;
+      }
+
+      callback(session);
     },
     (error) => {
       console.error('Groove Sync listener error:', error);

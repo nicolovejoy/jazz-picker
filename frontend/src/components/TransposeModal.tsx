@@ -4,6 +4,7 @@ import { FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { api } from '@/services/api';
 import { formatKey, concertToWritten, type Instrument } from '@/types/catalog';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { AmbitusView } from './AmbitusView';
 
 // Determine if we should use flat spelling based on the standard key
 function shouldUseFlats(standardKey: string): boolean {
@@ -40,10 +41,29 @@ function normalizeKey(key: string): string {
   return enharmonics[lower] ?? lower;
 }
 
+// Semitone values for each key (C = 0)
+const keySemitones: Record<string, number> = {
+  c: 0, cs: 1, df: 1, d: 2, ds: 3, ef: 3,
+  e: 4, f: 5, fs: 6, gf: 6, g: 7, gs: 8,
+  af: 8, a: 9, as: 10, bf: 10, b: 11,
+};
+
+// Calculate semitone offset between two keys
+function semitoneOffset(sourceKey: string, targetKey: string): number {
+  const sourceBase = sourceKey.replace(/m$/, '').toLowerCase();
+  const targetBase = targetKey.replace(/m$/, '').toLowerCase();
+
+  const sourceSemitone = keySemitones[sourceBase] ?? 0;
+  const targetSemitone = keySemitones[targetBase] ?? 0;
+
+  return targetSemitone - sourceSemitone;
+}
+
 interface TransposeModalProps {
   songTitle: string;
   defaultConcertKey?: string;
   instrument: Instrument;
+  songRange?: { low: number; high: number } | null;
   onClose: () => void;
   onTransposed: (url: string, concertKey: string) => void;
 }
@@ -52,6 +72,7 @@ export function TransposeModal({
   songTitle,
   defaultConcertKey = 'c',
   instrument,
+  songRange,
   onClose,
   onTransposed,
 }: TransposeModalProps) {
@@ -149,27 +170,94 @@ export function TransposeModal({
               <label className="block text-sm text-gray-400 mb-2">
                 {instrument.transposition === 'C' ? 'Key' : 'Concert Key'}
                 {isMinor && <span className="text-orange-400 ml-1">(Minor)</span>}
+                {songRange && <span className="text-gray-500 ml-2">(range shown)</span>}
               </label>
-              <div className="grid grid-cols-6 gap-2">
-                {concertKeys.map((key) => {
-                  const isStandard = normalizeKey(key.value) === standardKeyNormalized;
-                  const isSelected = selectedConcertKey === key.value;
-                  return (
-                    <button
-                      key={key.value}
-                      onClick={() => setSelectedConcertKey(key.value)}
-                      className={`py-2 text-sm rounded-lg border-2 transition-all ${
-                        isSelected
-                          ? 'bg-blue-500 border-blue-400 text-white'
-                          : isStandard
-                          ? 'bg-white/5 border-white/60 text-gray-300 hover:border-white/80'
-                          : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                      }`}
-                    >
-                      {key.label}
-                    </button>
-                  );
-                })}
+              {/* Circle of fifths layout: sharps on top, flats on bottom */}
+              <div className="space-y-2">
+                {/* Top row: C G D A E B + clef */}
+                <div className="flex items-center gap-1">
+                  <div className="grid grid-cols-6 gap-1 flex-1">
+                    {['c', 'g', 'd', 'a', 'e', 'b'].map((keyVal) => {
+                      const keyObj = concertKeys.find((k) => k.value === keyVal)!;
+                      const isStandard = normalizeKey(keyVal) === standardKeyNormalized;
+                      const isSelected = selectedConcertKey === keyVal;
+                      const offset = semitoneOffset(defaultConcertKey, keyVal);
+                      const transposedRange = songRange
+                        ? { low: songRange.low + offset, high: songRange.high + offset }
+                        : null;
+
+                      return (
+                        <button
+                          key={keyVal}
+                          onClick={() => setSelectedConcertKey(keyVal)}
+                          className={`flex flex-col items-center py-1 text-sm rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? 'bg-blue-500 border-blue-400 text-white'
+                              : isStandard
+                              ? 'bg-white/5 border-white/60 text-gray-300 hover:border-white/80'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                          }`}
+                        >
+                          <span className={songRange ? 'text-xs' : ''}>{keyObj.label}</span>
+                          {transposedRange && (
+                            <AmbitusView
+                              lowMidi={transposedRange.low}
+                              highMidi={transposedRange.high}
+                              useFlats={false}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {songRange && (
+                    <span className="text-gray-500 text-lg w-6 text-center" title="Treble clef">𝄞</span>
+                  )}
+                </div>
+                {/* Bottom row: F Bb Eb Ab Db Gb + clef */}
+                <div className="flex items-center gap-1">
+                  <div className="grid grid-cols-6 gap-1 flex-1">
+                    {['f', 'bf', 'ef', 'af', 'df', 'gf'].map((keyVal) => {
+                      // Handle the gf/fs enharmonic - use the value from concertKeys
+                      const keyObj = concertKeys.find((k) =>
+                        keyVal === 'gf' ? (k.value === 'gf' || k.value === 'fs') : k.value === keyVal
+                      )!;
+                      const actualVal = keyObj.value;
+                      const isStandard = normalizeKey(actualVal) === standardKeyNormalized;
+                      const isSelected = selectedConcertKey === actualVal;
+                      const offset = semitoneOffset(defaultConcertKey, actualVal);
+                      const transposedRange = songRange
+                        ? { low: songRange.low + offset, high: songRange.high + offset }
+                        : null;
+
+                      return (
+                        <button
+                          key={actualVal}
+                          onClick={() => setSelectedConcertKey(actualVal)}
+                          className={`flex flex-col items-center py-1 text-sm rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? 'bg-blue-500 border-blue-400 text-white'
+                              : isStandard
+                              ? 'bg-white/5 border-white/60 text-gray-300 hover:border-white/80'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                          }`}
+                        >
+                          <span className={songRange ? 'text-xs' : ''}>{keyObj.label}</span>
+                          {transposedRange && (
+                            <AmbitusView
+                              lowMidi={transposedRange.low}
+                              highMidi={transposedRange.high}
+                              useFlats={true}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {songRange && (
+                    <span className="text-gray-500 text-lg w-6 text-center" title="Treble clef">𝄞</span>
+                  )}
+                </div>
               </div>
               {instrument.transposition !== 'C' && (
                 <p className="text-xs text-gray-500 mt-2">

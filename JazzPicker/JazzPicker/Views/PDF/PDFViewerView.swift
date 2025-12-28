@@ -45,6 +45,12 @@ struct PDFViewerView: View {
     @State private var isAtLastPage = true
     @State private var pageCount = 1
 
+    /// Song range in MIDI notes (for ambitus display in key picker)
+    private var songRange: (low: Int, high: Int)? {
+        guard let low = song.lowNoteMidi, let high = song.highNoteMidi else { return nil }
+        return (low, high)
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -261,7 +267,8 @@ struct PDFViewerView: View {
         .sheet(isPresented: $showKeyPicker) {
             KeyPickerSheet(
                 currentKey: concertKey,
-                standardKey: song.defaultKey
+                standardKey: song.defaultKey,
+                songRange: songRange
             ) { newKey in
                 changeKey(to: newKey)
             }

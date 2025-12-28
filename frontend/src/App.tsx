@@ -33,6 +33,7 @@ export interface PdfMetadata {
   cached: boolean;
   generationTimeMs: number;
   crop?: CropBounds;
+  songRange?: { low: number; high: number } | null;
 }
 
 export interface SetlistNavigation {
@@ -314,6 +315,9 @@ function App() {
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
         crop: result.crop,
+        songRange: song.low_note_midi && song.high_note_midi
+          ? { low: song.low_note_midi, high: song.high_note_midi }
+          : null,
       };
 
       // Update navigation state
@@ -390,6 +394,9 @@ function App() {
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
         crop: result.crop,
+        songRange: song.low_note_midi && song.high_note_midi
+          ? { low: song.low_note_midi, high: song.high_note_midi }
+          : null,
       });
     } catch (error) {
       console.error('Failed to open song:', error);
@@ -439,6 +446,9 @@ function App() {
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
         crop: result.crop,
+        songRange: song.low_note_midi && song.high_note_midi
+          ? { low: song.low_note_midi, high: song.high_note_midi }
+          : null,
       };
 
       await handleOpenPdfUrl(result.url, metadata, songIndex);
@@ -492,6 +502,12 @@ function App() {
         octaveOffset
       );
 
+      // Find catalog entry for range and navigation
+      const catalogEntry = catalog.find(s => s.title === title);
+      const songRange = catalogEntry?.low_note_midi && catalogEntry?.high_note_midi
+        ? { low: catalogEntry.low_note_midi, high: catalogEntry.high_note_midi }
+        : null;
+
       const metadata: PdfMetadata = {
         songTitle: title,
         key: concertKey,
@@ -499,6 +515,7 @@ function App() {
         cached: result.cached,
         generationTimeMs: result.generation_time_ms,
         crop: result.crop,
+        songRange,
       };
 
       // Find catalog index for navigation

@@ -20,8 +20,11 @@ enum SetlistFirestoreService {
         // (nil means profile hasn't loaded yet OR user has no groups field)
         guard let ids = groupIds, !ids.isEmpty else {
             callback([])
-            // Return a dummy listener that does nothing
-            return db.collection(collection).limit(to: 0).addSnapshotListener { _, _ in }
+            // Return a no-op listener that won't trigger permission errors
+            // Using an impossible filter instead of limit-only query
+            return db.collection(collection)
+                .whereField("groupId", isEqualTo: "__no_groups__")
+                .addSnapshotListener { _, _ in }
         }
 
         let limitedIds = Array(ids.prefix(30))  // Firestore 'in' limit
