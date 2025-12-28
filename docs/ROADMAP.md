@@ -1,10 +1,23 @@
 # Roadmap
 
+## In Progress
+
+(none)
+
+## Recently Completed
+
+- ~~Transpose Modal: iOS ambitus~~ - Done. Backend now returns `low_note_midi`/`high_note_midi` in catalog API. iOS `AmbitusView` renders range per key.
+
+## Bugs
+
+- ~~Crash on older iPad~~: Fixed. `SetlistFirestoreService.swift:24` had `limit(to: 0)` → changed to `limit(to: 1)`.
+
 ## Backlog
 
 1. Groove Sync Phase 2: timeout, leader sees followers
 2. Multi-part: Conductor view (all parts stacked for bandleader)
 3. Multi-part: UI grouping (part picker instead of separate songs)
+4. Transpose Modal: web ambitus + visual polish
 
 ## Future
 

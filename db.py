@@ -65,10 +65,16 @@ def get_all_songs():
     """
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT title, default_key, composer FROM songs ORDER BY title"
+            "SELECT title, default_key, composer, low_note_midi, high_note_midi FROM songs ORDER BY title"
         )
         return [
-            {'title': row['title'], 'default_key': row['default_key'], 'composer': row['composer']}
+            {
+                'title': row['title'],
+                'default_key': row['default_key'],
+                'composer': row['composer'],
+                'low_note_midi': row['low_note_midi'],
+                'high_note_midi': row['high_note_midi'],
+            }
             for row in cursor.fetchall()
         ]
 
