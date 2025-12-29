@@ -120,13 +120,13 @@ struct SongCard: View {
 #Preview {
     LazyVGrid(columns: [GridItem(.adaptive(minimum: 320))], spacing: 16) {
         SongCard(
-            song: Song(title: "Blue Bossa", defaultKey: "cm", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "cm", composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil),
             instrument: .trumpet
         ) { key in
             print("Selected \(key)")
         }
         SongCard(
-            song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil),
             instrument: .piano
         ) { key in
             print("Selected \(key)")

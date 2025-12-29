@@ -293,6 +293,56 @@ def get_standard_wrappers(wrappers_dir: Path = WRAPPERS_DIR) -> list[Path]:
 
 
 # =============================================================================
+# MULTI-PART SCORE DETECTION
+# =============================================================================
+
+# Known part name patterns (case-insensitive match)
+PART_PATTERNS = [
+    'Lead', 'Bass', 'Violin', 'Violin 2', 'Guitar', 'Clean Electric Guitar',
+    'Trumpet', 'Alto Sax', 'Tenor Sax', 'Trombone', 'Piano', 'Drums',
+    'Flute', 'Clarinet', 'Cello', 'Viola', 'Horn', 'Keyboard',
+]
+
+
+def parse_part_from_title(title: str) -> tuple[str | None, str | None]:
+    """
+    Parse a title to extract score_id and part_name.
+
+    Titles like "My Window Faces the South (Bass)" become:
+      score_id = "My Window Faces the South"
+      part_name = "Bass"
+
+    Titles without recognized part patterns return (None, None).
+    Titles with parentheticals that aren't part names (e.g., "Once I Loved (Amor Em Paz)")
+    also return (None, None).
+    """
+    # Match trailing parenthetical: "Title (Part Name)"
+    match = re.match(r'^(.+?)\s+\(([^)]+)\)$', title)
+    if not match:
+        return None, None
+
+    base_title = match.group(1)
+    candidate_part = match.group(2)
+
+    # Check if the parenthetical looks like a part name
+    # Either matches known patterns or contains instrument-like words
+    candidate_lower = candidate_part.lower()
+
+    for pattern in PART_PATTERNS:
+        if candidate_lower == pattern.lower():
+            return base_title, candidate_part
+
+    # Additional heuristics: contains numbers like "Violin 2" or short instrument names
+    if re.match(r'^[A-Z][a-z]+(\s+\d+)?$', candidate_part):
+        # Could be an instrument - but be conservative
+        # Only treat as part if there are other songs with same base title
+        # For now, return None - we'll do a second pass
+        pass
+
+    return None, None
+
+
+# =============================================================================
 # DATABASE
 # =============================================================================
 
@@ -315,12 +365,15 @@ def create_database(db_path: Path) -> sqlite3.Connection:
             high_note_midi INTEGER,
             source TEXT DEFAULT 'standard',
             core_modified TEXT,
+            score_id TEXT,
+            part_name TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE INDEX idx_songs_title ON songs(title);
         CREATE INDEX idx_songs_composer ON songs(composer);
         CREATE INDEX idx_songs_source ON songs(source);
+        CREATE INDEX idx_songs_score_id ON songs(score_id);
 
         CREATE TABLE metadata (
             key TEXT PRIMARY KEY,
@@ -333,9 +386,12 @@ def create_database(db_path: Path) -> sqlite3.Connection:
 
 def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
     """Insert a song into the database."""
+    # Parse part info from title
+    score_id, part_name = parse_part_from_title(song['title'])
+
     conn.execute("""
-        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source, core_modified)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source, core_modified, score_id, part_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         song['title'],
         song['default_key'],
@@ -345,6 +401,8 @@ def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
         song.get('high_note_midi'),
         source,
         song.get('core_modified'),
+        score_id,
+        part_name,
     ))
 
 

@@ -769,7 +769,7 @@ struct PDFKitView: UIViewRepresentable {
 #Preview {
     NavigationStack {
         PDFViewerView(
-            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil),
             concertKey: "c",
             instrument: .trumpet,
             navigationContext: .single

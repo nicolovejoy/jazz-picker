@@ -30,8 +30,15 @@ Generates Core + Wrapper files in `custom-charts/`. Each part appears as a separ
 - Core: `{Title} - Ly Core - {PartName} - {Key}.ly`
 - Wrapper: `{Title} ({PartName}) - Ly - {Key} Standard.ly`
 
+## UI Grouping
+
+Multi-part scores are grouped in the iOS browse list:
+- Parts share a `score_id` (the base song title) and have a `part_name`
+- Browse list shows an expandable row: "My Window Faces the South (5 parts)"
+- Expanding shows individual parts: "Lead", "Bass", "Violin", etc.
+- Grid view remains flat (shows all parts as separate cards)
+
 ## Future
 
-- **UI Grouping**: Add `score_id`, `part_name` to catalog.db; group parts in song list
 - **Score View**: Conductor's view with all parts stacked (LilyPond StaffGroup)
 - **Per-band song access**: Songs in Firestore with ownership, not global catalog

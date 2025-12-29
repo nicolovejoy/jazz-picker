@@ -4,6 +4,8 @@ export interface SongSummary {
   default_key: string;
   low_note_midi?: number | null;
   high_note_midi?: number | null;
+  score_id?: string | null;
+  part_name?: string | null;
 }
 
 export interface SongListResponse {

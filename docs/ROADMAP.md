@@ -4,7 +4,6 @@
 
 1. Groove Sync: leader sees who's following
 2. Multi-part: Conductor view (all parts stacked)
-3. Multi-part: UI grouping (part picker instead of separate songs)
 
 ## Future
 

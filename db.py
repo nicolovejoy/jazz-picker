@@ -61,11 +61,11 @@ def get_total_songs():
 def get_all_songs():
     """
     Get all songs sorted alphabetically.
-    Returns lightweight list with title, default_key, and composer.
+    Returns lightweight list with title, default_key, composer, and multi-part info.
     """
     with get_connection() as conn:
         cursor = conn.execute(
-            "SELECT title, default_key, composer, low_note_midi, high_note_midi FROM songs ORDER BY title"
+            "SELECT title, default_key, composer, low_note_midi, high_note_midi, score_id, part_name FROM songs ORDER BY title"
         )
         return [
             {
@@ -74,6 +74,8 @@ def get_all_songs():
                 'composer': row['composer'],
                 'low_note_midi': row['low_note_midi'],
                 'high_note_midi': row['high_note_midi'],
+                'score_id': row['score_id'],
+                'part_name': row['part_name'],
             }
             for row in cursor.fetchall()
         ]

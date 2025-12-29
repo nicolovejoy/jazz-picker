@@ -17,10 +17,15 @@ struct SongRow: View {
     }
     private var hasPreference: Bool { preferredKey != standardKey }
 
+    /// Display title: part name if available (for grouped display), otherwise full title
+    private var displayTitle: String {
+        song.partName ?? song.title
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack {
-                Text(song.title)
+                Text(displayTitle)
                     .font(.body)
                     .foregroundStyle(.primary)
 
@@ -95,8 +100,8 @@ struct SongRow: View {
 
 #Preview {
     List {
-        SongRow(song: Song(title: "Blue Bossa", defaultKey: "cm", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil), instrument: .trumpet) {}
-        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil), instrument: .piano) {}
+        SongRow(song: Song(title: "Blue Bossa", defaultKey: "cm", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil), instrument: .trumpet) {}
+        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil), instrument: .piano) {}
     }
     .environmentObject(CachedKeysStore())
 }

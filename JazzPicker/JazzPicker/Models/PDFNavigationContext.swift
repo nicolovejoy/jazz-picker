@@ -81,7 +81,7 @@ enum PDFNavigationContext {
             guard index < items.count - 1 else { return nil }
             let nextIndex = index + 1
             let item = items[nextIndex]
-            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil)
+            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil)
             return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: nextIndex))
 
         case .spin(let provider):
@@ -105,7 +105,7 @@ enum PDFNavigationContext {
             guard index > 0 else { return nil }
             let prevIndex = index - 1
             let item = items[prevIndex]
-            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil)
+            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil)
             return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: prevIndex))
 
         case .spin, .single:

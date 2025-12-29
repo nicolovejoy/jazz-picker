@@ -13,6 +13,8 @@ struct Song: Codable, Identifiable, Hashable, Sendable {
     let composer: String?
     let lowNoteMidi: Int?
     let highNoteMidi: Int?
+    let scoreId: String?
+    let partName: String?
 
     enum CodingKeys: String, CodingKey {
         case title
@@ -20,6 +22,8 @@ struct Song: Codable, Identifiable, Hashable, Sendable {
         case composer
         case lowNoteMidi = "low_note_midi"
         case highNoteMidi = "high_note_midi"
+        case scoreId = "score_id"
+        case partName = "part_name"
     }
 }
 

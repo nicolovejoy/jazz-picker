@@ -5,6 +5,26 @@
 
 import SwiftUI
 
+/// Represents either a single song or a group of related parts
+enum BrowseItem: Identifiable {
+    case single(song: Song, index: Int)
+    case group(scoreId: String, songs: [(song: Song, index: Int)])
+
+    var id: String {
+        switch self {
+        case .single(let song, _): return song.id
+        case .group(let scoreId, _): return "group:\(scoreId)"
+        }
+    }
+
+    var displayTitle: String {
+        switch self {
+        case .single(let song, _): return song.title
+        case .group(let scoreId, _): return scoreId
+        }
+    }
+}
+
 struct BrowseView: View {
     @EnvironmentObject private var catalogStore: CatalogStore
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
@@ -13,6 +33,7 @@ struct BrowseView: View {
 
     @State private var searchText = ""
     @State private var selectedSong: SelectedSong?
+    @State private var expandedGroups: Set<String> = []
 
     private var useGrid: Bool {
         horizontalSizeClass == .regular
@@ -20,6 +41,33 @@ struct BrowseView: View {
 
     var filteredSongs: [Song] {
         catalogStore.search(searchText)
+    }
+
+    /// Group songs by scoreId for display, preserving flat indices for navigation
+    var browseItems: [BrowseItem] {
+        var items: [BrowseItem] = []
+        var groups: [String: [(song: Song, index: Int)]] = [:]
+
+        for (index, song) in filteredSongs.enumerated() {
+            if let scoreId = song.scoreId {
+                groups[scoreId, default: []].append((song, index))
+            } else {
+                items.append(.single(song: song, index: index))
+            }
+        }
+
+        // Add groups (only if more than one part)
+        for (scoreId, songs) in groups.sorted(by: { $0.key < $1.key }) {
+            if songs.count > 1 {
+                items.append(.group(scoreId: scoreId, songs: songs))
+            } else if let first = songs.first {
+                // Single-part "group" - show as regular song
+                items.append(.single(song: first.song, index: first.index))
+            }
+        }
+
+        // Sort by display title
+        return items.sorted { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedAscending }
     }
 
     var body: some View {
@@ -79,10 +127,44 @@ struct BrowseView: View {
     }
 
     private var songList: some View {
-        List(Array(filteredSongs.enumerated()), id: \.element.id) { index, song in
-            SongRow(song: song, instrument: instrument) {
-                let key = cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
-                selectedSong = SelectedSong(index: index, key: key)
+        List(browseItems) { item in
+            switch item {
+            case .single(let song, let index):
+                SongRow(song: song, instrument: instrument) {
+                    let key = cachedKeysStore.getStickyKey(for: song) ?? song.defaultKey
+                    selectedSong = SelectedSong(index: index, key: key)
+                }
+
+            case .group(let scoreId, let songs):
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedGroups.contains(scoreId) },
+                        set: { expanded in
+                            if expanded {
+                                expandedGroups.insert(scoreId)
+                            } else {
+                                expandedGroups.remove(scoreId)
+                            }
+                        }
+                    )
+                ) {
+                    ForEach(songs, id: \.song.id) { item in
+                        SongRow(song: item.song, instrument: instrument) {
+                            let key = cachedKeysStore.getStickyKey(for: item.song) ?? item.song.defaultKey
+                            selectedSong = SelectedSong(index: item.index, key: key)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(scoreId)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text("\(songs.count) parts")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .listStyle(.plain)
