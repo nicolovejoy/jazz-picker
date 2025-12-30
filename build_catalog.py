@@ -223,6 +223,72 @@ def extract_composer_from_core(core_filename: str) -> str | None:
     return None
 
 
+def extract_tempo_from_core(core_path: Path) -> dict:
+    """
+    Extract tempo and time signature from a Core LilyPond file.
+
+    Tempo formats:
+      \tempo "Medium Swing [Artist Year]" 4 = 108
+      \tempo "Ballad" 4 = 75
+      \tempo "Freely"
+      \tempo "Freely" 4 = 86
+
+    Time formats:
+      \time 4/4
+      \time 3/4
+      \time 6/8
+
+    Returns: {
+        'tempo_style': str|None,      # "Medium Swing", "Ballad", "Freely"
+        'tempo_source': str|None,     # "Artist Year" or None
+        'tempo_bpm': int|None,        # 108 or None for Freely without BPM
+        'tempo_note_value': int|None, # 4 (quarter note), 2 (half), 8 (eighth)
+        'time_signature': str|None,   # "4/4", "3/4", "6/8"
+    }
+    """
+    result = {
+        'tempo_style': None,
+        'tempo_source': None,
+        'tempo_bpm': None,
+        'tempo_note_value': None,
+        'time_signature': None,
+    }
+
+    if not core_path.exists():
+        return result
+
+    content = core_path.read_text()
+
+    # Extract tempo: \tempo "Description" [note_value = bpm]
+    # The description can contain [Artist Year] bracketed source info
+    tempo_match = re.search(r'\\tempo\s+"([^"]+)"(?:\s+(\d+)\s*=\s*(\d+))?', content)
+    if tempo_match:
+        description = tempo_match.group(1)
+        note_value = tempo_match.group(2)
+        bpm = tempo_match.group(3)
+
+        # Parse description for style and source
+        # Format: "Style [Artist Year]" or just "Style"
+        source_match = re.match(r'^(.+?)\s*\[(.+?)\]$', description)
+        if source_match:
+            result['tempo_style'] = source_match.group(1).strip()
+            result['tempo_source'] = source_match.group(2).strip()
+        else:
+            result['tempo_style'] = description.strip()
+
+        if note_value:
+            result['tempo_note_value'] = int(note_value)
+        if bpm:
+            result['tempo_bpm'] = int(bpm)
+
+    # Extract time signature: \time 4/4
+    time_match = re.search(r'\\time\s+(\d+/\d+)', content)
+    if time_match:
+        result['time_signature'] = time_match.group(1)
+
+    return result
+
+
 def extract_song_info(wrapper_path: Path, core_dir: Path = None) -> dict:
     """
     Extract song info from wrapper filename and content.
@@ -258,9 +324,10 @@ def extract_song_info(wrapper_path: Path, core_dir: Path = None) -> dict:
     content = wrapper_path.read_text()
     core_files = re.findall(r'\\include\s+"\.\.\/Core\/([^"]+)"', content)
 
-    # Extract composer from first core file
+    # Extract composer and tempo from first core file
     composer = None
     core_modified = None
+    tempo_info = {}
     if core_files:
         composer = extract_composer_from_core(core_files[0])
         # Get git commit date for core file
@@ -268,6 +335,12 @@ def extract_song_info(wrapper_path: Path, core_dir: Path = None) -> dict:
             core_path = core_dir / core_files[0]
             if core_path.exists():
                 core_modified = get_git_commit_date(core_path)
+                tempo_info = extract_tempo_from_core(core_path)
+        else:
+            # Fall back to standard location
+            standard_core_path = LILYPOND_DATA / "Core" / core_files[0]
+            if standard_core_path.exists():
+                tempo_info = extract_tempo_from_core(standard_core_path)
 
     return {
         'title': title,
@@ -275,6 +348,7 @@ def extract_song_info(wrapper_path: Path, core_dir: Path = None) -> dict:
         'core_files': core_files,
         'composer': composer,
         'core_modified': core_modified,
+        **tempo_info,
     }
 
 
@@ -367,6 +441,11 @@ def create_database(db_path: Path) -> sqlite3.Connection:
             core_modified TEXT,
             score_id TEXT,
             part_name TEXT,
+            tempo_style TEXT,
+            tempo_source TEXT,
+            tempo_bpm INTEGER,
+            tempo_note_value INTEGER,
+            time_signature TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -390,8 +469,8 @@ def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
     score_id, part_name = parse_part_from_title(song['title'])
 
     conn.execute("""
-        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source, core_modified, score_id, part_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO songs (title, default_key, composer, core_files, low_note_midi, high_note_midi, source, core_modified, score_id, part_name, tempo_style, tempo_source, tempo_bpm, tempo_note_value, time_signature)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         song['title'],
         song['default_key'],
@@ -403,6 +482,11 @@ def insert_song(conn: sqlite3.Connection, song: dict, source: str = 'standard'):
         song.get('core_modified'),
         score_id,
         part_name,
+        song.get('tempo_style'),
+        song.get('tempo_source'),
+        song.get('tempo_bpm'),
+        song.get('tempo_note_value'),
+        song.get('time_signature'),
     ))
 
 

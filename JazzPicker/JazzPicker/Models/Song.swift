@@ -16,6 +16,13 @@ struct Song: Codable, Identifiable, Hashable, Sendable {
     let scoreId: String?
     let partName: String?
 
+    // Tempo metadata
+    let tempoStyle: String?
+    let tempoSource: String?
+    let tempoBpm: Int?
+    let tempoNoteValue: Int?
+    let timeSignature: String?
+
     enum CodingKeys: String, CodingKey {
         case title
         case defaultKey = "default_key"
@@ -24,6 +31,11 @@ struct Song: Codable, Identifiable, Hashable, Sendable {
         case highNoteMidi = "high_note_midi"
         case scoreId = "score_id"
         case partName = "part_name"
+        case tempoStyle = "tempo_style"
+        case tempoSource = "tempo_source"
+        case tempoBpm = "tempo_bpm"
+        case tempoNoteValue = "tempo_note_value"
+        case timeSignature = "time_signature"
     }
 }
 

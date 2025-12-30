@@ -57,6 +57,7 @@ PDFs cached in S3 with `includeVersion` metadata. Regenerates on cache miss or v
 - **Source**: 'standard' or 'custom'
 - **Ambitus**: Note range stored as MIDI (lowNoteMidi, highNoteMidi). Displayed in transpose modal via `AmbitusView` (client-rendered staff).
 - **Multi-part scores**: Songs with `scoreId` and `partName` are grouped in iOS browse list (expandable rows).
+- **Tempo**: Extracted from LilyPond `\tempo` and `\time` commands. Fields: `tempo_style` ("Medium Swing"), `tempo_source` ("Billie Holiday 1937"), `tempo_bpm`, `tempo_note_value` (4=quarter), `time_signature` ("4/4").
 
 ## Firestore Schema
 

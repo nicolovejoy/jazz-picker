@@ -40,6 +40,7 @@ struct JazzPickerApp: App {
     @StateObject private var setlistStore = SetlistStore()
     @StateObject private var bandStore = BandStore()
     @StateObject private var grooveSyncStore = GrooveSyncStore()
+    @StateObject private var metronomeStore = MetronomeStore()
     @StateObject private var networkMonitor = NetworkMonitor()
 
     @State private var pendingJoinCode: String?
@@ -57,6 +58,7 @@ struct JazzPickerApp: App {
             .environmentObject(setlistStore)
             .environmentObject(bandStore)
             .environmentObject(grooveSyncStore)
+            .environmentObject(metronomeStore)
             .environmentObject(PDFCacheService.shared)
             .environmentObject(networkMonitor)
             .environment(\.pendingJoinCode, $pendingJoinCode)

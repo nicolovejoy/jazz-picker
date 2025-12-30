@@ -100,8 +100,8 @@ struct SongRow: View {
 
 #Preview {
     List {
-        SongRow(song: Song(title: "Blue Bossa", defaultKey: "cm", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil), instrument: .trumpet) {}
-        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil), instrument: .piano) {}
+        SongRow(song: Song(title: "Blue Bossa", defaultKey: "cm", composer: "Kenny Dorham", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil), instrument: .trumpet) {}
+        SongRow(song: Song(title: "Autumn Leaves", defaultKey: "gm", composer: "Joseph Kosma", lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil), instrument: .piano) {}
     }
     .environmentObject(CachedKeysStore())
 }

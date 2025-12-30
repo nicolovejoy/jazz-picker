@@ -28,6 +28,7 @@ struct PDFViewerView: View {
     @EnvironmentObject private var setlistStore: SetlistStore
     @EnvironmentObject private var pdfCacheService: PDFCacheService
     @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
+    @EnvironmentObject private var metronomeStore: MetronomeStore
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -143,7 +144,25 @@ struct PDFViewerView: View {
                     }
                     .allowsHitTesting(false) // Chevrons are visual only, tap zones handle input
                 }
+
+                // MARK: - Metronome Overlay
+                if metronomeStore.isVisible {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            MetronomeOverlayView()
+                                .padding(.top, 60)
+                                .padding(.trailing, 20)
+                        }
+                        Spacer()
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    .onAppear {
+                        print("🎵 MetronomeOverlayView appeared!")
+                    }
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: metronomeStore.isVisible)
             .contentShape(Rectangle())
             .onTapGesture {
                 withAnimation {
@@ -215,6 +234,20 @@ struct PDFViewerView: View {
                         } label: {
                             Label("Add to Setlist...", systemImage: "text.badge.plus")
                         }
+                    }
+
+                    Divider()
+
+                    Button {
+                        Task { @MainActor in
+                            print("🎵 Metronome button tapped")
+                            metronomeStore.loadFromSong(song)
+                            print("🎵 After loadFromSong, about to call show()")
+                            metronomeStore.show()
+                            print("🎵 After show()")
+                        }
+                    } label: {
+                        Label("Metronome", systemImage: "metronome")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -769,7 +802,7 @@ struct PDFKitView: UIViewRepresentable {
 #Preview {
     NavigationStack {
         PDFViewerView(
-            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil),
+            song: Song(title: "Blue Bossa", defaultKey: "c", composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: "Medium Bossa", tempoSource: "Kenny Dorham", tempoBpm: 140, tempoNoteValue: 4, timeSignature: "4/4"),
             concertKey: "c",
             instrument: .trumpet,
             navigationContext: .single
@@ -779,4 +812,5 @@ struct PDFKitView: UIViewRepresentable {
     .environmentObject(SetlistStore())
     .environmentObject(PDFCacheService.shared)
     .environmentObject(GrooveSyncStore())
+    .environmentObject(MetronomeStore())
 }
