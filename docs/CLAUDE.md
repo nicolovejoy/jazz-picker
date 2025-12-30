@@ -39,6 +39,7 @@ JazzPicker/JazzPicker/
 - Offline PDF caching in Documents/PDFCache/
 - Landscape forms: `.frame(maxWidth: 600).frame(maxWidth: .infinity)`
 - PDF viewer disables idle timer (no sleep during gigs)
+- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, overlay in PDF viewer menu
 
 ## Backend API
 

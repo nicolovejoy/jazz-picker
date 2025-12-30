@@ -1,9 +1,5 @@
 # Roadmap
 
-## Recently Completed
-
-- **Metronome** (iOS): Menu item in PDF viewer → floating overlay. Auto-loads song tempo. Tap tempo, ±5 BPM adjust, beat indicators with haptics. Files: `MetronomeEngine.swift`, `MetronomeStore.swift`, `MetronomeOverlayView.swift`.
-
 ## Backlog
 
 1. Groove Sync: leader sees who's following
