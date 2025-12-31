@@ -100,6 +100,19 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Metronome") {
+                    NavigationLink {
+                        MetronomeSettingsView()
+                    } label: {
+                        HStack {
+                            Text("Sound")
+                            Spacer()
+                            Text(MetronomeSettings.shared.soundType.rawValue)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section("Offline Storage") {
                     HStack {
                         Text("Cached Songs")

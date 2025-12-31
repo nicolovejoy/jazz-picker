@@ -38,7 +38,3 @@ Multi-part scores are grouped in the iOS browse list:
 - Expanding shows individual parts: "Lead", "Bass", "Violin", etc.
 - Grid view remains flat (shows all parts as separate cards)
 
-## Future
-
-- **Score View**: Conductor's view with all parts stacked (LilyPond StaffGroup)
-- **Per-band song access**: Songs in Firestore with ownership, not global catalog

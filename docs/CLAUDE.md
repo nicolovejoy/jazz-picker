@@ -30,8 +30,11 @@ JazzPicker/JazzPicker/
 ├── Models/     # Song, Instrument, Setlist, UserProfile, Band
 ├── Views/      # Browse/, PDF/, Settings/, Setlists/, Auth/
 ├── Services/   # APIClient, *Store.swift, *FirestoreService.swift
+├── Resources/  # BuildHistory.json
 └── Utils/      # JazzSlug
 ```
+
+**BuildHistory.json**: User-facing release notes shown in About page. Add entry for each TestFlight build with build number, date, and notes describing new features. Newest first.
 
 **Patterns:**
 - `ObservableObject` stores with `@Published`, injected via `.environmentObject()`
@@ -39,7 +42,7 @@ JazzPicker/JazzPicker/
 - Offline PDF caching in Documents/PDFCache/
 - Landscape forms: `.frame(maxWidth: 600).frame(maxWidth: .infinity)`
 - PDF viewer disables idle timer (no sleep during gigs)
-- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, overlay in PDF viewer menu
+- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, `MetronomeSettings` (UserDefaults). Overlay auto-hides with controls after 5s. Visual beat pulse via `BeatPulseOverlay`. Sounds: wood block (default), cowbell, hi-hat, click, silent.
 
 ## Backend API
 

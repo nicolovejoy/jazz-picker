@@ -9,18 +9,39 @@ import SwiftUI
 
 struct MetronomeOverlayView: View {
     @EnvironmentObject var metronomeStore: MetronomeStore
+    @State private var showSettings = false
+
+    var onInteraction: (() -> Void)?
+
+    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
 
     var body: some View {
         VStack(spacing: 12) {
-            // Header with close button
+            // Header with settings and close buttons
             HStack {
+                Button {
+                    lightHaptic.impactOccurred()
+                    onInteraction?()
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+
                 if let style = metronomeStore.songTempoStyle {
+                    Spacer()
                     Text(style)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
+
                 Spacer()
+
                 Button {
+                    lightHaptic.impactOccurred()
                     metronomeStore.hide()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -32,6 +53,8 @@ struct MetronomeOverlayView: View {
             // Tempo display with +/- buttons
             HStack(spacing: 16) {
                 Button {
+                    lightHaptic.impactOccurred()
+                    onInteraction?()
                     metronomeStore.engine.bpm -= 5
                 } label: {
                     Image(systemName: "minus.circle.fill")
@@ -50,6 +73,8 @@ struct MetronomeOverlayView: View {
                 .frame(minWidth: 80)
 
                 Button {
+                    lightHaptic.impactOccurred()
+                    onInteraction?()
                     metronomeStore.engine.bpm += 5
                 } label: {
                     Image(systemName: "plus.circle.fill")
@@ -73,6 +98,8 @@ struct MetronomeOverlayView: View {
             // Play/Stop and Tap buttons
             HStack(spacing: 16) {
                 Button {
+                    mediumHaptic.impactOccurred()
+                    onInteraction?()
                     metronomeStore.engine.toggle()
                 } label: {
                     Image(systemName: metronomeStore.engine.isPlaying ? "stop.fill" : "play.fill")
@@ -82,6 +109,8 @@ struct MetronomeOverlayView: View {
                 .buttonStyle(.borderedProminent)
 
                 Button {
+                    lightHaptic.impactOccurred()
+                    onInteraction?()
                     metronomeStore.engine.tapTempo()
                 } label: {
                     Text("Tap")
@@ -94,6 +123,8 @@ struct MetronomeOverlayView: View {
             // Reset to song tempo (if different)
             if metronomeStore.hasDifferentTempo, let songBpm = metronomeStore.songTempoBpm {
                 Button {
+                    lightHaptic.impactOccurred()
+                    onInteraction?()
                     metronomeStore.resetToSongTempo()
                 } label: {
                     Text("Reset to \(songBpm)")
@@ -104,10 +135,14 @@ struct MetronomeOverlayView: View {
             }
         }
         .padding()
-        .background(.regularMaterial)
+        .background(.thinMaterial)
         .cornerRadius(16)
         .shadow(radius: 10)
-        .frame(width: 200)
+        .frame(width: 220)
+        .sheet(isPresented: $showSettings) {
+            MetronomeSettingsView()
+                .presentationDetents([.medium])
+        }
     }
 }
 

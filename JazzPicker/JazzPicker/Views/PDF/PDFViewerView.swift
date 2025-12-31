@@ -46,6 +46,10 @@ struct PDFViewerView: View {
     @State private var isAtLastPage = true
     @State private var pageCount = 1
 
+    // Auto-hide timer for controls
+    @State private var hideControlsTask: Task<Void, Never>?
+    private let autoHideDelay: UInt64 = 5_000_000_000 // 5 seconds in nanoseconds
+
     /// Song range in MIDI notes (for ambitus display in key picker)
     private var songRange: (low: Int, high: Int)? {
         guard let low = song.lowNoteMidi, let high = song.highNoteMidi else { return nil }
@@ -145,21 +149,21 @@ struct PDFViewerView: View {
                     .allowsHitTesting(false) // Chevrons are visual only, tap zones handle input
                 }
 
+                // MARK: - Visual Beat Pulse
+                BeatPulseOverlay()
+
                 // MARK: - Metronome Overlay
                 if metronomeStore.isVisible {
                     VStack {
                         HStack {
                             Spacer()
-                            MetronomeOverlayView()
+                            MetronomeOverlayView(onInteraction: resetAutoHideTimer)
                                 .padding(.top, 60)
                                 .padding(.trailing, 20)
                         }
                         Spacer()
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    .onAppear {
-                        print("🎵 MetronomeOverlayView appeared!")
-                    }
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: metronomeStore.isVisible)
@@ -167,6 +171,13 @@ struct PDFViewerView: View {
             .onTapGesture {
                 withAnimation {
                     showControls.toggle()
+                }
+                if showControls {
+                    startAutoHideTimer()
+                    // Auto-show metronome if it's playing
+                    if metronomeStore.engine.isPlaying {
+                        metronomeStore.show()
+                    }
                 }
             }
             .highPriorityGesture(swipeDownGesture)
@@ -289,6 +300,7 @@ struct PDFViewerView: View {
         }
         .onDisappear {
             pendingOctaveSave?.cancel()
+            hideControlsTask?.cancel()
             // Re-enable sleep when leaving PDF view
             UIApplication.shared.isIdleTimerDisabled = false
         }
@@ -308,6 +320,31 @@ struct PDFViewerView: View {
         }
         .sheet(isPresented: $showAddToSetlist) {
             AddToSetlistSheet(songTitle: song.title, concertKey: concertKey, octaveOffset: octaveOffset)
+        }
+    }
+
+    // MARK: - Auto-Hide Controls
+
+    private func startAutoHideTimer() {
+        // Cancel existing timer
+        hideControlsTask?.cancel()
+
+        hideControlsTask = Task {
+            try? await Task.sleep(nanoseconds: autoHideDelay)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                withAnimation {
+                    showControls = false
+                    metronomeStore.hide()
+                }
+            }
+        }
+    }
+
+    private func resetAutoHideTimer() {
+        if showControls {
+            startAutoHideTimer()
         }
     }
 
