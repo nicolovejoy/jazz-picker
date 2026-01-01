@@ -6,6 +6,7 @@
 2. Groove Sync: leader sees who's following
 3. Multi-part: Conductor view (all parts stacked)
 4. Fix setlist auto-download cancellation (move to background service)
+5. Custom chart "My Window Faces the South" not showing on web or iPad - investigate catalog/S3
 
 ## Future
 
@@ -20,4 +21,4 @@
 - Enharmonic spelling context-aware (Gb for flat keys, F# for sharp keys)
 - UI says "Band", Firestore uses `groups`
 - Groove Sync sessions auto-expire after 15 min inactivity
-- PDF viewer controls auto-hide after 5 seconds
+- PDF viewer timeouts: 5s controls, 10s metronome, 30s settings, 30min idle

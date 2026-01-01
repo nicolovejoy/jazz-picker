@@ -2,7 +2,7 @@
   {
     "build": 23,
     "date": "2026-01-01",
-    "notes": "Metronome fixes - stops when exiting PDF or switching songs. Time signature now updates correctly. 30-minute screen timeout in PDF viewer. Extended auto-hide delay when adjusting settings."
+    "notes": "Metronome polish - stops automatically when you leave a chart or switch songs. Tempo and time signature now update correctly for each song. Screen stays awake for 30 minutes during practice (resets on touch). Metronome controls stay visible longer (10s, or 30s when adjusting settings). About page now shows last 10 builds."
   },
   {
     "build": 22,
