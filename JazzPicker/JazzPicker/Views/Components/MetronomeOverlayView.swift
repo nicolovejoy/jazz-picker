@@ -12,6 +12,8 @@ struct MetronomeOverlayView: View {
     @State private var showSettings = false
 
     var onInteraction: (() -> Void)?
+    var onSettingsOpen: (() -> Void)?
+    var onSettingsClose: (() -> Void)?
 
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -22,7 +24,7 @@ struct MetronomeOverlayView: View {
             HStack {
                 Button {
                     lightHaptic.impactOccurred()
-                    onInteraction?()
+                    onSettingsOpen?()
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape.fill")
@@ -140,8 +142,13 @@ struct MetronomeOverlayView: View {
         .shadow(radius: 10)
         .frame(width: 220)
         .sheet(isPresented: $showSettings) {
-            MetronomeSettingsView()
+            MetronomeSettingsView(onInteraction: onSettingsOpen)
                 .presentationDetents([.medium])
+        }
+        .onChange(of: showSettings) { _, isOpen in
+            if !isOpen {
+                onSettingsClose?()
+            }
         }
     }
 }

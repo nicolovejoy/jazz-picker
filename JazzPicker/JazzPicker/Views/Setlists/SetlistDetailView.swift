@@ -217,13 +217,15 @@ struct SetlistDetailView: View {
         .navigationDestination(item: $selectedItem) { item in
             let items = currentSetlist.items.filter { !$0.isSetBreak }
             let index = items.firstIndex { $0.id == item.id } ?? 0
-            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
+            // Look up full song from catalog for tempo/time signature data
+            let song = catalogStore.songs.first { $0.title == item.songTitle }
+                ?? Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
 
             PDFViewerView(
                 song: song,
                 concertKey: item.concertKey,
                 instrument: instrument,
-                navigationContext: .setlist(setlistID: currentSetlist.id, items: items, currentIndex: index)
+                navigationContext: .setlist(setlistID: currentSetlist.id, items: items, currentIndex: index, catalogSongs: catalogStore.songs)
             )
         }
         .overlay(alignment: .bottom) {

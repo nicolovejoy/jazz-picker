@@ -35,28 +35,20 @@ class MetronomeStore: ObservableObject {
 
     /// Load tempo from a song. Call when opening a new song in PDF viewer.
     func loadFromSong(_ song: Song) {
-        print("🎵 MetronomeStore.loadFromSong(\(song.title)) - bpm: \(song.tempoBpm ?? -1), style: \(song.tempoStyle ?? "nil")")
-        print("🎵 Setting songTempoBpm...")
+        print("🎵 MetronomeStore.loadFromSong(\(song.title)) - bpm: \(song.tempoBpm ?? -1), style: \(song.tempoStyle ?? "nil"), timeSig: \(song.timeSignature ?? "nil")")
         songTempoBpm = song.tempoBpm
-        print("🎵 Setting songTempoStyle...")
         songTempoStyle = song.tempoStyle
-        print("🎵 Setting songTimeSignature...")
         songTimeSignature = song.timeSignature
 
-        // Set engine tempo if song has one
+        // Set engine tempo if song has one, otherwise keep current
         if let bpm = song.tempoBpm {
-            print("🎵 Setting engine.bpm to \(bpm)...")
             engine.bpm = bpm
-            print("🎵 engine.bpm set")
         }
 
-        // Set time signature if song has one
-        if let timeSig = song.timeSignature {
-            print("🎵 Setting engine time signature to \(timeSig)...")
-            engine.setTimeSignature(timeSig)
-            print("🎵 engine time signature set")
-        }
-        print("🎵 loadFromSong complete")
+        // Set time signature - reset to 4/4 if song doesn't specify
+        let timeSig = song.timeSignature ?? "4/4"
+        engine.setTimeSignature(timeSig)
+        print("🎵 loadFromSong complete - bpm: \(engine.bpm), beats: \(engine.beatsPerMeasure)")
     }
 
     /// Reset to the loaded song's tempo

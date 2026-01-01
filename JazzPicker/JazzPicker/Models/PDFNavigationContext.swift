@@ -13,7 +13,8 @@ enum PDFNavigationContext {
 
     /// Playing through a setlist - swipe navigates in setlist order
     /// Uses SetlistItem's concertKey which may differ from song's defaultKey
-    case setlist(setlistID: String, items: [SetlistItem], currentIndex: Int)
+    /// catalogSongs provides full song data for tempo/time signature lookup
+    case setlist(setlistID: String, items: [SetlistItem], currentIndex: Int, catalogSongs: [Song])
 
     /// Random spin mode - swipe triggers another random song
     case spin(randomSongProvider: () -> Song?)
@@ -27,7 +28,7 @@ enum PDFNavigationContext {
         switch self {
         case .browse(let songs, let index):
             return index < songs.count - 1
-        case .setlist(_, let items, let index):
+        case .setlist(_, let items, let index, _):
             return index < items.count - 1
         case .spin:
             return true // Always can spin again
@@ -40,7 +41,7 @@ enum PDFNavigationContext {
         switch self {
         case .browse(_, let index):
             return index > 0
-        case .setlist(_, _, let index):
+        case .setlist(_, _, let index, _):
             return index > 0
         case .spin:
             return false // No "previous" in spin mode
@@ -52,7 +53,7 @@ enum PDFNavigationContext {
     /// Returns the current setlist item if in setlist context
     var currentSetlistItem: SetlistItem? {
         switch self {
-        case .setlist(_, let items, let index):
+        case .setlist(_, let items, let index, _):
             return items[index]
         default:
             return nil
@@ -62,7 +63,7 @@ enum PDFNavigationContext {
     /// Returns the setlist ID if in setlist context
     var setlistID: String? {
         switch self {
-        case .setlist(let id, _, _):
+        case .setlist(let id, _, _, _):
             return id
         default:
             return nil
@@ -77,12 +78,14 @@ enum PDFNavigationContext {
             let song = songs[nextIndex]
             return (song, song.defaultKey, .browse(songs: songs, currentIndex: nextIndex))
 
-        case .setlist(let setlistID, let items, let index):
+        case .setlist(let setlistID, let items, let index, let catalogSongs):
             guard index < items.count - 1 else { return nil }
             let nextIndex = index + 1
             let item = items[nextIndex]
-            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
-            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: nextIndex))
+            // Look up full song from catalog for tempo/time signature data
+            let song = catalogSongs.first { $0.title == item.songTitle }
+                ?? Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
+            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: nextIndex, catalogSongs: catalogSongs))
 
         case .spin(let provider):
             guard let song = provider() else { return nil }
@@ -101,12 +104,14 @@ enum PDFNavigationContext {
             let song = songs[prevIndex]
             return (song, song.defaultKey, .browse(songs: songs, currentIndex: prevIndex))
 
-        case .setlist(let setlistID, let items, let index):
+        case .setlist(let setlistID, let items, let index, let catalogSongs):
             guard index > 0 else { return nil }
             let prevIndex = index - 1
             let item = items[prevIndex]
-            let song = Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
-            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: prevIndex))
+            // Look up full song from catalog for tempo/time signature data
+            let song = catalogSongs.first { $0.title == item.songTitle }
+                ?? Song(title: item.songTitle, defaultKey: item.concertKey, composer: nil, lowNoteMidi: nil, highNoteMidi: nil, scoreId: nil, partName: nil, tempoStyle: nil, tempoSource: nil, tempoBpm: nil, tempoNoteValue: nil, timeSignature: nil)
+            return (song, item.concertKey, .setlist(setlistID: setlistID, items: items, currentIndex: prevIndex, catalogSongs: catalogSongs))
 
         case .spin, .single:
             return nil

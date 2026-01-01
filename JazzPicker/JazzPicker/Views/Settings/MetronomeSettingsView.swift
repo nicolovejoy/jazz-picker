@@ -11,12 +11,15 @@ struct MetronomeSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var settings = MetronomeSettings.shared
 
+    var onInteraction: (() -> Void)?
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Sound") {
                     ForEach(MetronomeSoundType.allCases) { soundType in
                         Button {
+                            onInteraction?()
                             settings.soundType = soundType
                         } label: {
                             HStack {
@@ -37,10 +40,14 @@ struct MetronomeSettingsView: View {
 
                 Section("Visual Beat Pulse") {
                     Toggle("Show Visual Pulse", isOn: $settings.visualPulseEnabled)
+                        .onChange(of: settings.visualPulseEnabled) { _, _ in
+                            onInteraction?()
+                        }
 
                     if settings.visualPulseEnabled {
                         ForEach(VisualPulseIntensity.allCases) { intensity in
                             Button {
+                                onInteraction?()
                                 settings.visualIntensity = intensity
                             } label: {
                                 HStack {

@@ -48,7 +48,13 @@ struct PDFViewerView: View {
 
     // Auto-hide timer for controls
     @State private var hideControlsTask: Task<Void, Never>?
+    @State private var metronomeSettingsOpen = false
     private let autoHideDelay: UInt64 = 5_000_000_000 // 5 seconds in nanoseconds
+    private let autoHideDelayExtended: UInt64 = 30_000_000_000 // 30 seconds when settings open
+
+    // Idle timeout for screen sleep (30 minutes)
+    @State private var idleTimeoutTask: Task<Void, Never>?
+    private let idleTimeoutDelay: UInt64 = 30 * 60 * 1_000_000_000 // 30 minutes in nanoseconds
 
     /// Song range in MIDI notes (for ambitus display in key picker)
     private var songRange: (low: Int, high: Int)? {
@@ -157,7 +163,17 @@ struct PDFViewerView: View {
                     VStack {
                         HStack {
                             Spacer()
-                            MetronomeOverlayView(onInteraction: resetAutoHideTimer)
+                            MetronomeOverlayView(
+                                onInteraction: resetAutoHideTimer,
+                                onSettingsOpen: {
+                                    metronomeSettingsOpen = true
+                                    resetAutoHideTimer()
+                                },
+                                onSettingsClose: {
+                                    metronomeSettingsOpen = false
+                                    resetAutoHideTimer()
+                                }
+                            )
                                 .padding(.top, 60)
                                 .padding(.trailing, 20)
                         }
@@ -169,6 +185,7 @@ struct PDFViewerView: View {
             .animation(.easeInOut(duration: 0.2), value: metronomeStore.isVisible)
             .contentShape(Rectangle())
             .onTapGesture {
+                resetIdleTimeout()
                 withAnimation {
                     showControls.toggle()
                 }
@@ -288,8 +305,9 @@ struct PDFViewerView: View {
             await loadPDF()
         }
         .onAppear {
-            // Prevent iPad from sleeping during gig
+            // Prevent iPad from sleeping during gig (with 30-min timeout)
             UIApplication.shared.isIdleTimerDisabled = true
+            startIdleTimeout()
 
             // Apply user preference if not in setlist context and no octave set
             if navigationContext.currentSetlistItem == nil, octaveOffset == 0 {
@@ -301,6 +319,10 @@ struct PDFViewerView: View {
         .onDisappear {
             pendingOctaveSave?.cancel()
             hideControlsTask?.cancel()
+            idleTimeoutTask?.cancel()
+            // Stop metronome when leaving PDF viewer
+            metronomeStore.engine.stop()
+            metronomeStore.hide()
             // Re-enable sleep when leaving PDF view
             UIApplication.shared.isIdleTimerDisabled = false
         }
@@ -329,8 +351,11 @@ struct PDFViewerView: View {
         // Cancel existing timer
         hideControlsTask?.cancel()
 
+        // Use extended delay when metronome settings are open
+        let delay = metronomeSettingsOpen ? autoHideDelayExtended : autoHideDelay
+
         hideControlsTask = Task {
-            try? await Task.sleep(nanoseconds: autoHideDelay)
+            try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
@@ -343,9 +368,32 @@ struct PDFViewerView: View {
     }
 
     private func resetAutoHideTimer() {
+        resetIdleTimeout()
         if showControls {
             startAutoHideTimer()
         }
+    }
+
+    // MARK: - Idle Timeout (30-minute screen sleep)
+
+    private func startIdleTimeout() {
+        idleTimeoutTask?.cancel()
+
+        idleTimeoutTask = Task {
+            try? await Task.sleep(nanoseconds: idleTimeoutDelay)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                // Allow normal sleep behavior after 30 minutes of inactivity
+                UIApplication.shared.isIdleTimerDisabled = false
+            }
+        }
+    }
+
+    private func resetIdleTimeout() {
+        // Re-enable idle prevention and restart the timer
+        UIApplication.shared.isIdleTimerDisabled = true
+        startIdleTimeout()
     }
 
     // MARK: - Groove Sync
@@ -467,6 +515,7 @@ struct PDFViewerView: View {
     private var swipeDownGesture: some Gesture {
         DragGesture(minimumDistance: 50)
             .onEnded { value in
+                resetIdleTimeout()
                 let verticalDistance = value.translation.height
                 let horizontalDistance = abs(value.translation.width)
 
@@ -480,6 +529,7 @@ struct PDFViewerView: View {
     // MARK: - Edge Tap Navigation
 
     private func handleTapNext() {
+        resetIdleTimeout()
         if let next = navigationContext.nextSong() {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
@@ -494,6 +544,7 @@ struct PDFViewerView: View {
     }
 
     private func handleTapPrevious() {
+        resetIdleTimeout()
         if let prev = navigationContext.previousSong() {
             let generator = UIImpactFeedbackGenerator(style: .light)
             generator.impactOccurred()
@@ -510,6 +561,12 @@ struct PDFViewerView: View {
     private func navigateToSong(_ newSong: Song, concertKey newKey: String, context newContext: PDFNavigationContext) {
         print("🔄 navigateToSong: \(newSong.title) (key: \(newKey))")
         print("🔄 Old song.id: \(song.id), New song.id: \(newSong.id)")
+
+        // Stop metronome on song switch, but keep overlay visible so user can restart
+        let wasMetronomePlaying = metronomeStore.engine.isPlaying
+        if wasMetronomePlaying {
+            metronomeStore.engine.stop()
+        }
 
         // Priority: setlist item > user preference > 0
         let newOctaveOffset: Int
@@ -530,6 +587,15 @@ struct PDFViewerView: View {
             isAtFirstPage = true
             isAtLastPage = true
         }
+
+        // Load new song's tempo and show overlay if metronome was active
+        if wasMetronomePlaying {
+            metronomeStore.loadFromSong(newSong)
+            metronomeStore.show()
+            showControls = true
+            startAutoHideTimer()
+        }
+
         print("🔄 State updated, song is now: \(song.title)")
     }
 
