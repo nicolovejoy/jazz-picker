@@ -41,8 +41,13 @@ JazzPicker/JazzPicker/
 - Real-time Firestore listeners
 - Offline PDF caching in Documents/PDFCache/
 - Landscape forms: `.frame(maxWidth: 600).frame(maxWidth: .infinity)`
-- PDF viewer disables idle timer (no sleep during gigs)
-- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, `MetronomeSettings` (UserDefaults). Overlay auto-hides with controls after 5s. Visual beat pulse via `BeatPulseOverlay`. Sounds: wood block (default), cowbell, hi-hat, click, silent.
+- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, `MetronomeSettings` (UserDefaults). Visual beat pulse via `BeatPulseOverlay`. Sounds: wood block (default), cowbell, hi-hat, click, silent.
+
+**PDF Viewer Timeouts** (in `PDFViewerView.swift`):
+- 5 seconds: nav bar auto-hide (controls only)
+- 10 seconds: metronome overlay visible
+- 30 seconds: metronome settings sheet open
+- 30 minutes: screen idle timeout (resets on any interaction, then allows normal iPad sleep)
 
 ## Backend API
 

@@ -47,10 +47,12 @@ struct PDFViewerView: View {
     @State private var pageCount = 1
 
     // Auto-hide timer for controls
+    // Timeouts: 5s controls, 10s metronome visible, 30s settings open, 30min screen idle
     @State private var hideControlsTask: Task<Void, Never>?
     @State private var metronomeSettingsOpen = false
-    private let autoHideDelay: UInt64 = 5_000_000_000 // 5 seconds in nanoseconds
-    private let autoHideDelayExtended: UInt64 = 30_000_000_000 // 30 seconds when settings open
+    private let autoHideDelay: UInt64 = 5_000_000_000 // 5 seconds - nav bar only
+    private let autoHideDelayMetronome: UInt64 = 10_000_000_000 // 10 seconds - metronome overlay visible
+    private let autoHideDelaySettings: UInt64 = 30_000_000_000 // 30 seconds - settings sheet open
 
     // Idle timeout for screen sleep (30 minutes)
     @State private var idleTimeoutTask: Task<Void, Never>?
@@ -267,13 +269,9 @@ struct PDFViewerView: View {
                     Divider()
 
                     Button {
-                        Task { @MainActor in
-                            print("🎵 Metronome button tapped")
-                            metronomeStore.loadFromSong(song)
-                            print("🎵 After loadFromSong, about to call show()")
-                            metronomeStore.show()
-                            print("🎵 After show()")
-                        }
+                        metronomeStore.loadFromSong(song)
+                        metronomeStore.show()
+                        startAutoHideTimer() // Reset with 10s metronome delay
                     } label: {
                         Label("Metronome", systemImage: "metronome")
                     }
@@ -351,8 +349,15 @@ struct PDFViewerView: View {
         // Cancel existing timer
         hideControlsTask?.cancel()
 
-        // Use extended delay when metronome settings are open
-        let delay = metronomeSettingsOpen ? autoHideDelayExtended : autoHideDelay
+        // Choose delay based on current state (longest applicable wins)
+        let delay: UInt64
+        if metronomeSettingsOpen {
+            delay = autoHideDelaySettings      // 30s - settings sheet open
+        } else if metronomeStore.isVisible {
+            delay = autoHideDelayMetronome     // 10s - metronome overlay visible
+        } else {
+            delay = autoHideDelay              // 5s - just nav bar
+        }
 
         hideControlsTask = Task {
             try? await Task.sleep(nanoseconds: delay)
