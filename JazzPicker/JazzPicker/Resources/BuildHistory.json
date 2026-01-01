@@ -1,5 +1,10 @@
 [
   {
+    "build": 23,
+    "date": "2026-01-01",
+    "notes": "Metronome fixes - stops when exiting PDF or switching songs. Time signature now updates correctly. 30-minute screen timeout in PDF viewer. Extended auto-hide delay when adjusting settings."
+  },
+  {
     "build": 22,
     "date": "2025-12-31",
     "notes": "Metronome settings - choose from 5 sounds (wood block, cowbell, hi-hat, click, silent) or disable sound entirely. Haptic feedback option. Beat pulse overlay shows visual rhythm cue on the PDF. All settings persist across sessions."

@@ -38,7 +38,7 @@ struct SettingsView: View {
               let entries = try? JSONDecoder().decode([BuildEntry].self, from: data) else {
             return []
         }
-        return Array(entries.prefix(3))
+        return Array(entries.prefix(10))
     }
 
     var body: some View {
