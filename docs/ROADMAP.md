@@ -1,5 +1,9 @@
 # Roadmap
 
+## Pending
+
+- Rebrand to "AnyKey" (awaiting Eric/James feedback) - see `VISION.md`
+
 ## Backlog
 
 1. Import Eric's "books" as setlists (start with Manine Book)
@@ -9,6 +13,7 @@
 
 ## Future
 
+- Composition workflow: MIDI/Logic → MusicXML → LilyPond → app
 - Guitar tablature (LilyPond TabStaff)
 - Custom chart upload UI (web)
 - Per-band song access
