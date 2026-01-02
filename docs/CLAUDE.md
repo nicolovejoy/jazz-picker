@@ -13,7 +13,7 @@ Proposed rebrand: **MusicForge** - see `VISION.md`.
 - Firebase: Auth + Firestore
 
 **URLs:**
-- Web: https://jazzpicker.pianohouseproject.org
+- Web: https://musicforge.org (also https://jazzpicker.pianohouseproject.org)
 - API: https://jazz-picker.fly.dev
 
 ## Quick Start
@@ -115,8 +115,11 @@ See `docs/GROOVE_SYNC.md` for details.
 - **AWS S3** - `jazz-picker-pdfs`, `jazz-picker-custom-pdfs`
 - **Vercel** - Web frontend (auto-deploys from GitHub on push to main)
 - **Firebase** - Auth + Firestore
+- **Cloudflare** - DNS for musicforge.org
 
 Never commit secrets. GoogleService-Info.plist is gitignored.
+
+**Adding a new domain:** Update Firebase Auth authorized domains + Google Cloud API key HTTP referrers.
 
 ## Web Deploy & Test
 

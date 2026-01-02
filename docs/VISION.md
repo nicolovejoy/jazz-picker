@@ -24,6 +24,7 @@
 ### Phase 1: Domain Setup (done)
 - [x] Register musicforge.org on Cloudflare
 - [x] Point musicforge.org → Vercel (DNS only, no proxy)
+- [x] Configure Firebase Auth + Google Cloud API key for new domain
 - [x] Keep jazzpicker.pianohouseproject.org working (redirect later)
 
 ### Phase 2: App & Backend
