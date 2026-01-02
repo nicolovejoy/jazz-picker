@@ -13,12 +13,14 @@ struct PDFViewerView: View {
     @State var concertKey: String
     @State var instrument: Instrument
     @State var navigationContext: PDFNavigationContext
+    let initialPage: Int
 
-    init(song: Song, concertKey: String, instrument: Instrument, octaveOffset: Int? = nil, navigationContext: PDFNavigationContext) {
+    init(song: Song, concertKey: String, instrument: Instrument, octaveOffset: Int? = nil, initialPage: Int = 0, navigationContext: PDFNavigationContext) {
         self._song = State(initialValue: song)
         self._concertKey = State(initialValue: concertKey)
         self._instrument = State(initialValue: instrument)
         self._navigationContext = State(initialValue: navigationContext)
+        self.initialPage = initialPage
         // Initialize octave offset: explicit param > setlist item > 0
         let initialOctave = octaveOffset ?? navigationContext.currentSetlistItem?.octaveOffset ?? 0
         self._octaveOffset = State(initialValue: initialOctave)
@@ -80,6 +82,7 @@ struct PDFViewerView: View {
                         document: document,
                         cropBounds: cropBounds,
                         isLandscape: isLandscape,
+                        initialPage: initialPage,
                         onPageChange: handlePageChange
                     )
                     .ignoresSafeArea()
@@ -863,6 +866,7 @@ struct PDFKitView: UIViewRepresentable {
     let document: PDFDocument
     let cropBounds: CropBounds?
     let isLandscape: Bool
+    let initialPage: Int
     let onPageChange: (Int, Int) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -883,6 +887,11 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         configureDisplayMode(pdfView)
+
+        // Navigate to initial page if specified
+        if initialPage > 0, let page = document.page(at: initialPage) {
+            pdfView.go(to: page)
+        }
 
         // Set up page change observation
         context.coordinator.setupPageChangeObserver(for: pdfView, document: document)

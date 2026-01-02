@@ -32,6 +32,23 @@ struct FollowerPDFContainerView: View {
         return pageCount == 1 || currentPage >= pageCount - 1
     }
 
+    /// The page the follower should display
+    /// In Page 2 mode: leader's page + 1
+    /// Otherwise: leader's page (0 if not synced)
+    private var followerTargetPage: Int {
+        guard let session = grooveSyncStore.followingSession,
+              let sharedSong = session.currentSong,
+              let currentPage = sharedSong.currentPage else {
+            return 0
+        }
+
+        if grooveSyncStore.page2ModeEnabled {
+            return currentPage + 1
+        } else {
+            return currentPage
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -45,6 +62,7 @@ struct FollowerPDFContainerView: View {
                         concertKey: song.concertKey,
                         instrument: instrument,
                         octaveOffset: song.octaveOffset,
+                        initialPage: followerTargetPage,
                         navigationContext: .single
                     )
                     .id(page2ViewId)  // Force new view on song or page change in Page 2 mode
