@@ -6,7 +6,6 @@
 2. Groove Sync: leader sees who's following
 3. Multi-part: Conductor view (all parts stacked)
 4. Fix setlist auto-download cancellation (move to background service)
-5. Custom chart "My Window Faces the South" not showing on web or iPad - investigate catalog/S3
 
 ## Future
 
