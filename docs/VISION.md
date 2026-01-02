@@ -15,9 +15,41 @@
 
 **Alternative considered:** AnyKey ("Your key to playing in tune") - clever wordplay on transposition, but sounds generic.
 
-**Domain:** musicforge.org (register via Cloudflare)
+**Domain:** musicforge.org (Cloudflare)
 
-Pending feedback from Eric and James.
+---
+
+## Brand Migration Plan
+
+### Phase 1: Domain Setup (now)
+- [x] Register musicforge.org on Cloudflare
+- [ ] Point musicforge.org → Vercel (same deployment as jazzpicker.pianohouseproject.org)
+- [ ] Keep jazzpicker.pianohouseproject.org working (redirect later)
+
+### Phase 2: App & Backend
+- [ ] Rename iOS app display name to "MusicForge"
+- [ ] Update App Store listing
+- [ ] Add musicforge:// URL scheme (keep jazzpicker:// for backwards compat)
+- [ ] Rename Fly.io app: jazz-picker → musicforge (or add api.musicforge.org alias)
+
+### Phase 3: Cleanup
+- [ ] Redirect jazzpicker.pianohouseproject.org → musicforge.org
+- [ ] Update GitHub repo name (optional - causes link breakage)
+- [ ] Update Firebase project name (optional - internal only)
+
+### Domain Notes
+
+**Cloudflare vs GoDaddy:**
+- You can use Cloudflare for DNS without transferring the domain registration
+- "Adding to Cloudflare" = pointing nameservers to Cloudflare (GoDaddy still owns registration)
+- Domain transfers have 60-day lock after registration (not 1 year)
+- For now: keep registration at GoDaddy, use Cloudflare for DNS management
+
+**Current state:**
+- pianohouseproject.org: GoDaddy registration, Cloudflare DNS
+- musicforge.org: Cloudflare registration + DNS
+
+Pending feedback from Eric and James on name.
 
 ---
 

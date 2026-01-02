@@ -134,11 +134,47 @@ SPA routing configured in root `vercel.json` (rewrites all paths to index.html).
 
 `tools/musicxml_to_lilypond.py` - MusicXML → multi-part LilyPond. Chord symbols, repeat expansion, pickup detection.
 
+## Deployment
+
+**Automatic (Eric's updates):** GitHub workflow rebuilds catalog.db from lilypond-lead-sheets + custom-charts, uploads to S3, deploys to Fly.io.
+
+**Cache invalidation:** Automatic via `includeVersion` hash (SHA256 of Include/*.ily files). No manual clearing needed.
+
+**Manual:**
+```bash
+python build_catalog.py --ranges-file lilypond-data/Wrappers/range-data.txt --custom-dir custom-charts
+aws s3 cp catalog.db s3://jazz-picker-pdfs/catalog.db
+fly deploy
+```
+
+**Verify:** `curl -s https://jazz-picker.fly.dev/api/v2/catalog | jq '.total'`
+
+## Custom Charts
+
+User-submitted charts in `custom-charts/` (separate from Eric's lilypond-lead-sheets).
+
+**Structure:**
+- `Core/` - LilyPond source (melody, chords)
+- `Wrappers/` - Key/clef selectors
+- `Generated/` - Runtime wrappers (gitignored)
+
+**S3 buckets:** `jazz-picker-pdfs/generated/` (standard), `jazz-picker-custom-pdfs/generated/` (custom)
+
+## Multi-Part Scores
+
+MusicXML → LilyPond for arrangements with separate parts.
+
+```bash
+source venv/bin/activate
+python tools/musicxml_to_lilypond.py path/to/file.xml
+```
+
+Generates Core + Wrapper in `custom-charts/`. Parts grouped in iOS browse (expandable rows by `score_id`).
+
+**Features:** Chord extraction, repeat expansion, pickup detection, clef selection, rhythm slash filtering.
+
 ## Docs
 
 - `VISION.md` - Identity, tenets, rebrand status
 - `ROADMAP.md` - Priority queue
-- `DEPLOY.md` - Deploy workflow
-- `CUSTOM_CHARTS.md` - Manual chart creation
-- `MULTI_PART_SCORES.md` - MusicXML converter usage
 - `GROOVE_SYNC.md` - Real-time chart sharing spec
