@@ -56,6 +56,5 @@ Not jazz-specific. Any music using charts: jazz, worship, theater pits, big band
 
 ## Open Questions for Eric & James
 
-- Does "AnyKey" resonate?
 - Books vs. setlists - is a book just a named setlist, or something more?
 - One-sentence description you'd use at a gig?
