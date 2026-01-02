@@ -566,8 +566,15 @@ function App() {
       {/* Background image for browse context */}
       {activeContext === 'browse' && (
         <div
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-10 pointer-events-none"
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-[0.12] pointer-events-none"
           style={{ backgroundImage: 'url(/images/browse-bg.jpg)' }}
+        />
+      )}
+      {/* Background image for settings/menu context */}
+      {activeContext === 'menu' && (
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-[0.12] pointer-events-none"
+          style={{ backgroundImage: 'url(/images/settings-bg.jpg)' }}
         />
       )}
       {/* Route handlers for deep links */}
