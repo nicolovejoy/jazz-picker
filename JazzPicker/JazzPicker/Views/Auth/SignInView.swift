@@ -11,54 +11,63 @@ struct SignInView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 40) {
-            Spacer()
+        ZStack {
+            // Background image
+            Image("ForgePic4-signin")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
+                .opacity(0.15)
 
-            VStack(spacing: 16) {
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 80))
-                    .foregroundStyle(Color.accentColor)
+            VStack(spacing: 40) {
+                Spacer()
 
-                Text("Jazz Picker")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                VStack(spacing: 16) {
+                    Image(systemName: "music.note.list")
+                        .font(.system(size: 80))
+                        .foregroundStyle(Color.accentColor)
 
-                Text("Your jazz lead sheet companion")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+                    Text("Jazz Picker")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
 
-            Spacer()
+                    Text("Your jazz lead sheet companion")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
 
-            VStack(spacing: 16) {
-                SignInWithAppleButton(
-                    onRequest: { request in
-                        authStore.handleSignInWithAppleRequest(request)
-                    },
-                    onCompletion: { result in
-                        authStore.handleSignInWithAppleCompletion(result)
+                Spacer()
+
+                VStack(spacing: 16) {
+                    SignInWithAppleButton(
+                        onRequest: { request in
+                            authStore.handleSignInWithAppleRequest(request)
+                        },
+                        onCompletion: { result in
+                            authStore.handleSignInWithAppleCompletion(result)
+                        }
+                    )
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    .frame(height: 50)
+                    .frame(maxWidth: 280)
+
+                    if authStore.isLoading {
+                        ProgressView()
                     }
-                )
-                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                .frame(height: 50)
-                .frame(maxWidth: 280)
 
-                if authStore.isLoading {
-                    ProgressView()
+                    if let error = authStore.error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
                 }
 
-                if let error = authStore.error {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
+                Spacer()
             }
-
-            Spacer()
+            .padding()
         }
-        .padding()
     }
 }
 

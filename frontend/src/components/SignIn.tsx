@@ -45,7 +45,12 @@ export function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: 'linear-gradient(to bottom right, rgba(17, 24, 39, 0.85), rgba(31, 41, 55, 0.8), rgba(17, 24, 39, 0.85)), url(/images/hero.jpg)'
+      }}
+    >
       <div className="w-full max-w-sm space-y-6">
         {/* Logo/Title */}
         <div className="text-center">

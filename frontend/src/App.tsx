@@ -563,6 +563,13 @@ function App() {
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pb-20">
+      {/* Background image for browse context */}
+      {activeContext === 'browse' && (
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-10 pointer-events-none"
+          style={{ backgroundImage: 'url(/images/browse-bg.jpg)' }}
+        />
+      )}
       {/* Route handlers for deep links */}
       <Routes>
         <Route path="/setlist/:id" element={<SetlistRoute onSetlistLoad={handleSetlistLoad} />} />

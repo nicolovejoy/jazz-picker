@@ -81,6 +81,17 @@ struct AboutView: View {
                     """
                 )
 
+                // Sculpture
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider()
+                        .padding(.top, 8)
+                    Image("ForgePic3-about")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .opacity(0.8)
+                }
+
                 // Credits
                 VStack(alignment: .leading, spacing: 8) {
                     Divider()

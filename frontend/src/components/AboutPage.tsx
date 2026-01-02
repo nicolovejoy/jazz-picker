@@ -105,8 +105,17 @@ export function AboutPage({ onClose }: AboutPageProps) {
           </FeatureSection>
         </div>
 
-        {/* Credits */}
+        {/* Sculpture */}
         <div className="mt-8 pt-4 border-t border-white/10">
+          <img
+            src="/images/about.jpg"
+            alt="Sculpture at the Piano House"
+            className="w-full rounded-lg opacity-80"
+          />
+        </div>
+
+        {/* Credits */}
+        <div className="mt-6 pt-4 border-t border-white/10">
           <p className="text-sm text-gray-500">
             Lead sheets by Eric, typeset in LilyPond.
           </p>
