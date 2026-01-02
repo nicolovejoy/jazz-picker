@@ -17,6 +17,7 @@
 - Guitar tablature (LilyPond TabStaff)
 - Custom chart upload UI (web)
 - Per-band song access
+- Extract shared Firebase config to dedicated `pianohouseproject-firebase` repo
 
 ## Design Decisions
 

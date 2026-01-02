@@ -87,5 +87,37 @@ service cloud.firestore {
       // No updates or deletes
       allow update, delete: if false;
     }
+
+    // ========================================
+    // Showcase - Photo Gallery Collections
+    // ========================================
+
+    // Helper: Check if user is a Showcase collection contributor
+    function isShowcaseContributor(collectionId) {
+      let collectionDoc = get(/databases/$(database)/documents/showcaseCollections/$(collectionId));
+      return collectionDoc.data != null && (
+        request.auth.uid == collectionDoc.data.ownerId ||
+        request.auth.token.email in collectionDoc.data.invitedEmails
+      );
+    }
+
+    // Showcase collections - public read, owner write
+    match /showcaseCollections/{collectionId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        request.auth.uid == resource.data.ownerId;
+    }
+
+    // Showcase assets - public read, contributor create
+    match /showcaseAssets/{assetId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        isShowcaseContributor(request.resource.data.collectionId);
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.uploadedBy ||
+        isShowcaseContributor(resource.data.collectionId)
+      );
+    }
   }
 }

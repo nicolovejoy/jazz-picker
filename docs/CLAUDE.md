@@ -114,12 +114,28 @@ See `docs/GROOVE_SYNC.md` for details.
 - **Fly.io** - Flask backend
 - **AWS S3** - `jazz-picker-pdfs`, `jazz-picker-custom-pdfs`
 - **Vercel** - Web frontend (auto-deploys from GitHub on push to main)
-- **Firebase** - Auth + Firestore
+- **Firebase** - Auth + Firestore (shared across pianohouseproject.org apps)
 - **Cloudflare** - DNS for musicforge.org
 
 Never commit secrets. GoogleService-Info.plist is gitignored.
 
 **Adding a new domain:** Update Firebase Auth authorized domains + Google Cloud API key HTTP referrers.
+
+## Shared Firebase
+
+The `jazz-picker` Firebase project provides unified auth across pianohouseproject.org apps. Users sign in with the same Google account on any subdomain.
+
+**Apps using this Firebase project:**
+- JazzPicker (this repo)
+- Showcase (photo galleries)
+
+**firestore.rules structure:**
+- Lines 1-90: JazzPicker rules
+- Lines 91+: Showcase rules (do not modify without coordinating with Showcase repo)
+
+Deploy rules: `firebase deploy --only firestore:rules`
+
+Future: Extract Firebase config to a dedicated `pianohouseproject-firebase` repo.
 
 ## Web Deploy & Test
 
