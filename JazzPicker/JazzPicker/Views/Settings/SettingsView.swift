@@ -209,36 +209,9 @@ struct InstrumentPickerView: View {
     @State private var selectedInstrument: Instrument = .piano
     @State private var isSaving = false
 
-    private let concertPitchInstruments: [Instrument] = [.piano, .guitar]
-    private let bbInstruments: [Instrument] = [.trumpet, .clarinet, .tenorSax, .sopranoSax]
-    private let ebInstruments: [Instrument] = [.altoSax, .bariSax]
-    private let bassClefInstruments: [Instrument] = [.bass, .trombone]
-
     var body: some View {
         Form {
-            Section("Concert Pitch") {
-                ForEach(concertPitchInstruments) { instrument in
-                    instrumentRow(instrument)
-                }
-            }
-
-            Section("B♭ Instruments") {
-                ForEach(bbInstruments) { instrument in
-                    instrumentRow(instrument)
-                }
-            }
-
-            Section("E♭ Instruments") {
-                ForEach(ebInstruments) { instrument in
-                    instrumentRow(instrument)
-                }
-            }
-
-            Section("Bass Clef") {
-                ForEach(bassClefInstruments) { instrument in
-                    instrumentRow(instrument)
-                }
-            }
+            InstrumentPickerContent(selectedInstrument: $selectedInstrument)
         }
         .navigationTitle("Instrument")
         .navigationBarTitleDisplayMode(.inline)
@@ -256,23 +229,6 @@ struct InstrumentPickerView: View {
                         saveInstrument()
                     }
                     .disabled(selectedInstrument == userProfileStore.profile?.instrument)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func instrumentRow(_ instrument: Instrument) -> some View {
-        Button {
-            selectedInstrument = instrument
-        } label: {
-            HStack {
-                Text(instrument.label)
-                    .foregroundStyle(.primary)
-                Spacer()
-                if selectedInstrument == instrument {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
                 }
             }
         }

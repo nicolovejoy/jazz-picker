@@ -33,7 +33,7 @@ struct ContentView: View {
     @State private var showGrooveSyncModal = false
     @State private var dismissedSessionId: String?  // Track dismissed session to avoid re-showing
     @State private var followingSong: FollowingSong?
-    @State private var lastFollowedSongTitle: String?  // Track to detect song changes
+    @State private var lastFollowedSongKey: String?  // Track to detect song changes
 
     var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -48,7 +48,7 @@ struct ContentView: View {
                 showModal: $showGrooveSyncModal,
                 dismissedSessionId: $dismissedSessionId,
                 followingSong: $followingSong,
-                lastFollowedSongTitle: $lastFollowedSongTitle
+                lastFollowedSongKey: $lastFollowedSongKey
             )
     }
 
@@ -161,7 +161,7 @@ struct GrooveSyncFollowerModifier: ViewModifier {
     @Binding var showModal: Bool
     @Binding var dismissedSessionId: String?
     @Binding var followingSong: FollowingSong?
-    @Binding var lastFollowedSongTitle: String?
+    @Binding var lastFollowedSongKey: String?
 
     func body(content: Content) -> some View {
         content
@@ -172,8 +172,8 @@ struct GrooveSyncFollowerModifier: ViewModifier {
             .onChangeOfJoinableSession(grooveSyncStore: grooveSyncStore, dismissedSessionId: dismissedSessionId) {
                 showModal = true
             }
-            .onChangeOfFollowingSong(grooveSyncStore: grooveSyncStore, catalogStore: catalogStore, lastTitle: lastFollowedSongTitle) { song in
-                lastFollowedSongTitle = song.song.title
+            .onChangeOfFollowingSong(grooveSyncStore: grooveSyncStore, catalogStore: catalogStore, lastSongKey: lastFollowedSongKey) { song in
+                lastFollowedSongKey = "\(song.song.title)-\(song.concertKey)-\(song.octaveOffset ?? 0)"
                 followingSong = song
             }
             .onChange(of: grooveSyncStore.activeSessions) { _, sessions in
@@ -198,7 +198,7 @@ struct GrooveSyncFollowerModifier: ViewModifier {
                             await grooveSyncStore.stopFollowing()
                         }
                         followingSong = nil
-                        lastFollowedSongTitle = nil
+                        lastFollowedSongKey = nil
                     }
                 }
             }
@@ -249,7 +249,7 @@ extension View {
         showModal: Binding<Bool>,
         dismissedSessionId: Binding<String?>,
         followingSong: Binding<FollowingSong?>,
-        lastFollowedSongTitle: Binding<String?>
+        lastFollowedSongKey: Binding<String?>
     ) -> some View {
         modifier(GrooveSyncFollowerModifier(
             grooveSyncStore: grooveSyncStore,
@@ -258,7 +258,7 @@ extension View {
             showModal: showModal,
             dismissedSessionId: dismissedSessionId,
             followingSong: followingSong,
-            lastFollowedSongTitle: lastFollowedSongTitle
+            lastFollowedSongKey: lastFollowedSongKey
         ))
     }
 
@@ -280,14 +280,18 @@ extension View {
     func onChangeOfFollowingSong(
         grooveSyncStore: GrooveSyncStore,
         catalogStore: CatalogStore,
-        lastTitle: String?,
+        lastSongKey: String?,
         action: @escaping (FollowingSong) -> Void
     ) -> some View {
-        self.onChange(of: grooveSyncStore.followingSession?.currentSong?.title) { _, newTitle in
+        // Watch followingSession directly - computed values in closures aren't reactive
+        self.onChange(of: grooveSyncStore.followingSession) { _, _ in
             guard grooveSyncStore.isFollowing,
                   let session = grooveSyncStore.followingSession,
-                  let sharedSong = session.currentSong,
-                  newTitle != lastTitle else { return }
+                  let sharedSong = session.currentSong else { return }
+
+            // Compute key INSIDE callback, after change detected
+            let newSongKey = "\(sharedSong.title)-\(sharedSong.concertKey)-\(sharedSong.octaveOffset ?? 0)"
+            guard newSongKey != lastSongKey else { return }
 
             if let song = catalogStore.songs.first(where: { $0.title == sharedSong.title }) {
                 action(FollowingSong(

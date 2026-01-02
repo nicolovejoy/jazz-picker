@@ -1,5 +1,10 @@
 [
   {
+    "build": 24,
+    "date": "2026-01-01",
+    "notes": "Groove Sync fix - followers now see key and octave changes from the leader. Key changes auto-save to setlist items. Change instrument directly from PDF view menu."
+  },
+  {
     "build": 23,
     "date": "2026-01-01",
     "notes": "Metronome polish - stops automatically when you leave a chart or switch songs. Tempo and time signature now update correctly for each song. Screen stays awake for 30 minutes during practice (resets on touch). Metronome controls stay visible longer (10s, or 30s when adjusting settings). About page now shows last 10 builds."

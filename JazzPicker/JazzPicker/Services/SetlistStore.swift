@@ -293,6 +293,34 @@ class SetlistStore: ObservableObject {
         }
     }
 
+    func updateItemConcertKey(in setlist: Setlist, itemID: String, concertKey: String) async {
+        lastError = nil
+
+        guard let setlistIndex = setlists.firstIndex(where: { $0.id == setlist.id }) else { return }
+        guard let itemIndex = setlists[setlistIndex].items.firstIndex(where: { $0.id == itemID }) else { return }
+
+        // Skip if no change
+        guard setlists[setlistIndex].items[itemIndex].concertKey != concertKey else { return }
+
+        // Backup for rollback
+        let oldKey = setlists[setlistIndex].items[itemIndex].concertKey
+
+        // Optimistic update
+        setlists[setlistIndex].items[itemIndex].concertKey = concertKey
+
+        do {
+            try await SetlistFirestoreService.updateSetlist(id: setlist.id, items: setlists[setlistIndex].items)
+        } catch {
+            // Rollback
+            if let idx = setlists.firstIndex(where: { $0.id == setlist.id }),
+               let iIdx = setlists[idx].items.firstIndex(where: { $0.id == itemID }) {
+                setlists[idx].items[iIdx].concertKey = oldKey
+            }
+            lastError = "Couldn't save key: \(error.localizedDescription)"
+            print("❌ Failed to update concert key: \(error)")
+        }
+    }
+
     func replaceItem(in setlist: Setlist, existingItemID: String, songTitle: String, concertKey: String, octaveOffset: Int) async throws {
         lastError = nil
 

@@ -53,6 +53,22 @@ enum Instrument: String, CaseIterable, Codable, Identifiable, Sendable {
             return .treble
         }
     }
+
+    // MARK: - Groupings for UI
+
+    /// Instrument grouping for picker UI. Will become data-driven when instruments are first-class objects.
+    struct Group: Identifiable {
+        let id: String
+        let label: String
+        let instruments: [Instrument]
+    }
+
+    static let groups: [Group] = [
+        Group(id: "concert", label: "Concert Pitch", instruments: [.piano, .guitar]),
+        Group(id: "bb", label: "B♭ Instruments", instruments: [.trumpet, .clarinet, .tenorSax, .sopranoSax]),
+        Group(id: "eb", label: "E♭ Instruments", instruments: [.altoSax, .bariSax]),
+        Group(id: "bass", label: "Bass Clef", instruments: [.bass, .trombone])
+    ]
 }
 
 enum Transposition: String, Codable, Sendable {

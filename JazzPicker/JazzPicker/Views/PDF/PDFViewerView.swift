@@ -6,17 +6,18 @@
 import SwiftUI
 import PDFKit
 import UIKit
+import FirebaseAuth
 
 struct PDFViewerView: View {
     @State var song: Song
     @State var concertKey: String
-    let instrument: Instrument
+    @State var instrument: Instrument
     @State var navigationContext: PDFNavigationContext
 
     init(song: Song, concertKey: String, instrument: Instrument, octaveOffset: Int? = nil, navigationContext: PDFNavigationContext) {
         self._song = State(initialValue: song)
         self._concertKey = State(initialValue: concertKey)
-        self.instrument = instrument
+        self._instrument = State(initialValue: instrument)
         self._navigationContext = State(initialValue: navigationContext)
         // Initialize octave offset: explicit param > setlist item > 0
         let initialOctave = octaveOffset ?? navigationContext.currentSetlistItem?.octaveOffset ?? 0
@@ -38,6 +39,7 @@ struct PDFViewerView: View {
     @State private var isLandscape = false
     @State private var showKeyPicker = false
     @State private var showAddToSetlist = false
+    @State private var showInstrumentPicker = false
     @State private var octaveOffset: Int
     @State private var pendingOctaveSave: Task<Void, Never>?
 
@@ -242,6 +244,12 @@ struct PDFViewerView: View {
                     }
                     .disabled(pdfDocument == nil)
 
+                    Button {
+                        showInstrumentPicker = true
+                    } label: {
+                        Label("Change Instrument", systemImage: "pianokeys")
+                    }
+
                     Divider()
 
                     // Add to setlist options
@@ -299,7 +307,7 @@ struct PDFViewerView: View {
         .toolbar(showControls || error != nil ? .visible : .hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!showControls && error == nil)
-        .task(id: "\(song.id)-\(concertKey)-\(octaveOffset)") {
+        .task(id: "\(song.id)-\(concertKey)-\(octaveOffset)-\(instrument.rawValue)") {
             await loadPDF()
         }
         .onAppear {
@@ -336,6 +344,11 @@ struct PDFViewerView: View {
                 songRange: songRange
             ) { newKey in
                 changeKey(to: newKey)
+            }
+        }
+        .sheet(isPresented: $showInstrumentPicker) {
+            InstrumentPickerSheet(currentInstrument: instrument) { newInstrument in
+                instrument = newInstrument
             }
         }
         .sheet(isPresented: $showAddToSetlist) {
@@ -472,6 +485,15 @@ struct PDFViewerView: View {
 
         // Update sticky key in store
         cachedKeysStore.setStickyKey(newKey, for: song)
+
+        // Auto-save to setlist if viewing from setlist context
+        if let setlistID = navigationContext.setlistID,
+           let item = navigationContext.currentSetlistItem,
+           let setlist = setlistStore.setlists.first(where: { $0.id == setlistID }) {
+            Task {
+                await setlistStore.updateItemConcertKey(in: setlist, itemID: item.id, concertKey: newKey)
+            }
+        }
 
         // Update concert key (triggers PDF reload via task)
         // Note: octave preference is per-song, not per-key, so we keep the current offset
@@ -921,4 +943,66 @@ struct PDFKitView: UIViewRepresentable {
     .environmentObject(PDFCacheService.shared)
     .environmentObject(GrooveSyncStore())
     .environmentObject(MetronomeStore())
+}
+
+// MARK: - Instrument Picker Sheet
+
+struct InstrumentPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+
+    let currentInstrument: Instrument
+    let onSelect: (Instrument) -> Void
+
+    @State private var selectedInstrument: Instrument = .piano
+    @State private var isSaving = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                InstrumentPickerContent(selectedInstrument: $selectedInstrument)
+            }
+            .navigationTitle("Change Instrument")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                selectedInstrument = currentInstrument
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            saveInstrument()
+                        }
+                        .disabled(selectedInstrument == currentInstrument)
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveInstrument() {
+        guard let uid = authStore.user?.uid else {
+            // Not logged in - just update locally
+            onSelect(selectedInstrument)
+            dismiss()
+            return
+        }
+
+        isSaving = true
+
+        Task {
+            await userProfileStore.updateInstrument(uid: uid, instrument: selectedInstrument)
+            isSaving = false
+            onSelect(selectedInstrument)
+            dismiss()
+        }
+    }
 }
