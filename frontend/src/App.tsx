@@ -577,6 +577,13 @@ function App() {
           style={{ backgroundImage: 'url(/images/settings-bg.jpg)' }}
         />
       )}
+      {/* Background image for setlist context */}
+      {activeContext === 'setlist' && (
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-[0.12] pointer-events-none"
+          style={{ backgroundImage: 'url(/images/setlist-bg.jpg)' }}
+        />
+      )}
       {/* Route handlers for deep links */}
       <Routes>
         <Route path="/setlist/:id" element={<SetlistRoute onSetlistLoad={handleSetlistLoad} />} />

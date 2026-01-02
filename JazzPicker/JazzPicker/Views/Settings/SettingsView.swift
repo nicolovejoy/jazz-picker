@@ -43,7 +43,14 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            ZStack {
+                Image("settings-bg")
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea()
+                    .opacity(0.08)
+
+                Form {
                 Section("Account") {
                     if let user = authStore.user {
                         HStack {
@@ -194,6 +201,7 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("You'll need to sign in again to access your setlists.")
+            }
             }
         }
     }

@@ -28,11 +28,19 @@ struct SetlistListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if setlistStore.activeSetlists.isEmpty && !setlistStore.isLoading {
-                    emptyState
-                } else {
-                    setlistList
+            ZStack {
+                Image("setlist-bg")
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea()
+                    .opacity(0.08)
+
+                Group {
+                    if setlistStore.activeSetlists.isEmpty && !setlistStore.isLoading {
+                        emptyState
+                    } else {
+                        setlistList
+                    }
                 }
             }
             .navigationTitle("Setlists")
