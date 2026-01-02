@@ -245,6 +245,71 @@ class UserProfileStore: ObservableObject {
         }
     }
 
+    // MARK: - Metronome Settings
+
+    func getMetronomeSettings(for songTitle: String) -> SongMetronomeSettings? {
+        profile?.metronomeSettings?[songTitle]
+    }
+
+    /// Set metronome settings for a song. Sparse storage: removes if settings match defaults.
+    func setMetronomeSettings(
+        _ settings: SongMetronomeSettings,
+        for songTitle: String,
+        defaultBpm: Int?,
+        defaultTimeSignature: String?,
+        uid: String
+    ) async {
+        var updatedSettings = profile?.metronomeSettings ?? [:]
+
+        // Sparse storage: only store if different from defaults
+        let isDefault = (settings.bpm == nil || settings.bpm == defaultBpm) &&
+                        (settings.timeSignature == nil || settings.timeSignature == defaultTimeSignature)
+
+        if isDefault || settings.isEmpty {
+            updatedSettings.removeValue(forKey: songTitle)
+        } else {
+            updatedSettings[songTitle] = settings
+        }
+
+        // Convert to Firestore format
+        var metroData: [String: [String: Any]] = [:]
+        for (title, songSettings) in updatedSettings {
+            metroData[title] = songSettings.toFirestoreData()
+        }
+
+        let data: [String: Any] = [
+            "metronomeSettings": metroData,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func clearMetronomeSettings(for songTitle: String, uid: String) async {
+        var updatedSettings = profile?.metronomeSettings ?? [:]
+        updatedSettings.removeValue(forKey: songTitle)
+
+        var metroData: [String: [String: Any]] = [:]
+        for (title, songSettings) in updatedSettings {
+            metroData[title] = songSettings.toFirestoreData()
+        }
+
+        let data: [String: Any] = [
+            "metronomeSettings": metroData,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     // MARK: - Fetch Other Users
 
     /// Fetch display names for a list of user IDs.
@@ -285,6 +350,22 @@ class UserProfileStore: ObservableObject {
         }
 
         return result
+    }
+
+    // MARK: - Group Preferences
+
+    /// Update the last used group ID (for quick band picker default)
+    func updateLastUsedGroup(_ groupId: String, uid: String) async {
+        let data: [String: Any] = [
+            "lastUsedGroupId": groupId,
+            "updatedAt": Timestamp(date: Date())
+        ]
+
+        do {
+            try await db.collection("users").document(uid).updateData(data)
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     // MARK: - Cache

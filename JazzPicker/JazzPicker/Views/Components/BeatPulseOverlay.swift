@@ -12,13 +12,14 @@ struct BeatPulseOverlay: View {
     private let settings = MetronomeSettings.shared
 
     @State private var pulseOpacity: Double = 0
+    @State private var isDownbeat: Bool = false
 
     var body: some View {
         GeometryReader { geometry in
             if settings.visualPulseEnabled && metronomeStore.engine.isPlaying {
                 RoundedRectangle(cornerRadius: 0)
                     .strokeBorder(
-                        Color.accentColor,
+                        pulseColor,
                         lineWidth: settings.visualIntensity.lineWidth
                     )
                     .opacity(pulseOpacity)
@@ -31,9 +32,14 @@ struct BeatPulseOverlay: View {
         }
     }
 
+    /// Beat 1 (downbeat) is orange, other beats use accent color
+    private var pulseColor: Color {
+        isDownbeat ? .orange : .accentColor
+    }
+
     private func triggerPulse() {
         let targetOpacity = settings.visualIntensity.opacity
-        let isDownbeat = metronomeStore.engine.currentBeat == 0
+        isDownbeat = metronomeStore.engine.currentBeat == 0
 
         // Slightly brighter on downbeat
         let peakOpacity = isDownbeat ? min(targetOpacity * 1.3, 1.0) : targetOpacity

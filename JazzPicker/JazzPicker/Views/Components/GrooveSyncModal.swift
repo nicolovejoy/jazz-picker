@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct GrooveSyncModal: View {
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
+
     let session: GrooveSyncSession
     let onJoin: () -> Void
     let onDismiss: () -> Void
@@ -31,6 +33,18 @@ struct GrooveSyncModal: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+
+            // Page 2 mode toggle
+            Toggle(isOn: $grooveSyncStore.page2ModeEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Page 2 Mode")
+                        .font(.subheadline)
+                    Text("Show next page (for page turners)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 4)
 
             // Buttons
             HStack(spacing: 12) {

@@ -17,13 +17,24 @@ class MetronomeEngine: ObservableObject {
     @Published private(set) var currentBeat: Int = 0  // 0-indexed
     @Published var bpm: Int = 120 {
         didSet {
-            let clamped = max(30, min(400, bpm))
+            let clamped = max(20, min(420, bpm))
             if bpm != clamped {
                 bpm = clamped
             }
         }
     }
     @Published var beatsPerMeasure: Int = 4
+    @Published var noteValue: Int = 4  // Denominator of time signature
+    @Published var volume: Float = 0.8 {
+        didSet {
+            let clamped = max(0.0, min(1.0, volume))
+            if volume != clamped {
+                volume = clamped
+            }
+            // Apply volume to audio engine
+            audioEngine?.mainMixerNode.outputVolume = volume
+        }
+    }
 
     // MARK: - Settings
 
@@ -134,6 +145,14 @@ class MetronomeEngine: ObservableObject {
         if let beats = Int(parts.first ?? "") {
             beatsPerMeasure = beats
         }
+        if parts.count > 1, let note = Int(parts[1]) {
+            noteValue = note
+        }
+    }
+
+    func setTimeSignature(_ timeSignature: TimeSignature) {
+        beatsPerMeasure = timeSignature.beatsPerMeasure
+        noteValue = timeSignature.noteValue
     }
 
     // MARK: - Private Methods
@@ -160,6 +179,9 @@ class MetronomeEngine: ObservableObject {
         regenerateBuffers(format: format)
 
         audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: format)
+
+        // Apply current volume setting
+        audioEngine.mainMixerNode.outputVolume = volume
 
         do {
             try audioEngine.start()

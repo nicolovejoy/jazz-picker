@@ -43,7 +43,14 @@ JazzPicker/JazzPicker/
 - Real-time Firestore listeners
 - Offline PDF caching in Documents/PDFCache/
 - Landscape forms: `.frame(maxWidth: 600).frame(maxWidth: .infinity)`
-- Metronome: `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, `MetronomeSettings` (UserDefaults). Visual beat pulse via `BeatPulseOverlay`. Sounds: wood block (default), cowbell, hi-hat, click, silent.
+
+**Metronome:**
+- `MetronomeEngine` (AVAudioEngine + haptics), `MetronomeStore`, `MetronomeSettings` (UserDefaults)
+- Visual beat pulse via `BeatPulseOverlay` (beat 1 = orange, others = blue)
+- Sounds: wood block (default), cowbell, hi-hat, click, silent
+- Per-song settings (BPM, time signature) stored in Firestore `users/{uid}/metronomeSettings`
+- 12 time signatures: 2/2, 2/4, 3/4, 4/4, 5/4, 6/4, 3/8, 5/8, 6/8, 7/8, 9/8, 12/8
+- Volume control via `audioEngine.mainMixerNode.outputVolume`
 
 **PDF Viewer Timeouts** (in `PDFViewerView.swift`):
 - 5 seconds: nav bar auto-hide (controls only)
@@ -75,6 +82,7 @@ PDFs cached in S3 with `includeVersion` metadata. Regenerates on cache miss or v
 ```
 users/{uid}
   - instrument, displayName, preferredKeys, preferredOctaveOffsets, groups[], lastUsedGroupId
+  - metronomeSettings: { "Song Title": { bpm, timeSignature } }  // sparse, only non-defaults
 
 groups/{groupId}
   - name, code (jazz slug)

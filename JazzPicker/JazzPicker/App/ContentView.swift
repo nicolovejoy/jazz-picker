@@ -32,8 +32,7 @@ struct ContentView: View {
     // Groove Sync follower state
     @State private var showGrooveSyncModal = false
     @State private var dismissedSessionId: String?  // Track dismissed session to avoid re-showing
-    @State private var followingSong: FollowingSong?
-    @State private var lastFollowedSongKey: String?  // Track to detect song changes
+    @State private var isShowingFollowerView = false  // Persistent follower view
 
     var instrument: Instrument {
         userProfileStore.profile?.instrument ?? .piano
@@ -43,12 +42,10 @@ struct ContentView: View {
         mainContent
             .withGrooveSyncFollower(
                 grooveSyncStore: grooveSyncStore,
-                catalogStore: catalogStore,
                 instrument: instrument,
                 showModal: $showGrooveSyncModal,
                 dismissedSessionId: $dismissedSessionId,
-                followingSong: $followingSong,
-                lastFollowedSongKey: $lastFollowedSongKey
+                isShowingFollowerView: $isShowingFollowerView
             )
     }
 
@@ -156,53 +153,38 @@ struct ContentView: View {
 
 struct GrooveSyncFollowerModifier: ViewModifier {
     @ObservedObject var grooveSyncStore: GrooveSyncStore
-    let catalogStore: CatalogStore
     let instrument: Instrument
     @Binding var showModal: Bool
     @Binding var dismissedSessionId: String?
-    @Binding var followingSong: FollowingSong?
-    @Binding var lastFollowedSongKey: String?
+    @Binding var isShowingFollowerView: Bool
 
     func body(content: Content) -> some View {
         content
-            .fullScreenCover(item: $followingSong) { following in
-                followingSongView(following)
+            .fullScreenCover(isPresented: $isShowingFollowerView) {
+                FollowerPDFContainerView(
+                    instrument: instrument,
+                    onStopFollowing: {
+                        isShowingFollowerView = false
+                    }
+                )
             }
             .overlay { grooveSyncOverlay }
             .onChangeOfJoinableSession(grooveSyncStore: grooveSyncStore, dismissedSessionId: dismissedSessionId) {
                 showModal = true
             }
-            .onChangeOfFollowingSong(grooveSyncStore: grooveSyncStore, catalogStore: catalogStore, lastSongKey: lastFollowedSongKey) { song in
-                lastFollowedSongKey = "\(song.song.title)-\(song.concertKey)-\(song.octaveOffset ?? 0)"
-                followingSong = song
+            .onChange(of: grooveSyncStore.isFollowing) { _, isFollowing in
+                // Show follower view when we start following
+                if isFollowing && !isShowingFollowerView {
+                    isShowingFollowerView = true
+                }
+                // Hide when we stop following
+                if !isFollowing && isShowingFollowerView {
+                    isShowingFollowerView = false
+                }
             }
             .onChange(of: grooveSyncStore.activeSessions) { _, sessions in
                 handleActiveSessionsChange(sessions)
             }
-    }
-
-    @ViewBuilder
-    private func followingSongView(_ following: FollowingSong) -> some View {
-        NavigationStack {
-            PDFViewerView(
-                song: following.song,
-                concertKey: following.concertKey,
-                instrument: instrument,
-                octaveOffset: following.octaveOffset,
-                navigationContext: .single
-            )
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Stop Following") {
-                        Task {
-                            await grooveSyncStore.stopFollowing()
-                        }
-                        followingSong = nil
-                        lastFollowedSongKey = nil
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -244,21 +226,17 @@ struct GrooveSyncFollowerModifier: ViewModifier {
 extension View {
     func withGrooveSyncFollower(
         grooveSyncStore: GrooveSyncStore,
-        catalogStore: CatalogStore,
         instrument: Instrument,
         showModal: Binding<Bool>,
         dismissedSessionId: Binding<String?>,
-        followingSong: Binding<FollowingSong?>,
-        lastFollowedSongKey: Binding<String?>
+        isShowingFollowerView: Binding<Bool>
     ) -> some View {
         modifier(GrooveSyncFollowerModifier(
             grooveSyncStore: grooveSyncStore,
-            catalogStore: catalogStore,
             instrument: instrument,
             showModal: showModal,
             dismissedSessionId: dismissedSessionId,
-            followingSong: followingSong,
-            lastFollowedSongKey: lastFollowedSongKey
+            isShowingFollowerView: isShowingFollowerView
         ))
     }
 
@@ -273,32 +251,6 @@ extension View {
                !grooveSyncStore.isFollowing,
                grooveSyncStore.firstJoinableSession?.leaderId != dismissedSessionId {
                 action()
-            }
-        }
-    }
-
-    func onChangeOfFollowingSong(
-        grooveSyncStore: GrooveSyncStore,
-        catalogStore: CatalogStore,
-        lastSongKey: String?,
-        action: @escaping (FollowingSong) -> Void
-    ) -> some View {
-        // Watch followingSession directly - computed values in closures aren't reactive
-        self.onChange(of: grooveSyncStore.followingSession) { _, _ in
-            guard grooveSyncStore.isFollowing,
-                  let session = grooveSyncStore.followingSession,
-                  let sharedSong = session.currentSong else { return }
-
-            // Compute key INSIDE callback, after change detected
-            let newSongKey = "\(sharedSong.title)-\(sharedSong.concertKey)-\(sharedSong.octaveOffset ?? 0)"
-            guard newSongKey != lastSongKey else { return }
-
-            if let song = catalogStore.songs.first(where: { $0.title == sharedSong.title }) {
-                action(FollowingSong(
-                    song: song,
-                    concertKey: sharedSong.concertKey,
-                    octaveOffset: sharedSong.octaveOffset
-                ))
             }
         }
     }

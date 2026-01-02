@@ -28,12 +28,29 @@ class GrooveSyncStore: ObservableObject {
     /// Last error message
     @Published private(set) var lastError: String?
 
+    /// Page 2 mode: follower sees leader's next page (stored in UserDefaults)
+    @Published var page2ModeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(page2ModeEnabled, forKey: "grooveSync.page2Mode")
+        }
+    }
+
     // MARK: - Private State
 
     private var sessionListeners: [ListenerRegistration] = []
     private var currentUserId: String?
     private var currentUserName: String?
     private var currentGroupIds: [String]?
+
+    // Page sync debouncing
+    private var lastSyncedPage: Int?
+    private var pageSyncTask: Task<Void, Never>?
+
+    // MARK: - Initialization
+
+    init() {
+        self.page2ModeEnabled = UserDefaults.standard.bool(forKey: "grooveSync.page2Mode")
+    }
 
     // MARK: - Computed Properties
 
@@ -169,6 +186,9 @@ class GrooveSyncStore: ObservableObject {
             return
         }
 
+        // Reset page tracking when song changes
+        lastSyncedPage = nil
+
         let song = SharedSong(title: title, concertKey: concertKey, source: source, octaveOffset: octaveOffset)
         do {
             print("🎵 Calling GrooveSyncService.updateCurrentSong...")
@@ -177,6 +197,31 @@ class GrooveSyncStore: ObservableObject {
         } catch {
             print("🎵 ❌ Failed to sync song: \(error)")
             lastError = "Couldn't sync song: \(error.localizedDescription)"
+        }
+    }
+
+    /// Sync the current page to followers (debounced to avoid spamming Firestore)
+    func syncPage(page: Int, pageCount: Int) {
+        guard let groupId = leadingGroupId, isLeading else { return }
+
+        // Skip if same page
+        guard page != lastSyncedPage else { return }
+        lastSyncedPage = page
+
+        // Cancel any pending sync
+        pageSyncTask?.cancel()
+
+        // Debounce: wait 100ms before syncing to avoid spam during fast scrolling
+        pageSyncTask = Task {
+            try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+
+            guard !Task.isCancelled else { return }
+
+            do {
+                try await GrooveSyncService.updateCurrentPage(groupId: groupId, page: page, pageCount: pageCount)
+            } catch {
+                print("🎵 Failed to sync page: \(error)")
+            }
         }
     }
 

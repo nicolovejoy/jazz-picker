@@ -1,8 +1,13 @@
 # Roadmap
 
+## Bugs
+
+- PDF viewer swipe-down dismiss: animation slides sideways (NavigationStack limitation - would require sheet presentation to fix)
+
 ## Pending
 
 - Rebrand to "MusicForge" (awaiting Eric/James feedback) - see `VISION.md`
+- Groove Sync menu branding: "Share with Band" is bland. Restore "Groove Sync" language or find MusicForge metaphor. Ideas: "Forge Link", "Sync Session", "Live Forge"?
 
 ## Backlog
 
@@ -27,3 +32,5 @@
 - UI says "Band", Firestore uses `groups`
 - Groove Sync sessions auto-expire after 15 min inactivity
 - PDF viewer timeouts: 5s controls, 10s metronome, 30s settings, 30min idle
+- Per-song metronome settings: sparse Firestore storage (only non-default values)
+- Page 2 mode: local preference in UserDefaults (not synced)

@@ -25,11 +25,15 @@ struct PDFViewerView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var cachedKeysStore: CachedKeysStore
     @EnvironmentObject private var setlistStore: SetlistStore
     @EnvironmentObject private var pdfCacheService: PDFCacheService
     @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
     @EnvironmentObject private var metronomeStore: MetronomeStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var userProfileStore: UserProfileStore
+    @EnvironmentObject private var bandStore: BandStore
 
     @State private var pdfDocument: PDFDocument?
     @State private var cropBounds: CropBounds?
@@ -40,6 +44,7 @@ struct PDFViewerView: View {
     @State private var showKeyPicker = false
     @State private var showAddToSetlist = false
     @State private var showInstrumentPicker = false
+    @State private var showBandPicker = false
     @State private var octaveOffset: Int
     @State private var pendingOctaveSave: Task<Void, Never>?
 
@@ -277,11 +282,36 @@ struct PDFViewerView: View {
                     Divider()
 
                     Button {
-                        metronomeStore.loadFromSong(song)
+                        metronomeStore.loadFromSong(song, userProfileStore: userProfileStore)
                         metronomeStore.show()
                         startAutoHideTimer() // Reset with 10s metronome delay
                     } label: {
                         Label("Metronome", systemImage: "metronome")
+                    }
+
+                    Divider()
+
+                    // Groove Sync controls
+                    if grooveSyncStore.isLeading {
+                        Button {
+                            Task {
+                                await grooveSyncStore.stopLeading()
+                            }
+                        } label: {
+                            Label("Stop Sharing", systemImage: "stop.circle")
+                        }
+                    } else if grooveSyncStore.isFollowing {
+                        // Already following - show status
+                        if let session = grooveSyncStore.followingSession {
+                            Label("Following \(session.leaderName)", systemImage: "person.wave.2")
+                        }
+                    } else if !bandStore.bands.isEmpty {
+                        // Not in session - offer to start
+                        Button {
+                            showBandPicker = true
+                        } label: {
+                            Label("Share with Band", systemImage: "music.note.tv")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -332,6 +362,18 @@ struct PDFViewerView: View {
             // Re-enable sleep when leaving PDF view
             UIApplication.shared.isIdleTimerDisabled = false
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Defensive cleanup: ensure idle timer is properly managed on app state changes
+            if newPhase == .background || newPhase == .inactive {
+                // Allow normal sleep when app is backgrounded
+                UIApplication.shared.isIdleTimerDisabled = false
+                idleTimeoutTask?.cancel()
+            } else if newPhase == .active {
+                // Re-enable screen lock prevention when returning to app
+                UIApplication.shared.isIdleTimerDisabled = true
+                startIdleTimeout()
+            }
+        }
         .onChange(of: octaveOffset) { _, newOffset in
             Task { @MainActor in
                 saveOctaveOffset(newOffset)
@@ -353,6 +395,19 @@ struct PDFViewerView: View {
         }
         .sheet(isPresented: $showAddToSetlist) {
             AddToSetlistSheet(songTitle: song.title, concertKey: concertKey, octaveOffset: octaveOffset)
+        }
+        .sheet(isPresented: $showBandPicker) {
+            QuickBandPickerSheet { bandId in
+                Task {
+                    if let uid = authStore.user?.uid {
+                        await userProfileStore.updateLastUsedGroup(bandId, uid: uid)
+                    }
+                    let success = await grooveSyncStore.startLeading(groupId: bandId)
+                    if success {
+                        syncSongIfLeading()
+                    }
+                }
+            }
         }
     }
 
@@ -540,14 +595,15 @@ struct PDFViewerView: View {
     // MARK: - Gestures
 
     private var swipeDownGesture: some Gesture {
-        DragGesture(minimumDistance: 50)
+        DragGesture(minimumDistance: 30)
             .onEnded { value in
                 resetIdleTimeout()
                 let verticalDistance = value.translation.height
                 let horizontalDistance = abs(value.translation.width)
 
                 // Swipe down: vertical movement > horizontal and downward
-                if verticalDistance > 100 && verticalDistance > horizontalDistance {
+                // Lower threshold (60pt) for better compatibility with older iPads
+                if verticalDistance > 60 && verticalDistance > horizontalDistance * 1.5 {
                     dismiss()
                 }
             }
@@ -634,6 +690,9 @@ struct PDFViewerView: View {
             isAtFirstPage = currentPage == 0
             // In 2-up mode, last page might be pageCount-1 or pageCount-2 depending on odd/even
             isAtLastPage = currentPage >= totalPages - (isLandscape ? 2 : 1)
+
+            // Broadcast page to followers if leading Groove Sync
+            grooveSyncStore.syncPage(page: currentPage, pageCount: totalPages)
         }
     }
 
@@ -943,6 +1002,9 @@ struct PDFKitView: UIViewRepresentable {
     .environmentObject(PDFCacheService.shared)
     .environmentObject(GrooveSyncStore())
     .environmentObject(MetronomeStore())
+    .environmentObject(AuthStore())
+    .environmentObject(UserProfileStore())
+    .environmentObject(BandStore())
 }
 
 // MARK: - Instrument Picker Sheet

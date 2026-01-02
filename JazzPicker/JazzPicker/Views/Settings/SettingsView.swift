@@ -17,6 +17,7 @@ struct SettingsView: View {
     @EnvironmentObject private var userProfileStore: UserProfileStore
     @EnvironmentObject private var pdfCacheService: PDFCacheService
     @EnvironmentObject private var bandStore: BandStore
+    @EnvironmentObject private var grooveSyncStore: GrooveSyncStore
     @State private var showClearCacheConfirm = false
     @State private var showSignOutConfirm = false
 
@@ -116,6 +117,17 @@ struct SettingsView: View {
                             Spacer()
                             Text(MetronomeSettings.shared.soundType.rawValue)
                                 .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Groove Sync") {
+                    Toggle(isOn: $grooveSyncStore.page2ModeEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Page 2 Mode")
+                            Text("When following, show leader's next page")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -262,4 +274,5 @@ struct InstrumentPickerView: View {
         .environmentObject(PDFCacheService.shared)
         .environmentObject(BandStore())
         .environmentObject(NetworkMonitor())
+        .environmentObject(GrooveSyncStore())
 }

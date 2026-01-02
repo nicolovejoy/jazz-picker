@@ -12,12 +12,17 @@ struct SharedSong: Sendable, Equatable {
     let concertKey: String
     let source: String  // "standard" or "custom"
     let octaveOffset: Int?
+    let currentPage: Int?  // 0-indexed page leader is viewing
+    let pageCount: Int?    // Total pages in the PDF
 
-    init(title: String, concertKey: String, source: String = "standard", octaveOffset: Int? = nil) {
+    init(title: String, concertKey: String, source: String = "standard", octaveOffset: Int? = nil,
+         currentPage: Int? = nil, pageCount: Int? = nil) {
         self.title = title
         self.concertKey = concertKey
         self.source = source
         self.octaveOffset = octaveOffset
+        self.currentPage = currentPage
+        self.pageCount = pageCount
     }
 
     init?(from data: [String: Any]) {
@@ -29,6 +34,8 @@ struct SharedSong: Sendable, Equatable {
         self.concertKey = concertKey
         self.source = data["source"] as? String ?? "standard"
         self.octaveOffset = data["octaveOffset"] as? Int
+        self.currentPage = data["currentPage"] as? Int
+        self.pageCount = data["pageCount"] as? Int
     }
 
     func toFirestoreData() -> [String: Any] {
@@ -39,6 +46,12 @@ struct SharedSong: Sendable, Equatable {
         ]
         if let octaveOffset = octaveOffset {
             data["octaveOffset"] = octaveOffset
+        }
+        if let currentPage = currentPage {
+            data["currentPage"] = currentPage
+        }
+        if let pageCount = pageCount {
+            data["pageCount"] = pageCount
         }
         return data
     }
@@ -195,6 +208,16 @@ enum GrooveSyncService {
         ]
         try await sessionRef(groupId: groupId).updateData(data)
         print("🎵 Synced song: \(song.title) in \(song.concertKey)")
+    }
+
+    /// Update the current page within the song (for Page 2 mode)
+    static func updateCurrentPage(groupId: String, page: Int, pageCount: Int) async throws {
+        let data: [String: Any] = [
+            "currentSong.currentPage": page,
+            "currentSong.pageCount": pageCount,
+            "lastActivityAt": FieldValue.serverTimestamp()
+        ]
+        try await sessionRef(groupId: groupId).updateData(data)
     }
 
     /// Update last activity timestamp (for timeout tracking)
