@@ -2,7 +2,7 @@
 
 ## Pending
 
-- Rebrand to "AnyKey" (awaiting Eric/James feedback) - see `VISION.md`
+- Rebrand to "MusicForge" (awaiting Eric/James feedback) - see `VISION.md`
 
 ## Backlog
 

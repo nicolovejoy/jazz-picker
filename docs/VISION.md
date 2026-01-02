@@ -1,8 +1,21 @@
 # Vision
 
-## Proposed Rebrand: AnyKey
+## Proposed Rebrand: MusicForge
 
-**Tagline:** "Your key to playing in tune"
+**Tagline candidates:**
+- "Craft your charts"
+- "Professional charts, your key"
+- "Forged for the gig"
+
+**Why MusicForge:**
+- Emphasizes the craftsmanship angle (LilyPond engraving quality)
+- "Forge" implies precision, durability, professional tools
+- Distinctive - less likely to conflict with existing apps
+- Works for the broader scope (not just jazz)
+
+**Alternative considered:** AnyKey ("Your key to playing in tune") - clever wordplay on transposition, but sounds generic.
+
+**Domain:** musicforge.org (register via Cloudflare)
 
 Pending feedback from Eric and James.
 

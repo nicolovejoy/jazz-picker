@@ -4,7 +4,7 @@
 
 iPad music stand app. 750+ lead sheets with auto-transposition and real-time sync.
 
-Proposed rebrand: **AnyKey** ("Your key to playing in tune") - see `VISION.md`.
+Proposed rebrand: **MusicForge** - see `VISION.md`.
 
 **Stack:**
 - iOS App: `JazzPicker/` (SwiftUI, iOS 17+) - primary client
