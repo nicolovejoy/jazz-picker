@@ -21,10 +21,10 @@
 
 ## Brand Migration Plan
 
-### Phase 1: Domain Setup (now)
+### Phase 1: Domain Setup (done)
 - [x] Register musicforge.org on Cloudflare
-- [ ] Point musicforge.org → Vercel (same deployment as jazzpicker.pianohouseproject.org)
-- [ ] Keep jazzpicker.pianohouseproject.org working (redirect later)
+- [x] Point musicforge.org → Vercel (DNS only, no proxy)
+- [x] Keep jazzpicker.pianohouseproject.org working (redirect later)
 
 ### Phase 2: App & Backend
 - [ ] Rename iOS app display name to "MusicForge"
