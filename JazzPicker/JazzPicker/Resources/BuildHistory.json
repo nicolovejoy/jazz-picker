@@ -1,5 +1,10 @@
 [
   {
+    "build": 26,
+    "date": "2026-01-02",
+    "notes": "Groove Sync Page 2 mode - actually works now."
+  },
+  {
     "build": 25,
     "date": "2026-01-02",
     "notes": "Groove Sync Page 2 mode - followers can show leader's page + 1 (perfect for page turners or a second music stand). Start sharing charts from any PDF viewer, not just setlists. Per-song metronome settings - your BPM and time signature choices now save and restore for each song. 12 time signatures supported. Metronome volume control. Screen idle fix - iPad now sleeps properly when you leave the PDF viewer."

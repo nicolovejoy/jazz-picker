@@ -92,7 +92,7 @@ groups/{groupId}/members/{userId}
 
 groups/{groupId}/session/current   # Groove Sync
   - leaderId, leaderName, startedAt, lastActivityAt
-  - currentSong: { title, concertKey, source, octaveOffset? }
+  - currentSong: { title, concertKey, source, octaveOffset?, currentPage, pageCount }
 
 setlists/{id}
   - name, ownerId, groupId

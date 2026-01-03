@@ -40,20 +40,14 @@ struct FollowerPDFContainerView: View {
         guard let session = grooveSyncStore.followingSession,
               let sharedSong = session.currentSong,
               let currentPage = sharedSong.currentPage else {
-            // Use cached page to avoid flicker during Firestore updates
-            print("📄 followerTargetPage: no page info, using cached \(lastKnownPage)")
             return lastKnownPage
         }
 
-        let target: Int
         if grooveSyncStore.page2ModeEnabled {
-            target = currentPage + 1
-            print("📄 followerTargetPage: Page 2 mode, leader on \(currentPage), returning \(target)")
+            return currentPage + 1
         } else {
-            target = currentPage
-            print("📄 followerTargetPage: normal mode, returning \(target)")
+            return currentPage
         }
-        return target
     }
 
     /// Update cached page when new page info arrives
@@ -63,7 +57,6 @@ struct FollowerPDFContainerView: View {
            let currentPage = sharedSong.currentPage {
             let target = grooveSyncStore.page2ModeEnabled ? currentPage + 1 : currentPage
             if target != lastKnownPage {
-                print("📄 Updating lastKnownPage: \(lastKnownPage) → \(target)")
                 lastKnownPage = target
             }
         }
