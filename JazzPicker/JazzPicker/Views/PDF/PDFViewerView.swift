@@ -50,7 +50,8 @@ struct PDFViewerView: View {
     @State private var octaveOffset: Int
     @State private var pendingOctaveSave: Task<Void, Never>?
 
-    // Page tracking for boundary detection
+    // Page tracking for boundary detection and Groove Sync
+    @State private var currentPage = 0
     @State private var isAtFirstPage = true
     @State private var isAtLastPage = true
     @State private var pageCount = 1
@@ -486,9 +487,11 @@ struct PDFViewerView: View {
         // For now, assume standard - we can enhance this later
         let source = "standard"
 
-        print("🎵 Syncing song: \(song.title) in key \(concertKey) (octave: \(octaveOffset))")
+        print("🎵 Syncing song: \(song.title) in key \(concertKey) (octave: \(octaveOffset)) page: \(currentPage)/\(pageCount)")
         Task {
             await grooveSyncStore.syncSong(title: song.title, concertKey: concertKey, source: source, octaveOffset: octaveOffset)
+            // Also sync current page immediately (followers need this to show correct page in Page 2 mode)
+            grooveSyncStore.syncPage(page: currentPage, pageCount: pageCount)
         }
     }
 
@@ -670,6 +673,7 @@ struct PDFViewerView: View {
             navigationContext = newContext
             octaveOffset = newOctaveOffset
             // Reset page tracking
+            currentPage = 0
             isAtFirstPage = true
             isAtLastPage = true
         }
@@ -687,15 +691,16 @@ struct PDFViewerView: View {
 
     // MARK: - Page Tracking
 
-    private func handlePageChange(currentPage: Int, totalPages: Int) {
+    private func handlePageChange(newPage: Int, totalPages: Int) {
         Task { @MainActor in
+            currentPage = newPage
             pageCount = totalPages
-            isAtFirstPage = currentPage == 0
+            isAtFirstPage = newPage == 0
             // In 2-up mode, last page might be pageCount-1 or pageCount-2 depending on odd/even
-            isAtLastPage = currentPage >= totalPages - (isLandscape ? 2 : 1)
+            isAtLastPage = newPage >= totalPages - (isLandscape ? 2 : 1)
 
             // Broadcast page to followers if leading Groove Sync
-            grooveSyncStore.syncPage(page: currentPage, pageCount: totalPages)
+            grooveSyncStore.syncPage(page: newPage, pageCount: totalPages)
         }
     }
 
