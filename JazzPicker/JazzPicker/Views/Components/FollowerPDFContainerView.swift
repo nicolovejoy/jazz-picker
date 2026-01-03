@@ -39,14 +39,19 @@ struct FollowerPDFContainerView: View {
         guard let session = grooveSyncStore.followingSession,
               let sharedSong = session.currentSong,
               let currentPage = sharedSong.currentPage else {
+            print("📄 followerTargetPage: no page info, returning 0")
             return 0
         }
 
+        let target: Int
         if grooveSyncStore.page2ModeEnabled {
-            return currentPage + 1
+            target = currentPage + 1
+            print("📄 followerTargetPage: Page 2 mode, leader on \(currentPage), returning \(target)")
         } else {
-            return currentPage
+            target = currentPage
+            print("📄 followerTargetPage: normal mode, returning \(target)")
         }
+        return target
     }
 
     var body: some View {

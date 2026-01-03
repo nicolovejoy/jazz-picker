@@ -888,13 +888,23 @@ struct PDFKitView: UIViewRepresentable {
 
         configureDisplayMode(pdfView)
 
-        // Navigate to initial page if specified
-        if initialPage > 0, let page = document.page(at: initialPage) {
-            pdfView.go(to: page)
-        }
-
         // Set up page change observation
         context.coordinator.setupPageChangeObserver(for: pdfView, document: document)
+
+        // Navigate to initial page if specified (delayed to ensure layout is complete)
+        if initialPage > 0 {
+            let targetPage = initialPage
+            let doc = document
+            print("📄 PDFKitView: navigating to initial page \(targetPage) of \(doc.pageCount)")
+            DispatchQueue.main.async {
+                if let page = doc.page(at: targetPage) {
+                    print("📄 PDFKitView: go(to: page \(targetPage))")
+                    pdfView.go(to: page)
+                } else {
+                    print("📄 PDFKitView: page \(targetPage) not found in document")
+                }
+            }
+        }
 
         return pdfView
     }
