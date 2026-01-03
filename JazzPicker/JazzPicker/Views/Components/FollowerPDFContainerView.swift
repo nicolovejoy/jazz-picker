@@ -18,6 +18,7 @@ struct FollowerPDFContainerView: View {
     @State private var currentSong: FollowingSong?
     @State private var isTransitioning = false
     @State private var lastProcessedSongKey: String?
+    @State private var lastKnownPage: Int = 0  // Cache page to avoid flicker when Firestore updates
 
     /// Whether to show blank page (Page 2 mode, leader on last page or single-page chart)
     private var shouldShowBlankPage: Bool {
@@ -34,13 +35,14 @@ struct FollowerPDFContainerView: View {
 
     /// The page the follower should display
     /// In Page 2 mode: leader's page + 1
-    /// Otherwise: leader's page (0 if not synced)
+    /// Otherwise: leader's page (uses cached value if Firestore data temporarily unavailable)
     private var followerTargetPage: Int {
         guard let session = grooveSyncStore.followingSession,
               let sharedSong = session.currentSong,
               let currentPage = sharedSong.currentPage else {
-            print("📄 followerTargetPage: no page info, returning 0")
-            return 0
+            // Use cached page to avoid flicker during Firestore updates
+            print("📄 followerTargetPage: no page info, using cached \(lastKnownPage)")
+            return lastKnownPage
         }
 
         let target: Int
@@ -52,6 +54,19 @@ struct FollowerPDFContainerView: View {
             print("📄 followerTargetPage: normal mode, returning \(target)")
         }
         return target
+    }
+
+    /// Update cached page when new page info arrives
+    private func updateLastKnownPage() {
+        if let session = grooveSyncStore.followingSession,
+           let sharedSong = session.currentSong,
+           let currentPage = sharedSong.currentPage {
+            let target = grooveSyncStore.page2ModeEnabled ? currentPage + 1 : currentPage
+            if target != lastKnownPage {
+                print("📄 Updating lastKnownPage: \(lastKnownPage) → \(target)")
+                lastKnownPage = target
+            }
+        }
     }
 
     var body: some View {
@@ -116,23 +131,22 @@ struct FollowerPDFContainerView: View {
             }
         }
         .onAppear {
+            updateLastKnownPage()
             updateFromSession()
         }
         .onChange(of: grooveSyncStore.followingSession) { _, _ in
+            updateLastKnownPage()
             updateFromSession()
         }
     }
 
     /// View ID that changes when song changes (and when page changes in Page 2 mode)
+    /// Uses cached lastKnownPage to avoid flicker when Firestore data temporarily unavailable
     private var page2ViewId: String {
         var id = currentSong?.id.uuidString ?? ""
-        if grooveSyncStore.page2ModeEnabled,
-           let session = grooveSyncStore.followingSession,
-           let sharedSong = session.currentSong,
-           let currentPage = sharedSong.currentPage {
-            // In Page 2 mode, include the target page in the ID
-            // This is leader's page + 1
-            id += "-page\(currentPage + 1)"
+        if grooveSyncStore.page2ModeEnabled {
+            // Use cached page for stable ID
+            id += "-page\(lastKnownPage)"
         }
         return id
     }
