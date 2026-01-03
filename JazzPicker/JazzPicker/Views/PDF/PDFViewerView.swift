@@ -922,11 +922,25 @@ struct PDFKitView: UIViewRepresentable {
                 applyCropBounds(crop, to: document)
             }
 
+            configureDisplayMode(pdfView)
+
+            // Navigate to initial page after document update (delayed to ensure layout)
+            if initialPage > 0 {
+                let targetPage = initialPage
+                let doc = document
+                DispatchQueue.main.async {
+                    if let page = doc.page(at: targetPage) {
+                        print("📄 PDFKitView updateUIView: restoring page \(targetPage)")
+                        pdfView.go(to: page)
+                    }
+                }
+            }
+
             // Update coordinator with new document
             context.coordinator.setupPageChangeObserver(for: pdfView, document: document)
+        } else {
+            configureDisplayMode(pdfView)
         }
-
-        configureDisplayMode(pdfView)
     }
 
     private func configureDisplayMode(_ pdfView: PDFView) {
